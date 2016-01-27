@@ -1,0 +1,46 @@
+@* historyReport Template File *@
+@import com.github.nscala_time.time.Imports._
+@(monitorTypes:Array[MonitorType.Value], explain:String, start:DateTime, end:DateTime, timeSeq:List[DateTime], recordTimeMap: Map[MonitorType.Value, Map[DateTime, Record]])
+
+<H3>測項:@explain</H3>
+<H5>區間:@start.toString("YYYY-MM-dd HH:mm")~@end.toString("YYYY-MM-dd HH:mm")</H5>
+
+<table id="historyReport" class="table">
+<thead>
+	<tr>
+		<th>時間</th>
+		@for(mt<-monitorTypes){
+			<th>@MonitorType.map(mt).desp</th>
+		}
+	</tr>
+</thead>
+<tbody>
+	@for(t <- timeSeq){
+		<tr>
+			<th>@t.toString("YYYY-MM-dd HH:mm")</th>						
+			@for(mt<-monitorTypes){
+				@if(recordTimeMap(mt).get(t).isEmpty){
+					<td>-</td>
+				}else{
+					<td>@MonitorType.formatR(mt, recordTimeMap(mt)(t))</td>
+				}
+			}
+		</tr>
+	}
+</tbody>
+</table>
+<script>
+	var local_url = '/assets/localization/zh_tw.json';
+</script>
+<script>
+$(document ).ready(function() {
+	$('#historyReport').dataTable( {
+		responsive: true,
+		language: {
+			url: local_url,							
+		},
+		"paging":   false,
+		searching: false
+	} );
+});
+</script>

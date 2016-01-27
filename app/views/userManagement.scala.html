@@ -1,0 +1,418 @@
+@* userManagement Template File *@
+@import controllers.Security._
+@(userInfo: controllers.Security.UserInfo, user:User, userList:List[User])
+<div class="row">
+	<div class="col-lg-12">
+		<div class="ibox float-e-margins">
+<div class="ibox-content">
+<ul class="nav nav-tabs">
+@if(userInfo.isAdmin){
+<li>
+	<a data-toggle="tab" href="#newUser"> <span class="glyphicons glyphicons-hotspot"></span>新增使用者</a>
+</li>
+<li>
+	<a data-toggle="tab" href="#deleteUser" id='deleteUsrTab'> <span class="glyphicons glyphicons-hotspot"></span>刪除使用者</a>
+</li>
+}
+<li class="active">
+	<a data-toggle="tab" href="#updateUser" id='updateUsrTab'> <span class="glyphicons glyphicons-hotspot"></span>更新使用者資料</a>
+</li>
+</ul>
+<div class="tab-content">
+@if(userInfo.isAdmin){
+<div id="newUser" class="tab-pane" align="left">
+<br/>
+   		<form id="newUser" class="form-horizontal">
+            <div class="form-group">
+            	<label class="col-lg-2 control-label">登入電子信箱</label>
+                <div class="col-lg-10">
+                	<input name='email' type="email" placeholder="Email" class="form-control" required >
+                </div>
+            </div>
+            <div class="form-group"><label class="col-lg-2 control-label">密碼</label>
+                <div class="col-lg-10">
+                	<input name='password' type="password" placeholder="Password" class="form-control" required >
+                </div>
+            </div>
+            
+            <div class="form-group">
+            	<label class="col-lg-2 control-label">顯示名稱</label>
+                <div class="col-lg-10">
+                	<input name='name' type="text" placeholder="姓名" class="form-control" required >
+                </div>
+            </div>
+            <div class="form-group">
+            	<label class="col-lg-2 control-label">行動電話</label>
+                <div class="col-lg-10">
+                	<input name='phone' type="tel" placeholder="電話號碼" class="form-control" required >
+                </div>
+            </div>
+            <div class="form-group">
+            	<label class="col-lg-2 control-label">系統管理員</label>
+                <div class="col-lg-10">
+                	<input name='admin' type="checkbox" class="form-control">
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-lg-offset-2 col-lg-10">
+                    <button class="btn btn-primary" type="submit">新增</button>
+                </div>
+            </div>
+        </form>
+</div>
+<div id="deleteUser" class="tab-pane" align="left">
+<br/>
+	<form id="deleteUser" class="form-horizontal">
+		<div class="form-group">			
+			<label class="col-lg-2 control-label">使用者</label>
+			<div class="col-lg-10">
+				<select id="userToBeDeleted">
+		    	@for(u<-userList){
+		    		<option  name='user' value="@u.email">
+		    			@u.name (@u.email)
+		    		</option>
+	        	}        		
+				</select>
+			</div>
+		</div>
+    	<div class="form-group">
+        	<div class="col-lg-offset-2 col-lg-10">
+            	<button class="btn btn-primary" type="submit">刪除</button>
+            </div>
+        </div>
+	</form>
+</div>
+}
+<div id="updateUser" class="tab-pane active" align="left">
+<br/>
+   		<form id="updateUser" class="form-horizontal">
+   			@if(user.isAdmin){
+		   		<div class="form-group">			
+					<label class="col-lg-2 control-label">使用者</label>
+					<div class="col-lg-10">
+						<select id="userToBeUpdated">
+		    				@for(u<-userList){
+		    					@if(u.email == user.email){
+		    						<option  name='user' value="@u.email" selected>
+		    					}else{
+		    						<option  name='user' value="@u.email">
+		    					}
+		    						@u.name (@u.email)
+		    					</option>
+	        				}        		
+						</select>
+					</div>						
+				</div>		
+   			}
+   			
+	   		<input name='id' type="hidden" class="form-control" value="@user.email">
+    	    <div class="form-group">
+        		<label class="col-lg-2 control-label">登入電子信箱</label>
+            	<div class="col-lg-10">
+                	<input name='email' type="email" placeholder="Email" class="form-control" required value="@user.email">
+                </div>
+            </div>   			
+   			
+            <div class="form-group"><label class="col-lg-2 control-label">密碼</label>
+                <div class="col-lg-10">
+                	<input name='password' type="password" placeholder="Password" class="form-control" required value="@user.password">
+                </div>
+            </div>
+            
+            <div class="form-group">
+            	<label class="col-lg-2 control-label">顯示名稱</label>
+                <div class="col-lg-10">
+                	<input name='name' type="text" placeholder="姓名" class="form-control" required value="@user.name">
+                </div>
+            </div>
+            <div class="form-group">
+            	<label class="col-lg-2 control-label">行動電話</label>
+                <div class="col-lg-10">
+                	<input name='phone' type="tel" placeholder="電話號碼" class="form-control" required value="@user.phone">
+                </div>
+            </div>
+            <div class="form-group">
+            	<label class="col-lg-2 control-label">系統管理員</label>
+                <div class="col-lg-10">
+                	@if(user.isAdmin){
+                		<input name='admin' type="checkbox" class="form-control" checked>	
+                	}else{
+                		<input name='admin' type="checkbox" class="form-control disabled">
+                	}                	
+                </div>
+            </div>
+            <div class="form-group"><label class="col-lg-2 control-label">警報通知</label>
+                <div class="col-lg-10">
+                	@if(user.alarmConfig.isDefined && user.alarmConfig.get.enable){
+                		<input id='alarmConfigEnable' type="checkbox" class="form-control" checked>	
+                	}else{
+                		<input id='alarmConfigEnable' type="checkbox" class="form-control">
+                	}
+                </div>
+            </div>
+	        <div class="form-group">
+	        	<label class="col-lg-2 control-label">即時畫面控制項</label>
+	            <div class="col-lg-10">
+	            <div id="widgets" class="btn-group" data-toggle="buttons">	            					            				
+	            	@for(mt<-MonitorType.mtvAllList){
+	            		@if(user.widgets.isDefined && user.widgets.get.contains(mt)){
+	            			<label class="btn btn-outline btn-primary dim active">
+	            			<input type="checkbox" name="widget" id="@mt" checked>@MonitorType.map(mt).desp</label>
+	            		}else{
+            				<label class="btn btn-outline btn-primary dim">
+            				<input type="checkbox" name="widget" id="@mt">@MonitorType.map(mt).desp</label>
+            			}								
+            		}
+	            </div>
+	            </div>	            			            		
+	        </div>
+           <div class="form-group">
+                <div class="col-lg-offset-2 col-lg-10">
+                    <button class="btn btn-primary" type="submit">更新</button>
+                </div>
+            </div>
+        </form>
+</div>
+</div>
+</div>
+</div>                   
+</div>
+</div>
+
+<script>
+$( document ).ready(function(){
+	$('#deleteUsrTab').on("show.bs.tab", function(){		
+		$.ajax({
+			url: "/User",
+			data: "",
+			contentType: "application/json; charset=utf-8",
+			method: "GET",
+			cache: false,
+			dataType: "json",
+			success: function(users){				
+				$('#userToBeDeleted').empty();				
+				for(var i=0;i<users.length;i++){
+					$("#userToBeDeleted").append("<option value='"+users[i].email+ "' >" + users[i].name + 
+							"(" +users[i].email + ")</option>");					
+				}												
+			},
+			error: function(xhr, status, errorThrown){
+				alert("失敗:"+ errorThrown);
+			},
+
+			complete: function(xhr, status){
+			}					
+		});
+						
+	});
+
+	var userInfos={};
+	function refreshUserInfo(callback){
+		$.ajax({
+			url: "/User",
+			data: "",
+			contentType: "application/json; charset=utf-8",
+			method: "GET",
+			cache: false,
+			dataType: "json",
+			success: function(users){
+				userInfos={};
+				for(var i=0;i<users.length;i++){
+					userInfos[users[i].email] = users[i];
+				}
+				if(callback)
+					callback(userInfos);											
+			},
+			error: function(xhr, status, errorThrown){
+				alert("失敗:"+ errorThrown);
+			},
+
+			complete: function(xhr, status){
+			}
+		});			
+	}
+	refreshUserInfo();
+
+	$('#updateUsrTab').on("show.bs.tab", function(evt){
+		refreshUserInfo(function(userInfos){
+			$('#userToBeUpdated').empty();
+			for(email in userInfos){
+				$("#userToBeUpdated").append("<option value='"+ userInfos[email].email + "' >" + userInfos[email].name + "(" +userInfos[email].email + ")</option>");
+			}
+		});
+	});
+	
+	$('#userToBeUpdated').change(function(){
+		var email = $(this).val();
+		var user = userInfos[email];
+
+		$('#updateUser :input[name="id"]').val(user.email);
+		$('#updateUser :input[name="email"]').val(user.email);
+		$('#updateUser :input[name="name"]').val(user.name);
+		$('#updateUser :input[name="phone"]').val(user.phone);
+		$("#updateUser :input[name='admin']").prop("checked", user.isAdmin);
+		$("#updateUser :input[name='groupID']").val(user.groupID);
+		$("#alarmConfigEnable").prop("checked", user.alarmConfig.enable);
+		
+		var $MonitorLabels = $('#alarmConfigMonitor').children();
+		for (var i = 0; i < $MonitorLabels.length; i++) {
+			var $label = $MonitorLabels.eq(i);
+			var $checkbox = $label.children();
+			if (user.alarmConfig.monitorFilter.indexOf($checkbox.prop('id')) == -1) {
+				$checkbox.prop('checked', false);
+				$label.removeClass('active');
+			} else {
+				$checkbox.prop('checked', true);
+				$label.addClass('active');
+			}
+		}
+		
+		var $StatusLabels = $('#alarmConfigStatus').children();
+		for (var i = 0; i < $StatusLabels.length; i++) {
+			var $label = $StatusLabels.eq(i);
+			var $checkbox = $label.children();
+			if (user.alarmConfig.statusFilter.indexOf($checkbox.prop('id')) == -1) {
+				$checkbox.prop('checked', false);
+				$label.removeClass('active');
+			} else {
+				$checkbox.prop('checked', true);
+				$label.addClass('active');
+			}
+		}
+
+		var $widgets = $('#widgets').children();
+		for (var i = 0; i < $widgets.length; i++) {
+			var $label = $widgets.eq(i);
+			var $checkbox = $label.children();
+			if (user.setting.widgets.indexOf($checkbox.prop('id')) == -1) {
+				$checkbox.prop('checked', false);
+				$label.removeClass('active');
+			} else {
+				$checkbox.prop('checked', true);
+				$label.addClass('active');
+			}
+		}									
+	});
+		
+	$('#newUser').submit(function(event) {
+		var $inputs = $('#newUser :input');
+		var values = {};
+	    $inputs.each(function() {
+	        values[this.name] = $(this).val();
+	    });
+	    values['isAdmin'] = $("#newUser :input[name='admin']").prop("checked");
+	    values['groupID'] = parseInt(values['groupID']); 
+
+	    $.ajax({
+			url: "/User",
+			data: JSON.stringify(values),
+			contentType: "application/json; charset=utf-8",
+			method: "PUT",
+			dataType: "json",
+			success: function(result){
+				alert("成功");
+				refreshUserInfo();
+			},
+			error: function(xhr, status, errorThrown){
+				alert("失敗:"+errorThrown);
+			},
+
+			complete: function(xhr, status){
+			}					
+		});
+		event.preventDefault();
+	});
+
+	$('#updateUser').submit(function(event) {
+		var $inputs = $('#updateUser :input');
+		var values = {};
+	    $inputs.each(function() {
+	        values[this.name] = $(this).val();
+	    });
+	    values['isAdmin'] = $("#updateUser :input[name='admin']").prop("checked");
+	    values['groupID'] = parseInt(values['groupID']); 
+
+	    var alarmConfigEnable = $("#alarmConfigEnable").prop("checked");
+		var $monitors = $("#alarmConfigMonitor :input[name='monitor']:checked");
+		var monitorFilter = [];
+		for (var i = 0; i < $monitors.length; i++) {
+			monitorFilter.push($monitors[i].id);
+		}
+
+		var $statuss = $("#alarmConfigStatus :input[name='monitorStatus']:checked");
+		var statusFilter = [];
+		for (var i = 0; i < $statuss.length; i++) {
+			statusFilter.push($statuss[i].id);
+		}
+
+		var $widgets = $("#widgets :input[name='widget']:checked");
+		var widgets = [];
+		for (var i = 0; i < $widgets.length; i++) {
+			widgets.push($widgets[i].id);
+		}
+		
+		values['alarmConfig'] = {
+			enable: alarmConfigEnable,
+			statusFilter: statusFilter
+		}
+
+		values['widgets'] = widgets;
+	
+	    
+	    $.ajax({
+			url: "/User/"+values['id'],
+			data: JSON.stringify(values),
+			contentType: "application/json; charset=utf-8",
+			method: "POST",
+			dataType: "json",
+			success: function(result){
+				alert("成功");
+				refreshUserInfo();
+			},
+			error: function(xhr, status, errorThrown){
+				alert("失敗:"+ errorThrown);
+			},
+
+			complete: function(xhr, status){
+			}					
+		});
+		event.preventDefault();
+	});
+	
+	
+	$('#deleteUser').submit(function(event) {
+	    var user = $("#userToBeDeleted option:selected");
+	    console.log(user);
+	    if(user.length==0){
+		    alert("請選擇要刪除的使用者");
+		    event.preventDefault();
+		    return;
+	    }
+	    var url = "/User/"+user[0].value;
+	    var values={};
+	    values['email']=user[0].value; 
+		$.ajax({
+			url: url,
+			data: JSON.stringify(values),
+			contentType: "application/json; charset=utf-8",
+			method: "DELETE",
+			dataType: "json",
+			success: function(result){
+				console.log(result);
+				user[0].remove();
+				alert("成功");
+			},
+			error: function(xhr, status, errorThrown){
+				alert("失敗:"+ errorThrown);
+			},
+
+			complete: function(xhr, status){
+			}					
+		});
+		event.preventDefault();
+	});
+
+	
+});
+</script>
+

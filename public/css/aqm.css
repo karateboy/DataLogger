@@ -1,0 +1,69 @@
+	.map_container{
+    	position: relative;
+    	width: 100%;
+    	padding-bottom: 42%; /* Ratio 16:9 ( 100%/16*9 = 56.25% ) */
+	}
+	.map_container .map_canvas{
+    	position: absolute;
+    	top: 0;
+    	right: 0;
+    	bottom: 0;
+    	left: 0;
+    	margin: 0;
+    	padding: 0;
+	}
+		
+	.realtimeChart_container{
+    	position: relative;
+    	width: 120%;
+	}
+
+.login-panel {
+    margin-top: 25%;
+}
+	
+.PSI1 {
+	COLOR: #000000; BACKGROUND-COLOR: #00ff00;
+}
+.PSI1 A {
+	COLOR: #000000
+}
+.PSI2 {
+	COLOR: #000000; BACKGROUND-COLOR: #ffff00;
+}
+.PSI2 A {
+	COLOR: #000000
+}
+.PSI3 {
+	COLOR: #ffffff; BACKGROUND-COLOR: #ff0000;
+}
+.PSI3 A {
+	COLOR: #ffffff
+}
+.PSI4 {
+	COLOR: #ffffff; BACKGROUND-COLOR: #800080;
+}
+.PSI4 A {
+	COLOR: #ffffff
+}
+.PSI5 {
+	COLOR: #ffffff; BACKGROUND-COLOR: #633300;
+}
+.PSI5 A {
+	COLOR: #ffffff
+}
+.PSI1_BG {border: outset 1px #a0a0a0}
+.PSI2_BG {border: outset 1px #a0a0a0}
+.PSI3_BG {border: outset 1px #a0a0a0}
+.PSI4_BG {border: outset 1px #a0a0a0}
+.PSI5_BG {border: outset 1px #a0a0a0}
+
+.pdf {
+    color: red;
+    text-shadow: 3px 3px 3px #0;    
+}
+
+.excel {
+    color: blue;
+    text-shadow: 3px 3px 3px #0;    
+}

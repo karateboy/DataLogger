@@ -1,0 +1,118 @@
+@* login Template File *@
+<!DOCTYPE html>
+<html lang="zh-tw">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>資料擷取器</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="@routes.Assets.versioned("css/bootstrap.min.css")" rel="stylesheet">
+    <link href="@routes.Assets.versioned("css/style.css")" rel="stylesheet">
+
+	<style>
+		.header {
+    		display: table;
+    		position: relative;
+    		width: 100%;
+    		height: 100%;
+    		background: url(@routes.Assets.versioned("images/boxed_background/4.jpg")) no-repeat center center scroll;
+    		-webkit-background-size: cover;
+    		-moz-background-size: cover;
+    		background-size: cover;
+    		-o-background-size: cover;
+		}
+	</style>
+</head>
+
+<body>
+    <div class="container-fluid header">    	
+        <div class="row">        	
+            <div class="col-lg-offset-4 col-lg-4">
+                <div class="login-panel panel panel-primary">
+                    <div class="panel-heading">
+                        <h2>昱山環境資料收集系統</h2>                        
+                    </div>
+                    <div class="panel-body">
+                    	<div id="error_msg" style="display:none"></div>
+                        <form id="login_form" role="form">
+                            <fieldset>
+                                <div class="form-group">
+                                    <input class="form-control" placeholder="E-mail帳號" id="account" name="email" type="email" required autofocus>
+                                </div>
+                                <div class="form-group">
+                                    <input class="form-control" placeholder="密碼" id="password" name="password" type="password" required value="">
+                                </div>
+                                 <!-- Change this to a button or input when using this as a form -->
+                                <button id="login" type="submit" class="btn btn-lg btn-success btn-block">登入</button>
+                                
+                            </fieldset>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="@routes.Assets.versioned("js/jquery-2.2.0.min.js")"></script>
+	
+    <!-- Bootstrap Core JavaScript -->
+    <script src="@routes.Assets.versioned("js/bootstrap.min.js")"></script>
+
+	<script>
+	$( document ).ready(function() {
+		$("#login_form").submit(function(){
+			var account = $("#account").val();
+			var password = $("#password").val();
+			console.log(account + ":" + password);
+			var btn = $("#login");
+			btn.attr("disabled", true);
+
+			var obj = {
+				"account":account,
+				"password":password
+			};
+			console.log(JSON.stringify(obj));
+			var error_msg = $("#error_msg");
+			
+			$.ajax({
+				url: "/authenticate",
+				data: JSON.stringify(obj),
+				contentType: "application/json; charset=utf-8",
+				type: "POST",
+				dataType: "json",
+				success: function(json){
+					if(json["ok"]==true){
+						$(location).attr('href',"/");
+					}else{
+						error_msg.css('display','block');
+						error_msg.text(json["msg"]);
+					}
+				},
+				error: function(xhr, status, errorThrown){		
+					error_msg.css('display','block');
+					error_msg.text("錯誤訊息:" + status + "-" + errorThrown);
+				},
+
+				complete: function(xhr, status){
+					btn.attr("disabled", false);
+				}					
+			});
+						
+			event.preventDefault();
+		});
+	    
+	});
+		 
+	</script>
+
+</body>
+
+</html>

@@ -1,0 +1,22 @@
+# Ignore Play! working directory #
+bin/
+/db
+.eclipse
+/logs/
+/modules
+/project/project
+/project/target
+/target
+tmp/
+test-result
+server.pid
+*.iml
+*.eml
+/dist/
+.cache
+.project
+.classpath
+.cache-*
+/.settings
+/.sbtserver
+/conf/application.conf

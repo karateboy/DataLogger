@@ -1,0 +1,96 @@
+@* monitorTypeConfig Template File *@
+@import MonitorType._
+<div class="row">
+    <div class="col-lg-12">
+    	<div class="panel panel-primary">
+    		<div class="panel-heading panel-title"" >
+        		<a data-toggle="collapse" data-parent="#accordion" href="#effectiveRatio">有效數據百分比</a>	
+        	</div>
+        	<div class="panel-body panel-collapse" id="effectiveRatio">
+        		<form id="effectiveRatioForm" class="form-horizontal">
+						<br/>
+						<div class="form-group">
+							<label class="col-lg-1 control-label">百分比:</label>
+							<input class="col-lg-1" id="effectiveRatio" value="75" readonly>%																				
+						</div>						
+				</form>        		
+        	</div>
+    	</div>
+        <div class="panel panel-primary">
+        <div class="panel-heading panel-title"" >
+        	<a data-toggle="collapse" data-parent="#accordion" href="#monitorType">點擊測項參數加以編輯</a>	
+        </div>
+        <div class="panel-body panel-collapse" id="monitorType">    		
+			<div id="monitorTypeDiv" align="center">
+            	<table id="monitorTypeTable" class="table" cellspacing="0" width="100%">
+            		<thead>
+            			<tr>
+            				<th>測項代碼</th>
+            				<th>名稱</th>
+            				<th>單位</th>
+            				<th>法規值</th>
+            				<th>小數點位數</th>
+            			</tr>
+            		</thead>
+            		<tbody>
+            			@for(mt<-MonitorType.mtvAllList){
+            				<tr id="@map(mt).id">
+            					<th>@map(mt).id</th>
+            					<td col="desp">@map(mt).desp</td>
+            					<td col="unit">@map(mt).unit</td>
+            					@if(map(mt).std_law.isEmpty){
+            						<td col="std_law">-</td>
+            					}else{
+            						<td col="std_law">@map(mt).std_law</td>
+            					}
+            					
+            					<td col="precision">@map(mt).prec</td> 
+            				</tr>
+            			}
+            		</tbody>
+            	</table>          		
+            </div>
+       </div>
+       </div>
+	</div>
+</div>
+<script>
+var dataTableL10N = '/assets/localization/zh_tw.json';
+</script>
+<script>
+$(document).ready(function() {
+        /* Init DataTables */
+        
+        var oTable = $('#monitorTypeTable').dataTable({
+        	language: {
+				url: dataTableL10N,							
+			},
+        	searching: false,
+        	ordering:  false,
+			paging: false
+        });
+		
+        /* Apply the jEditable handlers to the table */
+        oTable.$('td').editable( '/SaveMonitorTypeConfig', {
+        	indicator : '儲存中...',
+            tooltip   : '點擊該項目加以編輯...',
+            cancel    : '取消',
+            submit    : '確認',            
+            name : 'data', 
+            callback: function( sValue, y ) {
+                console.log("callback");
+                console.log(sValue);
+                console.log(y);
+            },           
+            submitdata: function ( value, settings ) {
+                var $me = $(this);
+                return {                    
+                    id: $me.parent().attr("id") + ":" + $me.attr("col")
+                };
+            },
+
+            "width": "90%",
+            "height": "100%"
+        } );
+});
+</script>
