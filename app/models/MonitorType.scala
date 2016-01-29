@@ -48,8 +48,8 @@ object MonitorType extends Enumeration {
 
   private def mtList: List[MonitorType] =
     {
-      val obs = MongoDB.database.getCollection(colName).find().toFuture()
-      val r = Await.result(obs, Duration(10, SECONDS))
+      val f = MongoDB.database.getCollection(colName).find().toFuture()
+      val r = waitReadyResult(f)
       r.map { toMonitorType }.toList
     }
 
@@ -106,15 +106,10 @@ object MonitorType extends Enumeration {
       } else
         throw new Exception(s"Unknown fieldname: $colname")
 
-    f.onFailure(ModelHelper.errorHandler)
-    val ret = Await.result(f, Duration(10, SECONDS))
+    val ret = waitReadyResult(f)
 
-    if(ret.size != 1){
-      throw new Exception("Update failed!")
-    }else{
-      val mtCase = toMonitorType(ret(0))
-      map = map + (mt -> mtCase)
-    }
+    val mtCase = toMonitorType(ret(0))
+    map = map + (mt -> mtCase)
     
   }
 

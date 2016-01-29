@@ -48,7 +48,7 @@ object User {
 
   def createDefaultUser = {
     val f = collection.count().toFuture()
-    val ret = Await.result(f, Duration(1, MINUTES))
+    val ret = waitReadyResult(f)
     if (ret(0) == 0) {
       val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", "02-2219-2886", true)
       Logger.info("Create default user:" + defaultUser.toString())
@@ -57,27 +57,24 @@ object User {
   }
   def newUser(user: User) = {
     val f = collection.insertOne(toDocument(user)).toFuture()
-    f.onFailure { errorHandler }
-    Await.ready(f, Duration(1, MINUTES))
+    waitReadyResult(f)
   }
 
   import org.mongodb.scala.model.Filters._
   def deleteUser(email: String) = {
     val f = collection.deleteOne(equal("_id", email)).toFuture()
-    f.onFailure { errorHandler }
-    Await.ready(f, Duration(1, MINUTES))
+    waitReadyResult(f)
   }
 
   def updateUser(user: User) = {
     val f = collection.replaceOne(equal("_id", user.email), toDocument(user)).toFuture()
-    f.onFailure { errorHandler }
-    Await.ready(f, Duration(1, MINUTES))
+    waitReadyResult(f)
   }
 
   def getUserByEmail(email: String) = {
     val f = collection.find(equal("_id", email)).first().toFuture()
-    f.onFailure { errorHandler }
-    val ret = Await.result(f, Duration(1, MINUTES))
+    f.onFailure { futureErrorHandler }
+    val ret = waitReadyResult(f)
     if (ret.length == 0)
       None
     else
@@ -86,15 +83,15 @@ object User {
 
   def getAllUsers() = {
     val f = collection.find().toFuture()
-    f.onFailure { errorHandler }
-    val ret = Await.result(f, Duration(1, MINUTES))
+    f.onFailure { futureErrorHandler }
+    val ret = waitReadyResult(f)
     ret.map { toUser }
   }
 
   def getAdminUsers() = {
     val f = collection.find(equal("isAdmin", true)).toFuture()
-    f.onFailure { errorHandler }
-    val ret = Await.result(f, Duration(1, MINUTES))
+    f.onFailure { futureErrorHandler }
+    val ret = waitReadyResult(f)
     ret.map { toUser }
   }
 

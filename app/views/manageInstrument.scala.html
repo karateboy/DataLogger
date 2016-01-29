@@ -1,0 +1,115 @@
+@* instrumentList Template File *@
+@(param: Any)
+<script>
+var oTable;
+function hideModal(){
+	$("#newEquipModal").modal("hide");
+	var api = oTable.api();
+	api.ajax.reload();	
+}
+</script>
+<div class="row">	
+  	<div class="modal fade" id="newEquipModal" role="dialog">
+    	<div class="modal-dialog modal-lg">
+      		<div class="modal-content">
+      		<div class="modal-header">
+          		<button type="button" class="close" data-dismiss="modal">&times;</button>
+          		<h4 class="modal-title">新增設備</h4>
+        	</div>
+        	<div class="modal-body">
+        		@newInstrument("hideModal()")
+        	</div>
+      		</div>
+    	</div>
+  	</div>
+<div class="ibox float-e-margins">
+  	<div class="ibox-content">
+  	<div class="col-lg-1 col-lg-offset-1">
+		<button type="button" class="btn btn-primary dim" data-toggle="modal" data-target="#newEquipModal">新增</button>							
+	</div>
+	<div class="col-lg-1">							
+		<button type="button" class="btn btn-danger dim" id="deleteInstrument">刪除</button>
+	</div>							
+	<table id="instrumentTable" class="table table-bordered table-hover" cellspacing="0" width="100%">
+		<thead>
+            <tr>
+                <th>儀器名稱</th>
+                <th>種類</th>
+                <th>通訊協定</th>
+                <th>TCP參數</th>
+                <th>RS232 COM</th>
+                <th>每日校正時刻</th>
+            </tr>
+        </thead>
+    </table>
+    </div>
+</div>					
+</div>
+<script>
+$( document ).ready(function() {
+	var local_url = '/assets/localization/zh_tw.json';
+	oTable = $("#instrumentTable").dataTable( {
+		ajax: {
+	        url: '/Instrument',
+	        dataSrc: ''
+	    },
+		columns: [
+		          { data: '_id' },
+		          { data: 'instType' },
+		          { data: 'protocol' },
+		          { data: 'tcp_url' },
+		          { data: 'serial_port' },
+		          { data: 'calibrationTime',
+		        	defaultContent: "-"
+			           }
+		      ],
+		language: {
+			url: local_url,							
+		},
+		paging:   false,
+		searching: false,
+		select: {
+	        style: 'os'
+	    }
+	} );
+	
+	$("#deleteInstrument").click(function(){
+		var api = oTable.api();
+		var selected = api.rows({ selected: true }).data();
+		if(selected.length ==0){
+			alert("請選擇要移除的儀器");
+			return;
+		}
+		
+		var names='';
+		for(var i=0;i<selected.length;i++){
+			if(names.length == 0)
+				names += selected[i]._id;
+			else
+				names += "," + selected[i]._id;
+		}
+		$.ajax({
+			url: "/Instrument/"+names,
+			data: JSON.stringify(names),
+			contentType: "application/json; charset=utf-8",
+			method: "DELETE",
+			dataType: "json",
+			success: function(ret){				
+				if(ret.ok){
+					alert("成功");
+				}else
+					alert("失敗:"+ret.msg);
+
+				api.ajax.reload();													
+			},
+			error: function(xhr, status, errorThrown){
+				alert("失敗:"+ errorThrown);
+			},
+
+			complete: function(xhr, status){
+			}					
+		});
+
+	});
+});
+</script>

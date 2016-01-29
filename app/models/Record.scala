@@ -20,7 +20,7 @@ object Record {
     val col = MongoDB.database.getCollection(colName)
     val proj = include(mtList.map { MonitorType.BFName(_) }: _*)
     val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).projection(proj).sort(ascending("_id")).toFuture()
-    val docs = Await.result(f, Duration(2, MINUTES))
+    val docs = waitReadyResult(f)
 
     val pairs =
       for {

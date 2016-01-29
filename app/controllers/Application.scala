@@ -4,7 +4,6 @@ import play.api._
 import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
-import play.api.libs.json.Json
 import play.api.Play.current
 import play.api.data._
 import play.api.data.Forms._
@@ -25,14 +24,14 @@ object Application extends Controller {
       val user = request.user
       Ok(views.html.outline(title, user, views.html.dashboard("test")))
   }
-    
+
   val path = current.path.getAbsolutePath + "/importEPA/"
-  
-  def importEpa103 = Action{    
+
+  def importEpa103 = Action {
     Epa103Importer.importData(path)
     Ok(s"匯入 $path")
   }
-  
+
   def userManagement() = Security.Authenticated {
     implicit request =>
       val userInfoOpt = Security.getUserinfo(request)
@@ -50,7 +49,7 @@ object Application extends Controller {
         Ok(views.html.userManagement(userInfo, user, userList))
       }
   }
-  
+
   import models.User._
   implicit val userParamRead = Json.reads[User]
 
@@ -73,7 +72,7 @@ object Application extends Controller {
     implicit request =>
       val userInfoOpt = Security.getUserinfo(request)
       val userInfo = userInfoOpt.get
-      
+
       User.deleteUser(email)
       Ok(Json.obj("ok" -> true))
   }
@@ -99,8 +98,7 @@ object Application extends Controller {
 
     Ok(Json.toJson(users))
   }
-  
-    
+
   def monitorTypeConfig = Security.Authenticated {
     implicit request =>
       Ok(views.html.monitorTypeConfig())
@@ -131,6 +129,54 @@ object Application extends Controller {
           BadRequest(e.toString)
       }
   }
+  
+  def getInstrumentTypes = Security.Authenticated {
+    implicit val write = Json.writes[InstrumentType]
+    val iTypes = InstrumentType.map.values.toSeq
+    Ok(Json.toJson(iTypes))
+  }
+  
+  def newInstrument = Security.Authenticated(BodyParsers.parse.json){
+    implicit request =>
+      val instrumentResult = request.body.validate[Instrument]
 
-
+      instrumentResult.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
+        instrument => {
+          try{
+            Instrument.newInstrument(instrument)
+            Ok(Json.obj("ok" -> true))
+          }catch{
+            case ex:Throwable=>
+              Logger.error(ex.toString)
+              Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+          }          
+        })
+  }
+  
+  def manageInstrument = Security.Authenticated {
+    Ok(views.html.manageInstrument(""))
+  }
+  
+  def getInstrumentList = Security.Authenticated {
+    val ret = Instrument.getInstrumentList()
+    val ret2 = ret.map { doc => Json.parse(doc.toJson) }
+    Ok(Json.toJson(ret2))
+  }
+  
+  def removeInstrument(instruments:String)  = Security.Authenticated {
+    val ids = instruments.split(",")
+    try{
+      ids.map { Instrument.delete }  
+    }catch{
+      case ex:Throwable=>  
+        Logger.error(ex.toString)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+    
+    Ok(Json.obj("ok" -> true))
+  }
 }

@@ -28,11 +28,29 @@ object ModelHelper {
     println(timestamp.toString())
   }
   
-  def errorHandler:PartialFunction[Throwable, Any] = {
+  
+  def futureErrorHandler:PartialFunction[Throwable, Any] = {
       case ex:Throwable=>
         Logger.error(ex.getMessage)
         throw ex
     }
+  
+  import scala.concurrent._
+  
+  def waitReadyResult[T](f:Future[T])={
+    import scala.concurrent.duration._
+    import scala.util._
+    
+    val ret = Await.ready(f, Duration.Inf).value.get
+
+    ret match {
+      case Success(t) =>
+        t
+      case Failure(ex) =>
+        Logger.error(ex.getMessage)
+        throw ex
+    }
+  }
 }
 
 object EnumUtils {

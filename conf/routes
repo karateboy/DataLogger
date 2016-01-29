@@ -28,6 +28,13 @@ GET		/HistoryReport/:monitorType/:start/:end		controllers.Query.historyReport(mo
 
 GET		/MonitorTypeConfig			controllers.Application.monitorTypeConfig
 POST	/SaveMonitorTypeConfig		controllers.Application.saveMonitorTypeConfig
+
+GET		/InstrumentTypes			controllers.Application.getInstrumentTypes
+GET		/ManageInstrument			controllers.Application.manageInstrument
+PUT		/Instrument					controllers.Application.newInstrument
+GET		/Instrument					controllers.Application.getInstrumentList
+DELETE  /Instrument/:ids			controllers.Application.removeInstrument(ids)
+
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)
