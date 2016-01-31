@@ -1,0 +1,49 @@
+@* historyReport Template File *@
+@import com.github.nscala_time.time.Imports._
+@import MonitorStatus._
+@import models.Alarm._
+@(start:DateTime, end:DateTime, report:Seq[Alarm])
+
+<H3>警告報表</H3>
+<H5>開始:@start.toString("YYYY-MM-dd")</H5>
+<H5>結束:@end.toString("YYYY-MM-dd")</H5>
+
+<table id="alarmReport" class="table">
+<thead>
+	<tr>		
+		<th>時間</th>
+		<th>來源</th>
+		<th>種類</th>
+		<th>事件</th>
+	</tr>
+</thead>
+<tbody>
+	@for(a <- report){
+		<tr>
+			<td>@a.time.toString("YYYY/MM/dd HH:mm")</td>
+			<td>@a.src</td>
+			<td>@a.alarmType</td>
+			@if(a.trigger){
+				<td>觸發</td>
+			}else{
+				<td>解除</td>
+			}
+		</tr>
+	}
+</tbody>
+</table>
+<script>
+	var localized_url = "/assets/localization/zh_tw.json";
+</script>
+<script>
+$( document ).ready(function() {
+	$('#alarmReport').dataTable( {
+		responsive: true,
+		language: {
+			url: localized_url,							
+		},
+		searching: false,
+		paging: false
+	} );
+});
+</script>

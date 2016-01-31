@@ -19,6 +19,7 @@ object MongoDB {
       User.init(colNames)
       Calibration.init(colNames)
       MonitorStatus.init(colNames)
+      Alarm.init(colNames)
     }
   }
   

@@ -320,6 +320,17 @@ object Query extends Controller {
     Ok(views.html.calibrationReport(report, "校正報表", start, end))
   }
   
+  def alarm()= Security.Authenticated {
+    Ok(views.html.alarm())
+  }
+  
+  def alarmReport(startStr:String, endStr:String)= Security.Authenticated {
+    val (start, end) = 
+    (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
+            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+    val report = Alarm.getAlarms(start, end)
+    Ok(views.html.alarmReport(start, end, report))
+  }
 //
 //  def windRose() = Security.Authenticated {
 //    implicit request =>

@@ -11,7 +11,7 @@ libraryDependencies ++= Seq(
   cache,
   ws,
   specs2 % Test,
-  "com.github.nscala-time" %% "nscala-time" % "2.6.0",
+  "com.github.nscala-time" %% "nscala-time" % "2.8.0",
 //  "org.scalikejdbc" %% "scalikejdbc"                  % "2.3.1",
 //  "org.scalikejdbc" %% "scalikejdbc-config"           % "2.3.1",
 //  "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.4.3", 
@@ -26,5 +26,6 @@ resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 // other, legacy style, accesses its actions statically.
 //routesGenerator := InjectedRoutesGenerator
 
+scalacOptions ++= Seq("-feature")
 
 fork in run := false
