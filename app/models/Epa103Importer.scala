@@ -66,18 +66,10 @@ class Epa103Importer extends Actor {
         
         val mtId = {
           try{
-            MonitorType.withName(mt)
+            Some(MonitorType.withName(mt))
           }catch{
             case _:Throwable=>
-              val newMt = MonitorType(mt, 
-                desp=mt, 
-                unit="",
-                std_law=None,
-                itemId="",
-                prec=1, 
-                order=MonitorType.map.size+1)
-              MonitorType.newMonitorType(newMt)
-              MonitorType.withName(mt)
+              None
           }
         }
         val values =
@@ -116,8 +108,10 @@ class Epa103Importer extends Actor {
           val doc = docMap.getOrElseUpdate(dt, {
             val bdt:BsonDateTime = dt
             Document("_id"->bdt)})
-          val newDoc = doc ++ Document(MonitorType.BFName(mtId)->Document("v"->value, "s"->"010")) 
-          docMap.put(dt, newDoc)
+            if(mtId.isDefined){
+              val newDoc = doc ++ Document(MonitorType.BFName(mtId.get)->Document("v"->value, "s"->"010")) 
+              docMap.put(dt, newDoc)              
+            }
         }
 
         for (v <- values.zipWithIndex)

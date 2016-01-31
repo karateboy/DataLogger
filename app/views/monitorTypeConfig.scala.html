@@ -33,9 +33,9 @@
             			</tr>
             		</thead>
             		<tbody>
-            			@for(mt<-MonitorType.mtvAllList){
-            				<tr id="@map(mt).id">
-            					<th>@map(mt).id</th>
+            			@for(mt<-MonitorType.mtvList){
+            				<tr id="@map(mt)._id">
+            					<th>@map(mt)._id</th>
             					<td col="desp">@map(mt).desp</td>
             					<td col="unit">@map(mt).unit</td>
             					@if(map(mt).std_law.isEmpty){

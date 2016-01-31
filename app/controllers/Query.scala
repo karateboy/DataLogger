@@ -65,9 +65,9 @@ object Query extends Controller {
           period_start <- getPeriods(start, end, period)
           records = periodSlice(period_start, period_start + period) if records.length > 0          
         } yield {
-          if (mt == MonitorType.withName("WD_HR")) {
+          if (mt == MonitorType.WIN_DIRECTION) {
             val windDir = records
-            val windSpeed = Record.getRecordList(Record.HourCollection)(MonitorType.withName("WS_HR"), period_start, period_start + period)
+            val windSpeed = Record.getRecordList(Record.HourCollection)(MonitorType.WIN_SPEED, period_start, period_start + period)
             period_start -> windAvg(windSpeed, windDir)
           } else{
             val values = records.map { r => r.value }
@@ -81,7 +81,7 @@ object Query extends Controller {
 
   def trendHelper(monitorTypes: Array[MonitorType.Value], reportUnit: ReportUnit.Value, start: DateTime, end: DateTime) = {
 
-    val windMtv = MonitorType.withName("WD_HR")
+    val windMtv = MonitorType.WIN_DIRECTION
     val period: Period =
       reportUnit match {
         case ReportUnit.Hour =>
@@ -209,7 +209,7 @@ object Query extends Controller {
           if (monitorTypes.contains(windMtv)) {
             if (monitorTypes.length == 2) {
               val mt = monitorTypes.filter { _ != windMtv }(0)
-              val mtCase = MonitorType.map(monitorTypes.filter { !MonitorType.windDirList.contains(_) }(0))
+              val mtCase = MonitorType.map(monitorTypes.filter { MonitorType.WIN_DIRECTION != _ }(0))
               Seq(YAxis(None,
                 AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))),
                 getAxisLines(mt),
@@ -306,6 +306,18 @@ object Query extends Controller {
         }.mkString(",")
       val output = views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap)
       Ok(output)
+  }
+  
+  def calibration()= Security.Authenticated {
+    Ok(views.html.calibration())
+  }
+  
+  def calibrationReport(startStr:String, endStr:String)= Security.Authenticated {
+    val (start, end) = 
+    (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
+            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+    val report = Calibration.calibrationReport(start, end)
+    Ok(views.html.calibrationReport(report, "校正報表", start, end))
   }
   
 //

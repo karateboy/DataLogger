@@ -23,6 +23,23 @@ object User {
     "name" -> user.name, "phone" -> user.phone, "isAdmin" -> user.isAdmin,
     "alarmConfig" -> user.alarmConfig, "widgets" -> user.widgets)
 
+  def init(colNames:Seq[String]){
+    if(!colNames.contains(ColName)){
+      val f = MongoDB.database.createCollection(ColName).toFuture()
+      f.onFailure(futureErrorHandler)
+    }  
+    val f = collection.count().toFuture()
+    f.onSuccess({
+      case count:Seq[Long]=>
+        if(count(0) == 0){
+          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", "02-2219-2886", true)
+          Logger.info("Create default user:" + defaultUser.toString())
+          newUser(defaultUser)
+        }
+    })
+    f.onFailure(futureErrorHandler)
+  }  
+  
   def toUser(doc: Document) = {
     import scala.collection.JavaConversions._
     import models.AlarmConfig._

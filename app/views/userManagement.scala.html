@@ -154,7 +154,7 @@
 	        	<label class="col-lg-2 control-label">即時畫面控制項</label>
 	            <div class="col-lg-10">
 	            <div id="widgets" class="btn-group" data-toggle="buttons">	            					            				
-	            	@for(mt<-MonitorType.mtvAllList){
+	            	@for(mt<-MonitorType.mtvList){
 	            		@if(user.widgets.isDefined && user.widgets.get.contains(mt)){
 	            			<label class="btn btn-outline btn-primary dim active">
 	            			<input type="checkbox" name="widget" id="@mt" checked>@MonitorType.map(mt).desp</label>

@@ -9,6 +9,6 @@ object InstrumentType extends Enumeration{
 
   val simulator = Value
   val baseline9000 = Value
-  def map = Map(simulator->InstrumentType(simulator, "模擬器", List(MonitorType.withName("PM2.5")), List(serial), false, 1234),
+  def map = Map(simulator->InstrumentType(simulator, "模擬器", MonitorType.mtvList, List(serial), false, 1234),
       baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(MonitorType.withName("CH4")), List(tcp, serial), true, 2345)) 
 }

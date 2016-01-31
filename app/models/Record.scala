@@ -3,12 +3,23 @@ import play.api._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
+import scala.concurrent.ExecutionContext.Implicits.global
 case class Record(time: DateTime, value: Double, status: String)
 
 object Record {
   val HourCollection = "hour_data"
   val MinCollection = "min_data"
-
+  def init(colNames:Seq[String]){
+    if(!colNames.contains(HourCollection)){
+      val f = MongoDB.database.createCollection(HourCollection).toFuture()
+      f.onFailure(futureErrorHandler)
+    }  
+    
+    if(!colNames.contains(MinCollection)){
+      val f = MongoDB.database.createCollection(MinCollection).toFuture()
+      f.onFailure(futureErrorHandler)
+    }
+  }
   def getRecordMap(colName: String)(mtList: List[MonitorType.Value], startTime: DateTime, endTime: DateTime) = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._

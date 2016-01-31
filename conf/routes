@@ -25,6 +25,8 @@ GET		/Excel/HistoryTrend/:monitorType/:reportUnit/:start/:end	controllers.Query.
 
 GET		/History					controllers.Query.history
 GET		/HistoryReport/:monitorType/:start/:end		controllers.Query.historyReport(monitorType, start, end)
+GET		/Calibration				controllers.Query.calibration
+GET		/CalibrationReport/:start/:end	controllers.Query.calibrationReport(start, end)
 
 GET		/MonitorTypeConfig			controllers.Application.monitorTypeConfig
 POST	/SaveMonitorTypeConfig		controllers.Application.saveMonitorTypeConfig

@@ -11,8 +11,8 @@
 	            			<label class="col-lg-1 control-label">測項</label>
 	            			<div class="col-lg-11">	            				
 	            				<div class="btn-group" data-toggle="buttons">	            				
-	            				@for(mt<-MonitorType.values){
-	            					@if(mt == MonitorType.values.head){
+	            				@for(mt<-MonitorType.mtvList){
+	            					@if(mt == MonitorType.mtvList.head){
 	            						<label class="btn btn-outline btn-primary dim active">
 										<input type="checkbox" name="monitorType" id="@mt" checked>@MonitorType.map(mt).desp</label>	
 	            					}else{

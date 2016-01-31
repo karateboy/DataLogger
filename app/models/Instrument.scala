@@ -13,11 +13,19 @@ import ModelHelper._
 object Instrument {
   implicit val reader = Json.reads[Instrument]
   implicit val writer = Json.writes[Instrument]
-  val collection = MongoDB.database.getCollection("instruments")
+  val collectionName = "instruments"
+  val collection = MongoDB.database.getCollection(collectionName)
   def toDocument(inst: Instrument) = {
     val json = Json.toJson(inst)
     Document(json.toString())
   }
+  def init(colNames:Seq[String]){
+    if(!colNames.contains(collectionName)){
+      val f = MongoDB.database.createCollection(collectionName).toFuture()
+      f.onFailure(futureErrorHandler)
+    }      
+  }
+  
   def newInstrument(inst: Instrument) = {
     val f = collection.insertOne(toDocument(inst)).toFuture()
     waitReadyResult(f)

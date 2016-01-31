@@ -1,0 +1,103 @@
+@* calibrationQueryResult Template File *@
+@import Calibration._
+@import com.github.nscala_time.time.Imports._
+@import MonitorType._
+@(report:Seq[Calibration], title:String="", start:DateTime, end:DateTime)
+<h3>@title</h3>	
+
+<p>顏色說明</p>
+<span style="color:blue">超過內控值</span>
+<span style="color:red">超過法規值</span>
+
+<table id="calibrationReport" class="table compact">
+	<thead>
+		<tr>
+			<th rowspan='2'>測項</th>
+			<th rowspan='2'>開始</th>
+			<th rowspan='2'>結束</th>
+			<th colspan='3' style="text-align: center">零點</th>
+			<th colspan='5' style="text-align: center">全幅</th>	
+		</tr>
+		<tr>
+			<th>讀值</th>
+			<th>偏移內控值</th>
+			<th>偏移法規值</th>
+			<th>讀值</th>
+			<th>標準值</th>
+			<th>偏移率</th>
+			<th>偏移率內控值</th>
+			<th>偏移率法規值</th>
+			<th>校正狀態</th>
+		</tr>
+	</thead>
+	<tbody>
+		@for(item<-report){
+			<tr>
+				<td>@map(item.monitorType).desp</td>
+				<td>@item.startTime.toString("YYYY-MM-dd HH:mm")</td>				
+				@if(item.endTime.getDayOfYear != item.startTime.getDayOfYear){
+					<td>@item.endTime.toString("YYYY-MM-dd HH:mm")</td>
+				}else{
+					<td>@item.endTime.toString("hh:mm")</td>
+				}
+				@if(map(item.monitorType).zd_law.isDefined && 
+					(item.z_val > map(item.monitorType).zd_law.get)){
+					<td style="color:red">@MonitorType.format(item.monitorType, Some(item.z_val))</td>
+				}else {
+					@if(map(item.monitorType).zd_internal.isDefined && 
+						(item.z_val > MonitorType.map(item.monitorType).zd_internal.get)){
+						<td style="color:blue">@MonitorType.format(item.monitorType, Some(item.z_val))</td>
+					}else{
+						<td>@MonitorType.format(item.monitorType, Some(item.z_val))</td>	
+					}
+				}
+				<td>@MonitorType.format(item.monitorType, map(item.monitorType).zd_internal)</td>
+				<td>@MonitorType.format(item.monitorType, MonitorType.map(item.monitorType).zd_law)</td>
+				<td>@MonitorType.format(item.monitorType, Some(item.s_sval))</td>
+				<td>@MonitorType.format(item.monitorType, Some(item.s_std))</td>
+				@if(MonitorType.map(item.monitorType).span_dev_law.isDefined && 
+					(item.sd_pnt > MonitorType.map(item.monitorType).span_dev_law.get)){
+					<td style="color:red">@MonitorType.format(item.monitorType, Some(item.sd_pnt))</td>
+				}else {
+					@if(MonitorType.map(item.monitorType).span_dev_internal.isDefined && 
+						(item.sd_pnt > MonitorType.map(item.monitorType).span_dev_internal.get)){
+						<td style="color:blue">@MonitorType.format(item.monitorType, Some(item.sd_pnt))</td>
+					}else{
+						<td>@MonitorType.format(item.monitorType, Some(item.sd_pnt))</td>	
+					}
+				} 
+				
+				<td>@MonitorType.format(item.monitorType, map(item.monitorType).span_dev_internal)</td>
+				<td>@MonitorType.format(item.monitorType, map(item.monitorType).span_dev_law)</td>
+				@if((MonitorType.map(item.monitorType).zd_law.isDefined && 
+					(item.z_val > MonitorType.map(item.monitorType).zd_law.get)) || 
+					(MonitorType.map(item.monitorType).span_dev_law.isDefined && 
+						(item.sd_pnt > MonitorType.map(item.monitorType).span_dev_law.get))){
+					<td style="color:red">失敗</td>
+				}else {
+					@if((MonitorType.map(item.monitorType).zd_internal.isDefined && 
+						(item.z_val > MonitorType.map(item.monitorType).zd_internal.get)) || 
+						(MonitorType.map(item.monitorType).span_dev_internal.isDefined && 
+						(item.sd_pnt > MonitorType.map(item.monitorType).span_dev_internal.get))){
+						<td style="color:blue">成功</td>
+					}else{
+						<td>成功</td>	
+					}
+				} 
+				
+			</tr>
+		}
+	</tbody>
+</table>
+<script>
+$( document ).ready(function() {
+	$('#calibrationReport').dataTable( {
+		responsive: true,
+		language: {
+			url: "/assets/localization/zh_tw.json",							
+		},
+        searching: false,
+        paging:false
+	} );		
+});
+</script>
