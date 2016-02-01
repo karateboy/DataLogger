@@ -23,23 +23,21 @@ object Alarm {
   def getSrc() = "S:System"
   case class Alarm(time: DateTime, src: String, alarmType: String, trigger: Boolean)
 
-
   implicit val format = Json.format[Alarm]
 
   val collectionName = "alarms"
   val collection = MongoDB.database.getCollection(collectionName)
   def toDocument(ar: Alarm) = {
-    val json = Json.toJson[Alarm](ar)
-    Logger.debug("toDoc" + json.toString())
-    Document(json.toString())
+    import org.mongodb.scala.bson._
+    Document("time"->(ar.time:BsonDateTime), "src"->ar.src, "alarmType"->ar.alarmType, "trigger"->ar.trigger)
   }
 
   def toAlarm(doc: Document) = {
-    val time = new DateTime(doc.get("time").get.asInt64().getValue)
+    val time = new DateTime(doc.get("time").get.asDateTime().getValue)
     val src = doc.get("src").get.asString().getValue
     val alarmType = doc.get("alarmType").get.asString().getValue
     val trigger = doc.get("trigger").get.asBoolean().getValue
-    Alarm(time, src, alarmType, trigger)    
+    Alarm(time, src, alarmType, trigger)
   }
 
   val defaultAlarm = List(
@@ -64,7 +62,10 @@ object Alarm {
   import org.mongodb.scala.model.Sorts._
 
   def getAlarms(start: DateTime, end: DateTime) = {
-    val f = collection.find(and(gte("time", start.getMillis), lt("time", end.getMillis))).sort(ascending("time")).toFuture()
+    import org.mongodb.scala.bson.BsonDateTime
+    val startB:BsonDateTime = start
+    val endB:BsonDateTime = end
+    val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(ascending("time")).toFuture()
     //val f = collection.find().toFuture()
     val docs = waitReadyResult(f)
     docs.map { toAlarm }

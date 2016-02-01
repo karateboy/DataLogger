@@ -1,0 +1,71 @@
+@* alarmPie Template File *@
+@(param: Any)
+<div class="col-lg-4">
+	<div class="ibox">
+    <div class="ibox-content">
+    	<div id="alarmPieChart"></div>
+    </div>
+    </div>
+</div>
+<script>
+$(document).ready(function(){
+    $('#alarmPieChart').highcharts({
+        chart: {
+            type: 'pie',
+            options3d: {
+                enabled: true,
+                alpha: 45,
+                beta: 0
+            },
+    		height:250
+        },
+        legend: {
+			enabled : false
+		},
+		navigation:{
+	    	buttonOptions: {
+	        	enabled: false
+	    	}
+	    },
+	    credits :{
+	    	text: "昱山環境技術服務",
+			enabled : true,
+			href : 'http://www.wecc.com.tw/'
+		},
+        title: {
+            text: '儀器警告分析'
+        },
+        tooltip: {
+            pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+        },
+        plotOptions: {
+            pie: {
+                allowPointSelect: true,
+                cursor: 'pointer',
+                depth: 35,
+                dataLabels: {
+                    enabled: true,
+                    format: '{point.name}'
+                }
+            }
+        },
+        series: [{
+            type: 'pie',
+            name: '警報比例',
+            data: [
+                ['T-API Model T300U',   45.0],
+                ['T-API Model T101',       26.8],
+                {
+                    name: '硫化氫分析儀(H2S)',
+                    y: 12.8,
+                    sliced: true,
+                    selected: true
+                },
+                ['VEREWA F-701-20(PM10)',    8.5],
+                ['VEREWA F-701-20(PM2.5)',     6.2],
+                ['T-API T200U',   0.7]
+            ]
+        }]
+    });
+});
+</script>

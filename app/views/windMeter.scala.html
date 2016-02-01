@@ -1,0 +1,157 @@
+@* windMeter Template File *@
+@(param: Any)
+<div class="col-lg-6">
+	<div class="ibox">
+    <div class="ibox-content">
+    	<div id="windMeter"></div>
+    </div>
+    </div>
+</div>
+<script>
+$(document).ready(function(){
+    $('#windMeter').highcharts({
+        chart: {
+            type: 'gauge',
+            plotBorderWidth: 1,
+            plotBackgroundColor: {
+                linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+                stops: [
+                    [0, '#FFF4C6'],
+                    [0.3, '#FFFFFF'],
+                    [1, '#FFF4C6']
+                ]
+            },
+            plotBackgroundImage: null,
+            height: 250
+        },
+        legend: {
+			enabled : false
+		},
+		navigation:{
+	    	buttonOptions: {
+	        	enabled: false
+	    	}
+	    },
+	    credits :{
+	    	text: "昱山環境技術服務",
+			enabled : true,
+			href : 'http://www.wecc.com.tw/'
+		},
+        title: {
+            text: '風向計'
+        },
+
+        pane: [{
+            startAngle: -45,
+            endAngle: 45,
+            background: null,
+            center: ['25%', '145%'],
+            size: 300
+        }, {
+            startAngle: -45,
+            endAngle: 45,
+            background: null,
+            center: ['75%', '145%'],
+            size: 300
+        }],
+
+        tooltip: {
+            enabled: false
+        },
+
+        yAxis: [{
+            min: 0,
+            max: 360,
+            minorTickPosition: 'outside',
+            tickPosition: 'outside',
+            labels: {
+                rotation: 'auto',
+                distance: 20
+            },
+            plotBands: [{
+                from: 0,
+                to: 6,
+                color: '#C02316',
+                innerRadius: '100%',
+                outerRadius: '105%'
+            }],
+            pane: 0,
+            title: {
+                text: '<span style="font-size:8px">風向</span>',
+                y: -40
+            }
+        }, {
+            min: 0,
+            max: 20,
+            minorTickPosition: 'outside',
+            tickPosition: 'outside',
+            labels: {
+                rotation: 'auto',
+                distance: 20
+            },
+            plotBands: [{
+                from: 0,
+                to: 6,
+                color: '#C02316',
+                innerRadius: '100%',
+                outerRadius: '105%'
+            }],
+            pane: 1,
+            title: {
+                text: '<span style="font-size:8px">風速</span>',
+                y: -40
+            }
+        }],
+
+        plotOptions: {
+            gauge: {
+                dataLabels: {
+                    enabled: false
+                },
+                dial: {
+                    radius: '100%'
+                }
+            }
+        },
+
+
+        series: [{
+            name: 'windDirection',
+            data: [30],
+            yAxis: 0
+        }, {
+            name: 'windSpeed',
+            data: [10],
+            yAxis: 1
+        }]
+
+    },
+
+        // Let the music play
+        function (chart) {
+            setInterval(function () {
+                if (chart.series) { // the chart may be destroyed
+                    var left = chart.series[0].points[0],
+                        right = chart.series[1].points[0],
+                        leftVal,
+                        rightVal,
+                        inc = (Math.random() - 0.5) * 3;
+
+                    leftVal =  left.y + (Math.random() - 0.5)*5;
+                    rightVal = right.y + (Math.random() - 0.5)*1;
+                    if (leftVal < 0 || leftVal > 360) {
+                        leftVal = left.y;
+                    }
+                    if (rightVal < 0 || rightVal > 20) {
+                        rightVal = right.y;
+                    }
+
+                    left.update(leftVal, false);
+                    right.update(rightVal, false);
+                    chart.redraw();
+                }
+            }, 1000);
+
+        });
+});
+</script>

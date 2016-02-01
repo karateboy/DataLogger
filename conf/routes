@@ -39,8 +39,13 @@ PUT		/Instrument					controllers.Application.newInstrument
 GET		/Instrument					controllers.Application.getInstrumentList
 DELETE  /Instrument/:ids			controllers.Application.removeInstrument(ids)
 
+#Realtime
+GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()
+GET		/RealtimeStatus			controllers.Realtime.realtimeStatus()
+
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)
 
+#import Data
 GET		/importEpaXLS			controllers.Application.importEpa103

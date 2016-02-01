@@ -1,0 +1,68 @@
+@* calibrationChart Template File *@
+@(param: Any)
+<div class="col-lg-4">
+	<div class="ibox">
+    <div class="ibox-content">
+    	<div id="calibrationChart"></div>
+    </div>
+    </div>
+</div>
+<script>
+$(document).ready(function(){
+    $('#calibrationChart').highcharts({
+        chart: {
+            type: 'pie',
+            options3d: {
+                enabled: true,
+                alpha: 45,
+                beta: 0
+            },
+    		height:250
+        },
+        legend: {
+			enabled : false
+		},
+		navigation:{
+	    	buttonOptions: {
+	        	enabled: false
+	    	}
+	    },
+	    credits :{
+	    	text: "昱山環境技術服務",
+			enabled : true,
+			href : 'http://www.wecc.com.tw/'
+		},
+        title: {
+            text: '儀器校正分析'
+        },
+        tooltip: {
+            pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+        },
+        plotOptions: {
+            pie: {
+                allowPointSelect: true,
+                cursor: 'pointer',
+                depth: 35,
+                dataLabels: {
+                    enabled: true,
+                    format: '{point.name}'
+                }
+            }
+        },
+        series: [{
+            type: 'pie',
+            name: '校正成功比例',
+            data: [
+                ['成功',   95.0],
+
+                {
+                    name: '失敗',
+                    y: 5,
+                    sliced: true,
+                    selected: true
+                },
+            ]
+        }]
+    });
+});
+</script>

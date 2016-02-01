@@ -42,6 +42,7 @@
 
 	<script src="assets/js/highcharts/highcharts.js"></script>
 	<script src="assets/js/highcharts/highcharts-more.js"></script>
+	<script src="assets/js/highcharts/modules/funnel.js"></script>
 	<script src="assets/js/highcharts/modules/exporting.js"></script>
 	<script src="assets/js/plugins/jeditable/jquery.jeditable.js"></script>	
 
@@ -125,7 +126,7 @@
                 	<a href="#"><i class="fa fa-line-chart fa-lg"></i> <span class="nav-label">即時資訊</span> <span class="fa arrow"></span></a>
                 	<ul class="nav nav-second-level">
                     	<li ><a href="/">儀表板</a></li>
-                    	<li ><a href="#" onClick="loadPage('/realtimeStatus','即時資訊','即時數據')">即時數據</a></li>                    	
+                    	<li ><a href="#" onClick="loadPage('/RealtimeStatus','即時資訊','即時數據')">即時數據</a></li>                    	
                 	</ul>
             	</li>
                 <li>
@@ -194,15 +195,6 @@
         <div id="wrapper-content" class="wrapper wrapper-content animated fadeInRight">
             @content
         </div>
-        <div class="footer">
-            <div class="pull-right">
-                	10GB of <strong>250GB</strong>儲存空間
-            </div>
-            <div>
-                	昱山環境技術服務
-            </div>
-        </div>
-
     </div>
 </div>
 </body>
