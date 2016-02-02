@@ -1,0 +1,217 @@
+@* periodReport Template File *@
+@import com.github.nscala_time.time.Imports._
+@(param:String)(implicit request: RequestHeader)
+
+<div class="row">
+   	<div class="col-lg-12">
+        	<div class="panel panel-primary" id="paramPanel">
+            	<div class="panel-heading panel-title" >
+            		<a data-toggle="collapse" data-parent="#accordion" href="#reportParam">查詢參數</a>	
+                </div>
+            	<div class="panel-body panel-collapse in" id="reportParam">
+            		<form class="form-horizontal">
+ 	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">報表種類</label>
+	            			<div class="col-lg-11">
+	            				<div class="btn-group" data-toggle="buttons">
+	            					@for(rt <- PeriodReport.values.toList.sorted){
+	            						@if(rt == PeriodReport.values.toList.sorted.head){
+	            							<label class="btn btn-outline btn-primary dim active">
+												<input type="radio" name="reportType" id="@rt" checked>@PeriodReport.map(rt)</label>									
+	            						}else{
+	            							<label class="btn btn-outline btn-primary dim">
+												<input type="radio" name="reportType" id="@rt">@PeriodReport.map(rt)</label>
+	            						}
+	            					}
+	            				</div>
+	            			</div>	            			            		
+	                    </div>
+	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">查詢日期</label>
+	            			<div class="col-lg-5">
+	            				<div class="input-group date">
+  									<span class="input-group-addon"><i class="fa fa-calendar"></i></span><input type="text" class="form-control" id="reportDate" required value='@DateTime.now.toString("YYYY-MM-dd")'>
+  								</div>
+	            			</div>	            			            		
+	                    </div>
+	                    <div class="form-group">
+							<div class="col-lg-1 col-lg-offset-1">
+								<button type="button" class="btn btn-primary" id="queryReport">查詢</button>
+							</div>							
+						</div>
+            		</form>
+            	</div>
+        	</div>
+        	<!-- Modal -->
+  			<div class="modal fade" id="MinMonthlyDialog" role="dialog">
+    			<div class="modal-dialog modal-lg">
+      				<div class="modal-content">
+        			<div class="modal-header">
+          			<button type="button" class="close" data-dismiss="modal">&times;</button>
+          				<h4 class="modal-title">@PeriodReport.map(PeriodReport.MinMonthlyReport)</h4>
+        			</div>
+        			<div class="modal-body">
+          				<div class="progress">
+  							<div id="progressBar" class="progress-bar progress-bar-striped active" role="progressbar"
+  								aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%">
+    							0%
+  							</div>
+						</div>
+        			</div>
+      				</div>
+    			</div>
+  			</div>
+
+        	
+        	<div class="panel panel-success" style="display:none" id="reportPanel">
+             	<div class="panel-body panel-collapse" id="monitorReport">
+            		<div align="right">
+            			<label class="btn btn-outline" data-toggle="tooltip" data-placement="bottom" title="PDF"><a href="#" id="downloadPDF"><i class="fa fa-file-pdf-o fa-2x pdf"></i></a></label>
+            			<label class="btn btn-outline" data-toggle="tooltip" data-placement="bottom" title="Excel"><a href="#" id="downloadExcel"><i class="fa fa-file-excel-o fa-2x"></i></a></label>            			
+                	</div>
+            		
+					<div id="reportDiv" align="center" style="overflow-x:auto">
+            		</div>
+            	</div>
+        	</div>
+	</div>
+</div>
+<script>
+	var l10n_url = "/assets/localization/zh_tw.json";
+	//var ws_url = '@routes.Report.getMinMonthlySocket().webSocketURL()';
+</script>
+<script>
+$( document ).ready(function() {
+	var webSocket;
+	function updateProgress(n){
+		var $bar = $('#progressBar');
+		$bar.prop('aria-valuenow', n);
+		$bar.width(n+"%");
+		$bar.text(n+"%");
+	}
+	
+	function downloadMinMonthly(obj){
+		updateProgress(0);
+		$('#MinMonthlyDialog').modal({keyboard: false});
+		console.log(ws_url);
+		webSocket = new WebSocket(ws_url);
+		webSocket.onmessage = function(evt){
+			var cmd = evt.data.split(":");
+			if(cmd[0] == "progress"){				
+				updateProgress(cmd[1]);
+			}else if(cmd[0] == "finish"){
+				console.log("finish");
+				updateProgress(100);
+				webSocket.close();
+				$('#MinMonthlyDialog').modal('hide');
+				window.open("/DownloadMinMonthlyReport/"+cmd[1],'Download');
+			}
+		}
+		
+		webSocket.onopen = function(evt){
+			console.log("Connection open...");
+			webSocket.send("start:" + obj.monitor + ":" + obj.startTime);
+		}
+		webSocket.onclose = function(evt){
+			console.log("Connection closed.");
+		}
+		webSocket.onerror = function(evt){
+			console.log("Error!");
+			webSocket.close();
+		}
+		
+		$("body").css("cursor", "default");		
+	}
+	
+	$('#reportDate').datetimepicker({
+		format: 'YYYY-MM-D',
+		defaultDate: moment().subtract(1, 'days'),
+    	locale: "zh-TW"
+	});
+	
+    $("input[name='reportType']").change(function(){
+		var me = $(this)
+		if(me.attr('id') == 'daily'){
+			$('#reportDate').data("DateTimePicker").format("YYYY-M-D");			
+		}else if(me.attr('id') == 'monthly' || me.attr('id') == 'MinMonthly'){
+			$('#reportDate').data("DateTimePicker").format("YYYY-M");
+		}else{
+			$('#reportDate').data("DateTimePicker").format("YYYY");			
+		}		
+	});
+
+	var reportType, reportDate;
+	
+	function validate(){
+		reportType = $("input[name='reportType']:checked").attr('id');
+		if (!reportType) {
+			alert('請選擇報表種類');
+			return false;
+		}
+		reportDate = $('#reportDate').val();
+		if(reportDate.length === 0){
+			alert('請選擇報表日期');
+			return false;
+		}
+		
+		return true;
+	}
+
+	
+	$('#queryReport').click(function(){
+		if(!validate())
+			return;
+
+		$("body").css("cursor", "progress");
+
+		if(reportType == 'MinMonthly'){
+			var obj = {
+					'reportType':reportType,
+					'startTime':reportDate
+				};					
+			downloadMinMonthly(obj);	
+		}else {
+			$('#reportDiv').html('');
+			$("#reportPanel").css('display','block');
+			$("#reportPanel").collapse('show');
+				
+			var url="/monitorReport/"+reportType+"/"+reportDate;
+			$.ajax({
+				url: url,
+				data: "",
+				contentType: "application/json; charset=utf-8",
+				type: "GET",
+				cache:false,
+				dataType: "html",
+				success: function(result){
+					$('#reportDiv').html(result);
+
+					$('#reportTable').dataTable( {
+						responsive: true,
+						"dom": 'T<"clear">lfrtip',
+						language: {
+							url: l10n_url,							
+						},
+						"tableTools": {
+	        				"sSwfPath": swf_path,
+	        				"aButtons": ["copy", "print", "csv"]
+	        			},
+						"paging":   false,
+						"searching": false
+		    		} );
+		    		
+		    		$("#downloadPDF").prop("href", "/PDF" + url);
+					$("#downloadExcel").prop("href", "/Excel" + url);	    			    		
+				},
+				error: function(xhr, status, errorThrown){
+					console.log("錯誤訊息:" + status + "-" + errorThrown);
+				},
+
+				complete: function(xhr, status){
+					$("body").css("cursor", "default");
+				}					
+			});				
+		}
+	});
+});
+</script>

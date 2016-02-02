@@ -155,15 +155,14 @@ object MonitorType extends Enumeration {
         import java.lang.Integer
         val v = Integer.parseInt(newValue)
         collection.findOneAndUpdate(idFilter, set(colname, v)).toFuture()
-      } else if (colname == "std_law") {
+      } else {
         if (newValue == "-")
           collection.findOneAndUpdate(idFilter, set(colname, null)).toFuture()
         else {
           import java.lang.Double
           collection.findOneAndUpdate(idFilter, set(colname, Double.parseDouble(newValue))).toFuture()
         }        
-      } else
-        throw new Exception(s"Unknown fieldname: $colname")
+      }
 
     val ret = waitReadyResult(f)
 

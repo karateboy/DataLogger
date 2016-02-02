@@ -28,8 +28,13 @@
             				<th>測項代碼</th>
             				<th>名稱</th>
             				<th>單位</th>
-            				<th>法規值</th>
+            				<th>小時內控值</th>
+            				<th>小時法規值</th>
             				<th>小數點位數</th>
+            				<th>零點偏移內控值</th>
+            				<th>零點偏移法規值</th>
+            				<th>全幅偏移內控值</th>
+            				<th>全幅偏移法規值</th>
             			</tr>
             		</thead>
             		<tbody>
@@ -38,13 +43,13 @@
             					<th>@map(mt)._id</th>
             					<td col="desp">@map(mt).desp</td>
             					<td col="unit">@map(mt).unit</td>
-            					@if(map(mt).std_law.isEmpty){
-            						<td col="std_law">-</td>
-            					}else{
-            						<td col="std_law">@map(mt).std_law</td>
-            					}
-            					
-            					<td col="precision">@map(mt).prec</td> 
+            					<td col="std_internal">@MonitorType.format(mt, map(mt).std_internal) </td>
+            					<td col="std_law">@MonitorType.format(mt, map(mt).std_law) </td>
+            					<td col="prec">@map(mt).prec</td>
+            					<td col="zd_internal">@MonitorType.format(mt, map(mt).zd_internal) </td>
+            					<td col="zd_law">@MonitorType.format(mt, map(mt).zd_law) </td>
+            					<td col="span_dev_internal">@MonitorType.format(mt, map(mt).span_dev_internal)</td>
+            					<td col="span_dev_law">@MonitorType.format(mt, map(mt).span_dev_law)</td> 
             				</tr>
             			}
             		</tbody>

@@ -42,8 +42,8 @@ object Record {
           for {
             doc <- docs
             time = doc("_id").asDateTime()
-            mtDocOpt = doc(mtBFName) if mtDocOpt.isDocument()
-            mtDoc = mtDocOpt.asDocument()
+            mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument() 
+            mtDoc = mtDocOpt.get.asDocument()
             v = mtDoc.get("v") if v.isDouble() 
             s = mtDoc.get("s") if s.isString()
           } yield {
