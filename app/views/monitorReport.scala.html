@@ -70,14 +70,13 @@
             			<label class="btn btn-outline" data-toggle="tooltip" data-placement="bottom" title="Excel"><a href="#" id="downloadExcel"><i class="fa fa-file-excel-o fa-2x"></i></a></label>            			
                 	</div>
             		
-					<div id="reportDiv" align="center" style="overflow-x:auto">
+					<div id="reportDiv" align="center">
             		</div>
             	</div>
         	</div>
 	</div>
 </div>
 <script>
-	var l10n_url = "/assets/localization/zh_tw.json";
 	//var ws_url = '@routes.Report.getMinMonthlySocket().webSocketURL()';
 </script>
 <script>
@@ -185,21 +184,6 @@ $( document ).ready(function() {
 				dataType: "html",
 				success: function(result){
 					$('#reportDiv').html(result);
-
-					$('#reportTable').dataTable( {
-						responsive: true,
-						"dom": 'T<"clear">lfrtip',
-						language: {
-							url: l10n_url,							
-						},
-						"tableTools": {
-	        				"sSwfPath": swf_path,
-	        				"aButtons": ["copy", "print", "csv"]
-	        			},
-						"paging":   false,
-						"searching": false
-		    		} );
-		    		
 		    		$("#downloadPDF").prop("href", "/PDF" + url);
 					$("#downloadExcel").prop("href", "/Excel" + url);	    			    		
 				},

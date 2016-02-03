@@ -1,0 +1,81 @@
+@* monthlyReport Template File *@
+@import com.github.nscala_time.time.Imports._
+@import MonitorStatus._
+@(reportDate:DateTime, mTypes:List[MonitorType.Value], mtTimeStatMap: Map[MonitorType.Value, Map[DateTime, Stat]], statMap: Map[MonitorType.Value, Stat])
+<h3>監測月報表</h3>
+<h4>日期:@reportDate.toString("yyyy年MM月")</h4>
+<div class="col-lg-offset-10 col-lg-2">
+<table class="table">
+<tbody>
+<tr>
+	<td class="col-lg-1" style="color:black"><strong>標示說明:</strong></td>
+	<td class="col-lg-1" style="color:black;background-color:red">無效數據</td>
+</tr>
+</tbody>
+</table>
+</div>
+<table id="reportTable" class="table table-bordered" cellspacing="0" width="100%">
+	<thead>
+		<tr>
+			<th>日期</th>
+			@for(mt<-mTypes){
+			<th>@MonitorType.map(mt).desp</th>
+			}
+		</tr>
+	</thead>
+	<tfoot>
+		<tr>
+			<th>平均</th>
+			@for(mt<-mTypes){
+				<th>@MonitorType.format(mt, statMap(mt).avg)</th>
+			}
+		</tr>
+		<tr>
+			<th>最大</th>
+			@for(mt<-mTypes){
+				<th>@MonitorType.format(mt, statMap(mt).max)</th>
+			}
+		</tr>
+		<tr>
+			<th>最小</th>
+			@for(mt<-mTypes){
+				<th>@MonitorType.format(mt, statMap(mt).min)</th>
+			}
+		</tr>
+		<tr>
+			<th>有效率(%)</th>
+			@for(mt<-mTypes){
+				<th>@MonitorType.format(mt, statMap(mt).effectPercent)</th>
+			}
+		</tr>
+	</tfoot>
+	<tbody>
+		@for(t<-Query.getPeriods(reportDate, reportDate + 1.month, 1.day)){
+			<tr>
+			<th>@t.toString("d")</th>
+			@for(mt<-mTypes){
+				<td 
+				@if(!mtTimeStatMap(mt)(t).isEffective){
+					style="color:black;background-color:red"
+				}
+
+				>@MonitorType.format(mt, mtTimeStatMap(mt)(t).avg)</td>
+			}
+			</tr>
+		}
+	</tbody>
+</table>
+<script>
+$(document).ready(function(){
+	var l10n_url = "/assets/localization/zh_tw.json";
+	
+	$('#reportTable').dataTable( {
+		responsive: true,
+		language: {
+			url: l10n_url,							
+		},
+		"paging":   false,
+		"searching": false
+	} );
+});		
+</script>

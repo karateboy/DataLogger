@@ -1,0 +1,85 @@
+@* monthlyHourReport Template File *@
+@import controllers.Report._
+@import com.github.nscala_time.time.Imports._
+@import MonitorStatus._
+@(mt:MonitorType.Value, reportDate:DateTime, timeMap: Map[DateTime, Record], hourStatMap: Map[Int, Stat], dayStatMap: Map[DateTime, Stat], overallStat:Stat)
+
+<h3>監測月分時報表</h3>
+<h4>日期:@reportDate.toString("yyyy年MM月")</h4>
+
+<div class="col-lg-offset-6 col-lg-6">
+<table class="table">
+<tbody>
+<tr>
+	<td class="col-lg-1" style="color:black;background-color:@CalibrationColor">校正</td>
+	<td class="col-lg-1" style="color:black;background-color:@RepairColor">定保維修</td>
+	<td class="col-lg-1" style="color:black;background-color:@AbnormalColor">異常</td>
+	<td class="col-lg-1" style="color:black;background-color:@AutoAuditColor">自動檢核</td>
+	<td class="col-lg-1" style="color:black;background-color:@ManualAuditColor">人工註記</td>
+</tr>
+</tbody>
+</table>
+</div>
+<table id="reportTable" class="table" cellspacing="0" width="100%">
+	<thead>
+		<tr>
+			<th>日\時</th>
+			@for(t<- 0 to 23){
+				<td>@t</td>
+			}
+			<td>平均</td>
+			<td>最大</td>
+			<td>最小</td>
+			<td>有效筆數</td>
+		</tr>
+	</thead>
+	<tfoot>
+		<tr>
+			<td>平均</td>
+			@for(h<-0 to 23){
+				<td>@MonitorType.format(mt, hourStatMap(h).avg)</td>
+			}
+			<td>@MonitorType.format(mt, overallStat.avg)</td>
+			<td></td>
+			<td></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>最大</td>
+			@for(h<-0 to 23){
+				<td>@MonitorType.format(mt, hourStatMap(h).max)</td>
+			}
+			<td></td>
+			<td>@MonitorType.format(mt, overallStat.max)</td>			
+			<td></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td>最小</td>
+			@for(h<-0 to 23){
+				<td>@MonitorType.format(mt, hourStatMap(h).min)</td>
+			}
+			<td></td>
+			<td></td>			
+			<td>@MonitorType.format(mt, overallStat.min)</td>
+			<td></td>			
+		</tr>
+	</tfoot>
+	<tbody>
+		@for(day<-Query.getPeriods(reportDate, reportDate+1.month, 1.day)){
+			<tr>
+				<th>@day.toString("dd")</th>
+				@for(h<-0 to 23){
+					<td style="@MonitorType.getCssStyleStr(mt, timeMap.get(day + h.hour))">
+					@MonitorType.formatRecord(mt, timeMap.get(day + h.hour))</td>
+				}
+				<td>@MonitorType.format(mt, dayStatMap(day).avg)</td>
+				<td>@MonitorType.format(mt, dayStatMap(day).max)</td>
+				<td>@MonitorType.format(mt, dayStatMap(day).min)</td>
+				<td>@dayStatMap(day).count</td>
+			</tr>
+		}
+	</tbody>
+</table>            		
+ 
+

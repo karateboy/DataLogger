@@ -9,9 +9,9 @@ import com.github.nscala_time.time.Imports._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[Double],
-                       prec: Int, order: Int, std_internal:Option[Double]=None, 
-                       zd_internal:Option[Double]=None, zd_law:Option[Double]=None,
-                       span_dev_internal:Option[Double]=None, span_dev_law:Option[Double]=None)
+                       prec: Int, order: Int, std_internal: Option[Double] = None,
+                       zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
+                       span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None)
 
 object MonitorType extends Enumeration {
   import org.mongodb.scala.bson._
@@ -49,35 +49,35 @@ object MonitorType extends Enumeration {
     MonitorType("HUMID", "濕度", "%", None, 1, 19),
     MonitorType("PRESS", "氣壓", "hPa", None, 1, 20),
     MonitorType("RAIN", "雨量", "mm/h", None, 1, 21))
-  
+
   lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
-  def init(colNames:Seq[String]){
-    def insertMt{
-      val f = collection.insertMany(defaultMonitorTypes.map{toDocument}).toFuture()
+  def init(colNames: Seq[String]) {
+    def insertMt {
+      val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
       f.onFailure(futureErrorHandler)
       f.onSuccess({
-        case _:Seq[t]=>
+        case _: Seq[t] =>
           refreshMtv
       })
     }
-    
-    if(!colNames.contains(colName)){
+
+    if (!colNames.contains(colName)) {
       val f = MongoDB.database.createCollection(colName).toFuture()
       f.onFailure(futureErrorHandler)
       f.onSuccess({
-        case _:Seq[t]=>
+        case _: Seq[t] =>
           insertMt
       })
-    }    
+    }
   }
-  
+
   def BFName(mt: MonitorType.Value) = {
     val mtCase = map(mt)
     mtCase._id.replace(".", "_")
   }
 
-  def toDocument(mt:MonitorType)={
+  def toDocument(mt: MonitorType) = {
     val json = Json.toJson(mt)
     Document(json.toString())
   }
@@ -115,19 +115,19 @@ object MonitorType extends Enumeration {
       r.map { toMonitorType }.toList
     }
 
-  def refreshMtv ={
+  def refreshMtv = {
     val list = mtList
-    for(mt<-list){
-      try{
+    for (mt <- list) {
+      try {
         MonitorType.withName(mt._id)
-      }catch{
-        case _:NoSuchElementException=>
+      } catch {
+        case _: NoSuchElementException =>
           map = map + (Value(mt._id) -> mt)
       }
     }
     mtvList = list.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   }
-  
+
   var map: Map[Value, MonitorType] = Map(mtList.map { e => Value(e._id) -> e }: _*)
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
 
@@ -147,8 +147,8 @@ object MonitorType extends Enumeration {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Updates._
     import scala.concurrent.ExecutionContext.Implicits.global
-    val idFilter = equal("_id", map(mt)._id) 
-    val f = 
+    val idFilter = equal("_id", map(mt)._id)
+    val f =
       if (colname == "desp" || colname == "unit") {
         collection.findOneAndUpdate(idFilter, set(colname, newValue)).toFuture()
       } else if (colname == "prec" || colname == "order") {
@@ -161,14 +161,14 @@ object MonitorType extends Enumeration {
         else {
           import java.lang.Double
           collection.findOneAndUpdate(idFilter, set(colname, Double.parseDouble(newValue))).toFuture()
-        }        
+        }
       }
 
     val ret = waitReadyResult(f)
 
     val mtCase = toMonitorType(ret(0))
     map = map + (mt -> mtCase)
-    
+
   }
 
   def format(mt: MonitorType.Value, v: Option[Double]) = {
@@ -183,5 +183,40 @@ object MonitorType extends Enumeration {
   def formatR(mt: MonitorType.Value, r: Record) = {
     val prec = map(mt).prec
     s"%.${prec}f".format(r.value)
+  }
+
+  def formatRecord(mt: MonitorType.Value, r: Option[Record]) = {
+    if (r.isEmpty)
+      "-"
+    else {
+      val prec = map(mt).prec
+      s"%.${prec}f".format(r.get.value)
+    }
+  }
+
+  def getCssStyleStr(mt: MonitorType.Value, r: Option[Record]) = {
+    if (r.isEmpty)
+      ""
+    else {
+      val mtCase = MonitorType.map(mt)
+      val v = r.get.value
+      val overInternal =
+        if (mtCase.std_internal.isDefined) {
+          if (v > mtCase.std_internal.get)
+            true
+          else
+            false
+        } else
+          false
+      val overLaw =
+        if (mtCase.std_law.isDefined) {
+          if (v > mtCase.std_law.get)
+            true
+          else
+            false
+        } else
+          false
+      MonitorStatus.getCssStyleStr(r.get.status, overInternal, overLaw)
+    }
   }
 }

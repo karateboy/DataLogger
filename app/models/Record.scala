@@ -54,8 +54,4 @@ object Record {
       }
     Map(pairs: _*)
   }
-
-  def getRecordList(colName: String)(mt: MonitorType.Value, startTime: DateTime, endTime: DateTime) = {
-      getRecordMap(colName)(List(mt), startTime, endTime)(mt)
-  }
 }

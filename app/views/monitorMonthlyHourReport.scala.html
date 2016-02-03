@@ -1,0 +1,130 @@
+@* monthlyHourReportForm Template File *@
+@import com.github.nscala_time.time.Imports._
+<div class="row">
+   	<div class="col-lg-12">
+        	<div class="panel panel-primary" id="paramPanel">
+            	<div class="panel-heading panel-title" >
+            		<a data-toggle="collapse" data-parent="#accordion" href="#reportParam">查詢參數</a>	
+                </div>
+            	<div class="panel-body panel-collapse in" id="reportParam">
+            		<form class="form-horizontal">
+            		    <div class="form-group">
+	            			<label class="col-lg-1 control-label">測項</label>
+	            			<div class="col-lg-11">
+	            				<div class="btn-group" data-toggle="buttons">	            				
+	            				@for(mt<-MonitorType.mtvList){
+	            					@if(mt == MonitorType.mtvList.head){
+	            						<label class="btn btn-outline btn-primary dim active">
+										<input type="radio" name="monitorType" id="@mt" checked>@MonitorType.map(mt).desp</label>
+	            					}else{
+	            						<label class="btn btn-outline btn-primary dim">
+										<input type="radio" name="monitorType" id="@mt">@MonitorType.map(mt).desp</label>
+	            					}
+	            					
+	            				}
+	            				</div>
+	            			</div>	            			            		
+	                    </div>
+            			<div class="form-group">
+	            			<label class="col-lg-1 control-label">查詢日期</label>
+	            			<div class="col-lg-5">
+	            				<div class="input-group date">
+  									<span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+  									<input type="text" class="form-control" id="reportDate" value='@((DateTime.now-1.day).toString("YYYY-MM-dd"))' required>
+  								</div>
+	            			</div>	            			            		
+	                    </div>
+	                    <div class="form-group">
+							<div class="col-lg-1 col-lg-offset-1">
+								<button type="button" class="btn btn-primary" id="queryReport">查詢</button>
+							</div>							
+						</div>            		
+            		</form>
+            	</div>
+        	</div>
+        	<div class="panel panel-success" style="display:none" id="reportPanel">
+            	<div class="panel-body panel-collapse" id="monitorReport">
+            	    <div align="right">
+            			<label class="btn btn-outline" data-toggle="tooltip" data-placement="bottom" title="PDF"><a href="#" id="downloadPDF"><i class="fa fa-file-pdf-o fa-2x pdf"></i></a></label>
+            			<label class="btn btn-outline" data-toggle="tooltip" data-placement="bottom" title="Excel"><a href="#" id="downloadExcel"><i class="fa fa-file-excel-o fa-2x"></i></a></label>            			
+                	</div>
+            	
+					<div id="reportDiv" align="center" style="overflow-x:auto">
+           			</div>
+            	</div>
+        	</div>
+	</div>
+</div>
+<script>
+$( document ).ready(function() {
+	$('#reportDate').datetimepicker({
+		format: 'YYYY-MM',
+		defaultDate: moment(),
+    	locale: "zh-TW"
+	});
+
+	var monitorType, reportDate;
+	
+	function validate(){
+		monitorType = $("input[name='monitorType']:checked").attr('id');
+		if (!monitorType) {
+			alert('請選擇測項');
+			return false;
+		}
+		reportDate = $('#reportDate').val();
+		if(reportDate.length === 0){
+			alert('請選擇報表日期');
+			return false;
+		}
+		
+		return true;
+	}
+	
+	$('#queryReport').click(function(){
+		if(!validate())
+			return;
+
+		$("#reportPanel").css('display','block');
+		$("#reportParam").collapse();
+		$("#reportPanel").collapse('show');
+
+		$("body").css("cursor", "progress");
+		
+		var url = "/MonthlyHourReport/" + monitorType + '/' + reportDate;
+		
+		$.ajax({
+			url: url,
+			data: "",
+			contentType: "application/json; charset=utf-8",
+			type: "GET",
+			cache:false,
+			dataType: "html",
+			success: function(result){
+				
+				$('#reportDiv').html(result);
+	    		$("#downloadPDF").prop("href", "/PDF" + url);	    		
+				$("#downloadExcel").prop("href", "/Excel" + url);
+				
+				$('#reportTable').dataTable( {
+					ordering: false,
+					language: {
+						url: "/assets/localization/zh_tw.json",							
+					},
+					"paging":   false,
+					"searching": false
+	    		} );
+	    		
+			},
+			error: function(xhr, status, errorThrown){
+				console.log("錯誤訊息:" + status + "-" + errorThrown);
+			},
+
+			complete: function(xhr, status){
+				$("body").css("cursor", "default");
+			}					
+		});
+	});
+});
+</script>
+
+

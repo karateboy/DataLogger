@@ -1,0 +1,83 @@
+@* dailyReport Template File *@
+@import com.github.nscala_time.time.Imports._
+@import MonitorStatus._
+@(reportDate:DateTime, mTypes:List[MonitorType.Value], mtTimeMap: Map[MonitorType.Value, Map[DateTime, Record]], statMap: Map[MonitorType.Value, Map[DateTime, Stat]])
+<h3>監測日報表</h3>
+<h4>日期:@reportDate.toString("yyyy年MM月dd日")</h4>
+<div class="col-lg-offset-4 col-lg-8">
+<table class="table">
+<tbody>
+<tr>
+	<td class="col-lg-1" style="color:black"><strong>標示說明:</strong></td>
+	<td class="col-lg-1" style="color:@OverInternalColor">超過內控值</td>
+	<td class="col-lg-1" style="color:@OverLawColor">超過法規值</td>
+	<td class="col-lg-1" style="color:black;background-color:@CalibrationColor">校正</td>
+	<td class="col-lg-1" style="color:black;background-color:@RepairColor">維修定保</td>
+	<td class="col-lg-1" style="color:black;background-color:@AbnormalColor">異常</td>
+	<td class="col-lg-1" style="color:black;background-color:@AutoAuditColor">自動檢核</td>
+	<td class="col-lg-1" style="color:black;background-color:@ManualAuditColor">人工註記</td>
+</tr>
+</tbody>
+</table>
+</div>
+<table id="reportTable" class="table table-bordered" cellspacing="0" width="100%">
+	<thead>
+		<tr>
+			<th>小時</th>
+			@for(mt<-mTypes){
+			<th>@MonitorType.map(mt).desp</th>
+			}
+		</tr>
+	</thead>
+	<tfoot>
+		<tr>
+			<th>平均</th>
+			@for(mt<-mTypes){
+				<th>@MonitorType.format(mt, statMap(mt)(reportDate).avg)</th>
+			}
+		</tr>
+		<tr>
+			<th>最大</th>
+			@for(mt<-mTypes){
+				<th>@MonitorType.format(mt, statMap(mt)(reportDate).max)</th>
+			}
+		</tr>
+		<tr>
+			<th>最小</th>
+			@for(mt<-mTypes){
+				<th>@MonitorType.format(mt, statMap(mt)(reportDate).min)</th>
+			}
+		</tr>
+		<tr>
+			<th>有效率(%)</th>
+			@for(mt<-mTypes){
+				<th>@MonitorType.format(mt, statMap(mt)(reportDate).effectPercent)</th>
+			}
+		</tr>
+	</tfoot>
+	<tbody>
+		@for(i<-0 to 23){
+			<tr>
+			<th>@("%02d:00".format(i))</th>
+			@for(mt<-mTypes){
+				<td style="@MonitorType.getCssStyleStr(mt, mtTimeMap(mt).get(reportDate + i.hour))"
+				>@MonitorType.formatRecord(mt, mtTimeMap(mt).get(reportDate + i.hour))</td>
+			}
+			</tr>
+		}
+	</tbody>
+</table>
+<script>
+$(document).ready(function(){
+	var l10n_url = "/assets/localization/zh_tw.json";
+	
+	$('#reportTable').dataTable( {
+		responsive: true,
+		language: {
+			url: l10n_url,							
+		},
+		"paging":   false,
+		"searching": false
+	} );
+});		
+</script>

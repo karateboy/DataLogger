@@ -15,6 +15,31 @@ import com.github.nscala_time.time.Imports._
 import Highchart._
 import models._
 
+case class Stat(
+    avg: Option[Double],
+    min: Option[Double],
+    max: Option[Double],
+    count: Int,
+    total: Int,
+    overCount: Int) {
+  val effectPercent = {
+    if (total > 0)
+      Some(count.toDouble * 100 / total)
+    else
+      None
+  }
+
+  val isEffective = {
+    effectPercent.isDefined && effectPercent.get > 75 
+  }
+  val overPercent = {
+    if (count > 0)
+      Some(overCount.toDouble * 100 / total)
+    else
+      None
+  }  
+}
+
 object Query extends Controller {
   def historyTrend = Security.Authenticated {
     implicit request =>
@@ -29,7 +54,7 @@ object Query extends Controller {
       degree + 360
   }
 
-  def windAvg(windSpeed: Seq[Record], windDir: Seq[Record]):Double = {
+  def windAvg(windSpeed: Seq[Record], windDir: Seq[Record]): Double = {
     if (windSpeed.length != windDir.length)
       Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
 
@@ -38,7 +63,7 @@ object Query extends Controller {
     val wind_cos = windRecord.map(v => v._1.value * Math.cos(Math.toRadians(v._2.value))).sum
     windAvg(wind_sin, wind_cos)
   }
-  
+
   def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
     import scala.collection.mutable.ListBuffer
 
@@ -52,29 +77,104 @@ object Query extends Controller {
     buf.toList
   }
 
-  def getPeriodReportMap(mt: MonitorType.Value, period: Period, statusFilter:List[String]=List("010"))(start: DateTime, end: DateTime) = {
-    val recordList = Record.getRecordList(Record.HourCollection)(mt, start, end)
+  def getPeriodCount(start: DateTime, endTime: DateTime, p: Period) = {
+    var count = 0
+    var current = start
+    while (current < endTime) {
+      count += 1
+      current += p
+    }
+
+    count
+  }
+
+  def getPeriodReportMap(mt: MonitorType.Value, period: Period, statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime) = {
+    val recordList = Record.getRecordMap(Record.HourCollection)(List(mt), start, end)(mt)
     def periodSlice(period_start: DateTime, period_end: DateTime) = {
       recordList.dropWhile { _.time < period_start }.takeWhile { _.time < period_end }
     }
     val pairs =
-      if (period.getHours ==1) {
-        recordList.filter { r=>statusFilter.contains(r.status) }.map { r => r.time -> r.value }
+      if (period.getHours == 1) {
+        recordList.filter { r => statusFilter.contains(r.status) }.map { r => r.time -> r.value }
       } else {
         for {
           period_start <- getPeriods(start, end, period)
-          records = periodSlice(period_start, period_start + period) if records.length > 0          
+          records = periodSlice(period_start, period_start + period) if records.length > 0
         } yield {
           if (mt == MonitorType.WIN_DIRECTION) {
             val windDir = records
-            val windSpeed = Record.getRecordList(Record.HourCollection)(MonitorType.WIN_SPEED, period_start, period_start + period)
+            val windSpeed = Record.getRecordMap(Record.HourCollection)(List(MonitorType.WIN_SPEED), period_start, period_start + period)(mt)
             period_start -> windAvg(windSpeed, windDir)
-          } else{
+          } else {
             val values = records.map { r => r.value }
             period_start -> values.sum / values.length
           }
         }
       }
+
+    Map(pairs: _*)
+  }
+
+  def getPeriodStatReportMap(recordListMap: Map[MonitorType.Value, Seq[Record]], period: Period, statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime) = {
+    val mTypes = recordListMap.keys.toList
+    if (mTypes.contains(MonitorType.WIN_DIRECTION)) {
+      if (!mTypes.contains(MonitorType.WIN_SPEED))
+        throw new Exception("風速和風向必須同時查詢")
+    }
+
+    if (period.getHours == 1) {
+      throw new Exception("小時區間無Stat報表")
+    }
+
+    def periodSlice(recordList: Seq[Record], period_start: DateTime, period_end: DateTime) = {
+      recordList.dropWhile { _.time < period_start }.takeWhile { _.time < period_end }
+    }
+
+    def getPeriodStat(records: Seq[Record], mt: MonitorType.Value, period_start: DateTime) = {
+      if (records.length == 0)
+        Stat(None, None, None, 0, 0, 0)
+      else {
+        val values = records.map { r => r.value }
+        val min = values.min
+        val max = values.max
+        val sum = values.sum
+        val count = records.length
+        val total = new Duration(period_start, period_start + period).getStandardHours.toInt
+        val overCount = if (MonitorType.map(mt).std_law.isDefined) {
+          values.count { _ > MonitorType.map(mt).std_law.get }
+        } else
+          0
+
+        val avg = if (mt == MonitorType.WIN_DIRECTION) {
+          val windDir = records
+          val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
+          windAvg(windSpeed, windDir)
+        } else {
+          sum / total
+        }
+        Stat(
+          avg = Some(avg),
+          min = Some(min),
+          max = Some(max),
+          total = total,
+          count = count,
+          overCount = overCount)
+      }
+    }
+    val pairs = {
+      for {
+        mt <- mTypes
+      } yield {
+        val timePairs =
+          for {
+            period_start <- getPeriods(start, end, period)
+            records = periodSlice(recordListMap(mt), period_start, period_start + period)
+          } yield {
+            period_start -> getPeriodStat(records, mt, period_start)
+          }
+        mt -> Map(timePairs: _*)
+      }
+    }
 
     Map(pairs: _*)
   }
@@ -267,7 +367,6 @@ object Query extends Controller {
           else
             chart.title("text")
 
-
         Ok.sendFile(excelFile, fileName = _ =>
           play.utils.UriEncoding.encodePathSegment(downloadFileName + ".xlsx", "UTF-8"),
           onClose = () => { Files.deleteIfExists(excelFile.toPath()) })
@@ -294,136 +393,136 @@ object Query extends Controller {
       val timeList = getPeriods(start, end, 1.hour)
 
       val recordMap = Record.getRecordMap(Record.HourCollection)(monitorTypes.toList, start, end)
-      val recordTimeMap = recordMap.map{p =>
+      val recordTimeMap = recordMap.map { p =>
         val recordSeq = p._2
         val timePair = recordSeq.map { r => r.time -> r }
-        p._1 -> Map(timePair:_*)
+        p._1 -> Map(timePair: _*)
       }
-      
-      val explain = monitorTypes.map { t => 
-          val mtCase = MonitorType.map(t)
-          s"${mtCase.desp}(${mtCase.unit})"
-        }.mkString(",")
+
+      val explain = monitorTypes.map { t =>
+        val mtCase = MonitorType.map(t)
+        s"${mtCase.desp}(${mtCase.unit})"
+      }.mkString(",")
       val output = views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap)
       Ok(output)
   }
-  
-  def calibration()= Security.Authenticated {
+
+  def calibration() = Security.Authenticated {
     Ok(views.html.calibration())
   }
-  
-  def calibrationReport(startStr:String, endStr:String)= Security.Authenticated {
-    val (start, end) = 
-    (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
-            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+
+  def calibrationReport(startStr: String, endStr: String) = Security.Authenticated {
+    val (start, end) =
+      (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
+        DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
     val report = Calibration.calibrationReport(start, end)
     Ok(views.html.calibrationReport(report, "校正報表", start, end))
   }
-  
-  def alarm()= Security.Authenticated {
+
+  def alarm() = Security.Authenticated {
     Ok(views.html.alarm())
   }
-  
-  def alarmReport(startStr:String, endStr:String)= Security.Authenticated {
-    val (start, end) = 
-    (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
-            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+
+  def alarmReport(startStr: String, endStr: String) = Security.Authenticated {
+    val (start, end) =
+      (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
+        DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
     val report = Alarm.getAlarms(start, end)
     Ok(views.html.alarmReport(start, end, report))
   }
-//
-//  def windRose() = Security.Authenticated {
-//    implicit request =>
-//      Ok(views.html.windRose(false))
-//  }
-//
-//  def monitorTypeRose() = Security.Authenticated {
-//    implicit request =>
-//      Ok(views.html.windRose(true))
-//  }
-//
-//  def windRoseReport(monitorStr: String, monitorTypeStr: String, nWay: Int, startStr: String, endStr: String) = Security.Authenticated {
-//    val monitor = EpaMonitor.withName(monitorStr)
-//    val monitorType = MonitorType.withName(monitorTypeStr)
-//    val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-//    val end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-//    val mtCase = MonitorType.map(monitorType)
-//    assert(nWay == 8 || nWay == 16 || nWay == 32)
-//
-//    try {
-//      val level = List(1f, 2f, 5f, 15f)
-//      val windMap = Record.getMtRose(monitor, monitorType, start, end, level, nWay)
-//      val nRecord = windMap.values.map { _.length }.sum
-//
-//      val dirMap =
-//        Map(
-//          (0 -> "北"), (1 -> "北北東"), (2 -> "東北"), (3 -> "東北東"), (4 -> "東"),
-//          (5 -> "東南東"), (6 -> "東南"), (7 -> "南南東"), (8 -> "南"),
-//          (9 -> "南南西"), (10 -> "西南"), (11 -> "西西南"), (12 -> "西"),
-//          (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
-//
-//      val dirStrSeq =
-//        for {
-//          dir <- 0 to nWay - 1
-//          dirKey = if (nWay == 8)
-//            dir * 2
-//          else if (nWay == 32) {
-//            if (dir % 2 == 0) {
-//              dir / 2
-//            } else
-//              dir + 16
-//          } else
-//            dir
-//        } yield dirMap.getOrElse(dirKey, "")
-//
-//      var last = 0f
-//      val speedLevel = level.flatMap { l =>
-//        if (l == level.head) {
-//          last = l
-//          List(s"< ${l} ${mtCase.unit}")
-//        } else if (l == level.last) {
-//          val ret = List(s"${last}~${l} ${mtCase.unit}", s"> ${l} ${mtCase.unit}")
-//          last = l
-//          ret
-//        } else {
-//          val ret = List(s"${last}~${l} ${mtCase.unit}")
-//          last = l
-//          ret
-//        }
-//      }
-//
-//      import Highchart._
-//
-//      val series = for {
-//        level <- 0 to level.length
-//      } yield {
-//        val data =
-//          for (dir <- 0 to nWay - 1)
-//            yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
-//
-//        seqData(speedLevel(level), data)
-//      }
-//
-//      val title =
-//        if (monitorType == "")
-//          "風瑰圖"
-//        else {
-//          mtCase.desp + "玫瑰圖"
-//        }
-//
-//      val chart = HighchartData(
-//        scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
-//        scala.collection.immutable.Map("text" -> title),
-//        XAxis(Some(dirStrSeq)),
-//        Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
-//        series)
-//
-//      Results.Ok(Json.toJson(chart))
-//    } catch {
-//      case e: AssertionError =>
-//        Logger.error(e.toString())
-//        BadRequest("無資料")
-//    }
-//  }
+  //
+  //  def windRose() = Security.Authenticated {
+  //    implicit request =>
+  //      Ok(views.html.windRose(false))
+  //  }
+  //
+  //  def monitorTypeRose() = Security.Authenticated {
+  //    implicit request =>
+  //      Ok(views.html.windRose(true))
+  //  }
+  //
+  //  def windRoseReport(monitorStr: String, monitorTypeStr: String, nWay: Int, startStr: String, endStr: String) = Security.Authenticated {
+  //    val monitor = EpaMonitor.withName(monitorStr)
+  //    val monitorType = MonitorType.withName(monitorTypeStr)
+  //    val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+  //    val end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+  //    val mtCase = MonitorType.map(monitorType)
+  //    assert(nWay == 8 || nWay == 16 || nWay == 32)
+  //
+  //    try {
+  //      val level = List(1f, 2f, 5f, 15f)
+  //      val windMap = Record.getMtRose(monitor, monitorType, start, end, level, nWay)
+  //      val nRecord = windMap.values.map { _.length }.sum
+  //
+  //      val dirMap =
+  //        Map(
+  //          (0 -> "北"), (1 -> "北北東"), (2 -> "東北"), (3 -> "東北東"), (4 -> "東"),
+  //          (5 -> "東南東"), (6 -> "東南"), (7 -> "南南東"), (8 -> "南"),
+  //          (9 -> "南南西"), (10 -> "西南"), (11 -> "西西南"), (12 -> "西"),
+  //          (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
+  //
+  //      val dirStrSeq =
+  //        for {
+  //          dir <- 0 to nWay - 1
+  //          dirKey = if (nWay == 8)
+  //            dir * 2
+  //          else if (nWay == 32) {
+  //            if (dir % 2 == 0) {
+  //              dir / 2
+  //            } else
+  //              dir + 16
+  //          } else
+  //            dir
+  //        } yield dirMap.getOrElse(dirKey, "")
+  //
+  //      var last = 0f
+  //      val speedLevel = level.flatMap { l =>
+  //        if (l == level.head) {
+  //          last = l
+  //          List(s"< ${l} ${mtCase.unit}")
+  //        } else if (l == level.last) {
+  //          val ret = List(s"${last}~${l} ${mtCase.unit}", s"> ${l} ${mtCase.unit}")
+  //          last = l
+  //          ret
+  //        } else {
+  //          val ret = List(s"${last}~${l} ${mtCase.unit}")
+  //          last = l
+  //          ret
+  //        }
+  //      }
+  //
+  //      import Highchart._
+  //
+  //      val series = for {
+  //        level <- 0 to level.length
+  //      } yield {
+  //        val data =
+  //          for (dir <- 0 to nWay - 1)
+  //            yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
+  //
+  //        seqData(speedLevel(level), data)
+  //      }
+  //
+  //      val title =
+  //        if (monitorType == "")
+  //          "風瑰圖"
+  //        else {
+  //          mtCase.desp + "玫瑰圖"
+  //        }
+  //
+  //      val chart = HighchartData(
+  //        scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
+  //        scala.collection.immutable.Map("text" -> title),
+  //        XAxis(Some(dirStrSeq)),
+  //        Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
+  //        series)
+  //
+  //      Results.Ok(Json.toJson(chart))
+  //    } catch {
+  //      case e: AssertionError =>
+  //        Logger.error(e.toString())
+  //        BadRequest("無資料")
+  //    }
+  //  }
 
 }
