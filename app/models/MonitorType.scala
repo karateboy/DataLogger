@@ -11,7 +11,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[Double],
                        prec: Int, order: Int, std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
-                       span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None)
+                       span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
+                       masuredBy:Option[String]=None)
 
 object MonitorType extends Enumeration {
   import org.mongodb.scala.bson._
@@ -149,7 +150,7 @@ object MonitorType extends Enumeration {
     import scala.concurrent.ExecutionContext.Implicits.global
     val idFilter = equal("_id", map(mt)._id)
     val f =
-      if (colname == "desp" || colname == "unit") {
+      if (colname == "desp" || colname == "unit"|| colname=="measuredBy") {
         collection.findOneAndUpdate(idFilter, set(colname, newValue)).toFuture()
       } else if (colname == "prec" || colname == "order") {
         import java.lang.Integer
@@ -168,7 +169,10 @@ object MonitorType extends Enumeration {
 
     val mtCase = toMonitorType(ret(0))
     map = map + (mt -> mtCase)
-
+  }
+  
+  def updateMonitorTypeInstrument(mt:MonitorType.Value, instrumentID:String)={
+    updateMonitorType(mt, "measuredBy", instrumentID)
   }
 
   def format(mt: MonitorType.Value, v: Option[Double]) = {

@@ -147,11 +147,18 @@ object Application extends Controller {
         },
         instrument => {
           try{
+            instrument.instType match{
+              case InstrumentType.adam4017=>
+                Adam4017.validateParam(instrument.param)
+              case InstrumentType.baseline9000=>
+                //FIXME 
+            }
             Instrument.newInstrument(instrument)
+            DataCollectManager.startCollect(instrument)
             Ok(Json.obj("ok" -> true))
           }catch{
             case ex:Throwable=>
-              Logger.error(ex.toString)
+              Logger.error(ex.getMessage)
               Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
           }          
         })
@@ -162,14 +169,16 @@ object Application extends Controller {
   }
   
   def getInstrumentList = Security.Authenticated {
+    import Instrument._
     val ret = Instrument.getInstrumentList()
-    val ret2 = ret.map { doc => Json.parse(doc.toJson) }
+    val ret2 = ret.map { _.getInfoClass }
     Ok(Json.toJson(ret2))
   }
   
   def removeInstrument(instruments:String)  = Security.Authenticated {
     val ids = instruments.split(",")
     try{
+      ids.foreach{ DataCollectManager.stopCollect(_)}
       ids.map { Instrument.delete }  
     }catch{
       case ex:Throwable=>  

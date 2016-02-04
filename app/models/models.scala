@@ -28,6 +28,15 @@ object ModelHelper {
     println(timestamp.toString())
   }
   
+  def exceptionToString(e:Exception)={
+    import java.io.ByteArrayOutputStream
+    import java.io.PrintStream
+    val baos = new ByteArrayOutputStream;
+    val ps = new PrintStream(baos);
+    e.printStackTrace(ps);
+    ps.close();
+    baos.toString();
+  }
   
   def futureErrorHandler:PartialFunction[Throwable, Any] = {
       case ex:Throwable=>

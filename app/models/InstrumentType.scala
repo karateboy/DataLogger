@@ -7,8 +7,10 @@ object InstrumentType extends Enumeration{
   implicit val reader: Reads[InstrumentType.Value] = EnumUtils.enumReads(InstrumentType)
   implicit val writer: Writes[InstrumentType.Value] = EnumUtils.enumWrites
 
-  val simulator = Value
   val baseline9000 = Value
-  def map = Map(simulator->InstrumentType(simulator, "模擬器", MonitorType.mtvList, List(serial), false, 1234),
-      baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(MonitorType.withName("CH4")), List(tcp, serial), true, 2345)) 
+  val adam4017 = Value
+  def map = Map(
+      baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(MonitorType.withName("CH4")), List(tcp, serial), true, 2345),
+      adam4017->InstrumentType(adam4017, "Adam 4017", MonitorType.mtvList, List(serial, tcp), false, 1234)
+      ) 
 }

@@ -36,9 +36,9 @@ function hideModal(){
                 <th>儀器名稱</th>
                 <th>種類</th>
                 <th>通訊協定</th>
-                <th>TCP參數</th>
-                <th>RS232 COM</th>
+                <th>通訊參數</th>
                 <th>每日校正時刻</th>
+                <th>測項</th>
             </tr>
         </thead>
     </table>
@@ -57,11 +57,11 @@ $( document ).ready(function() {
 		          { data: '_id' },
 		          { data: 'instType' },
 		          { data: 'protocol' },
-		          { data: 'tcp_url' },
-		          { data: 'serial_port' },
+		          { data: 'protocolParam' },
 		          { data: 'calibrationTime',
 		        	defaultContent: "-"
-			           }
+			           },
+			      { data: 'monitorTypes'}
 		      ],
 		language: {
 			url: local_url,							

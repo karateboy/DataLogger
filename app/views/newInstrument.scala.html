@@ -1,5 +1,12 @@
 @* newInstrument Template File *@
 @(endCallback: String)
+<script>
+	function callback(){
+		@endCallback
+	}
+	var instrumentConfig={};
+</script>
+
 	<form id="new-instrument-form" class="form-horizontal" action="#">
 		<div>
         <h3>基本資料</h3>
@@ -33,10 +40,10 @@
 	            		@for(pr<-Protocol.values.toList.sorted){
 	            			@if(pr == Protocol.values.toList.sorted.head){
 	            				<label class="btn btn-outline btn-primary dim active">
-								<input type="radio" name="protocol" id="@pr" checked required>@Protocol.map(pr)</label>	
+								<input type="radio" name="protocol" id="@pr" checked>@Protocol.map(pr)</label>	
 	            			}else{
 	            				<label class="btn btn-outline btn-primary dim">
-								<input type="radio" name="protocol" id="@pr" required>@Protocol.map(pr)</label>
+								<input type="radio" name="protocol" id="@pr" >@Protocol.map(pr)</label>
 	            			}	            					
 	            		}
 	            	</div>
@@ -61,14 +68,14 @@
 	        	</div>	        
 	        </div>
         </section>
-        <h3>校正頻率</h3>
+        <h3>儀器細部設定</h3>
         <section>
-            <div class="form-group">
-		        <label class="col-lg-2 control-label">每日校正時刻</label>
-	    	    <div class="col-lg-10">
-	    	    	<input type="time" id="calibrationTime">
-	        	</div>	            		
-	        </div>
+        	<div id="adam4017Cfg" style="display:none">
+        		@adam4017Config("instrumentConfig")
+        	</div>
+            <div id="baseline9000Cfg" style="display:none">
+            	@baseline9000Config("instrumentConfig")
+            </div>            
         </section>
         <h3>結束</h3>
         <section>
@@ -77,11 +84,6 @@
         </section>
     	</div>
 		</form>
-<script>
-	function callback(){
-		@endCallback
-	}
-</script>
 <script>
 $( document ).ready(function() {
 	var instrumentTypes = {};		
@@ -170,19 +172,31 @@ $( document ).ready(function() {
 			    }
 		    }
 		    
+		    if(newIndex == 2){
+		    				    
+			    var protocols = $("input[name='protocol']:checked");
+			    if(protocols.length == 0){
+				    alert("請選擇通訊協定");
+				    return false;
+			    }
+			    var instrumentType = $("input[name='instType']:checked")[0].id
+			    $("#"+instrumentType + "Cfg").css('display','block');
+		    }
+		    
 		    if(newIndex == 3){
-			    var summary = "儀器名稱:"+$("#name").val() + "<br/>";
-			    summary += "儀器種類:" + instrumentTypes[$("input[name='instType']:checked")[0].id].desp + "<br/>";
-			    summary += "通訊協定:" + $("input[name='protocol']:checked")[0].id + "<br/>";			    
-			    summary += "TCP參數:" + $("#tcp_url").val() + "<br/>";
-			    summary += "RS232參數:COM" + $("#serial_port").val() + "<br/>";
-			    var calibrationTime = $("#calibrationTime").val();
-			    if(calibrationTime.length == 0){
-			    	summary += "不自動校正<br/>"
-			    }else
-			    	summary += "每日校正時刻:" + $("#calibrationTime").val() + "<br/>"
+			    var instrumentType = $("input[name='instType']:checked")[0].id
+			    if(!instrumentConfig[instrumentType].validate())
+				    return false;
+			    
+			    var summary = "<strong>儀器名稱:</strong>"+$("#name").val() + "<br/>";
+			    summary += "<strong>儀器種類:</strong>" + instrumentTypes[instrumentType].desp + "<br/>";
+			    summary += "<strong>通訊協定:</strong>" + $("input[name='protocol']:checked")[0].id + "<br/>";			    
+			    summary += "<strong>TCP參數:</strong>" + $("#tcp_url").val() + "<br/>";
+			    summary += "<strong>RS232參數:</strong>COM" + $("#serial_port").val() + "<br/>";
+			    summary += "<strong>儀器細部設定:</strong>" + instrumentConfig[instrumentType].summary();
 			    $('#summary').html(summary);
 		    }
+		    
 	        form.validate().settings.ignore = ":disabled,:hidden";
 	        return form.valid();
 	    },
@@ -193,11 +207,15 @@ $( document ).ready(function() {
 	    },
 	    onFinished: function (event, currentIndex)
 	    {
+		    /*
 		    var calibrationTime;
 		    if($("#calibrationTime").val().length == 0)
 		    	calibrationTime = null;
 		    else
 		    	calibrationTime = $("#calibrationTime").val();
+	    	*/
+	    	var param = instrumentConfig['adam4017'].param();
+	    	console.log(param);
 	    	
 		    var newInstrument= {
 				_id:$("#name").val(),
@@ -205,7 +223,7 @@ $( document ).ready(function() {
 				protocol:$("input[name='protocol']:checked")[0].id,
 				tcp_url:$("#tcp_url").val(),
 				serial_port:parseInt($("#serial_port").val()),
-				calibrationTime:calibrationTime
+				param:JSON.stringify(param)
 		    };
 			$.ajax({
 				url: "/Instrument",
