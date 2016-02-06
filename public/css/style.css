@@ -3721,7 +3721,6 @@ code {
   margin-bottom: 25px;
   margin-top: 0;
   padding: 0;
-  border-style:outset;
 }
 .ibox.collapsed .ibox-content {
   display: none;

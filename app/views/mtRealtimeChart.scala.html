@@ -1,10 +1,8 @@
 @* monitorTypeRealtimeChart Template File *@
 @(param: Any)
-<div class="col-lg-3">
-	<div class="ibox">
+<div class="ibox">
     <div class="ibox-content">
     	<div id="mtChart"></div>
-    </div>
     </div>
 </div>
 <script>
@@ -14,7 +12,7 @@ $(document).ready(function(){
             type: 'spline',
             animation: Highcharts.svg, // don't animate in old IE
             marginRight: 10,
-            height: 250,
+            height: 400,
             events: {
                 load: function () {
 

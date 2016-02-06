@@ -1,8 +1,15 @@
 @* dashboard Template File *@
 @(param:Any)
-@psiGauge("")
-@instrumentAlarmPie("")
-@windMeter("")
-@particleChart("")
-@mtRealtimeChart("")
-@calibrationChart("")
+<div class="row">
+<div class="col-lg-9">
+	<div class="row">
+		@mtRealtimeChart("")
+	</div>
+	<div class="row">
+		@weatherWidget("")
+	</div>
+</div>
+<div class="col-lg-3">
+	@MiniMonitorTypeList()
+</div>
+</div>
