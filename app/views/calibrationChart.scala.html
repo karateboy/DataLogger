@@ -1,10 +1,8 @@
 @* calibrationChart Template File *@
 @(param: Any)
-<div class="col-lg-4">
-	<div class="ibox">
+<div class="ibox">
     <div class="ibox-content">
     	<div id="calibrationChart"></div>
-    </div>
     </div>
 </div>
 <script>
@@ -17,8 +15,11 @@ $(document).ready(function(){
                 alpha: 45,
                 beta: 0
             },
-    		height:250
+    		height:310
         },
+        colors:[
+				'#00FF00','#FF0000'],
+        
         legend: {
 			enabled : false
 		},

@@ -1,37 +1,52 @@
 @* monitorTypeRealtimeChart Template File *@
-@(param: Any)
+@(chartID: String)
 <div class="ibox">
     <div class="ibox-content">
-    	<div id="mtChart"></div>
+    	<div id="@chartID"></div>
     </div>
 </div>
 <script>
 $(document).ready(function(){
-    $('#mtChart').highcharts({
+	var chartID = "@chartID";
+	function dataGenerator(time) {
+        var data = [];
+        var i;
+
+        for (i = -19; i <= 0; i += 1) {
+            data.push({
+                x: time + i * 1000,
+                y: 2 + Math.random()
+            });
+        }
+        return data;
+    }
+    
+    $('#'+chartID).highcharts({
         chart: {
             type: 'spline',
-            animation: Highcharts.svg, // don't animate in old IE
+
             marginRight: 10,
-            height: 400,
+            height: 300,
+            
             events: {
                 load: function () {
-
                     // set up the updating of the chart each second
-                    var series = this.series[0];
+                    var series = this.series;
                     setInterval(function () {
-                        var x = (new Date()).getTime(), // current time
-                            y = 2 + Math.random();
-                        series.addPoint([x, y], true, true);
-                    }, 1000);
+                        var x = (new Date()).getTime();                            
+                        for(var i=0;i<2;i++){
+                        	var y = 2 + Math.random();
+                        	series[i].addPoint([x, y], true, true);    
+                        }
+                                                
+                    }, 2000);
                 }
             }
+            
         },
-        legend: {
-			enabled : false
-		},
 		navigation:{
 	    	buttonOptions: {
-	        	enabled: false
+	        	enabled: true
 	    	}
 	    },
 	    credits :{
@@ -41,7 +56,7 @@ $(document).ready(function(){
 		},
         
         title: {
-            text: '二氧化硫即時變化'
+            text: '測項即時變化'
         },
         xAxis: {
             type: 'datetime',
@@ -64,28 +79,15 @@ $(document).ready(function(){
                     Highcharts.numberFormat(this.y, 2);
             }
         },
-        legend: {
-            enabled: false
-        },
         exporting: {
             enabled: false
         },
         series: [{
             name: '二氧化硫',
-            data: (function () {
-                // generate an array of random data
-                var data = [],
-                    time = (new Date()).getTime(),
-                    i;
-
-                for (i = -19; i <= 0; i += 1) {
-                    data.push({
-                        x: time + i * 1000,
-                        y: 2 + Math.random()
-                    });
-                }
-                return data;
-            }())
+            data: dataGenerator(new Date().getTime())
+        },{
+            name: '臭氧',
+            data: dataGenerator(new Date().getTime())
         }]
     });
 });

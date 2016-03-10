@@ -27,15 +27,13 @@ object ModelHelper {
     val timestamp = DateTime.parse("2015-04-01")
     println(timestamp.toString())
   }
-  
-  def exceptionToString(e:Exception)={
-    import java.io.ByteArrayOutputStream
-    import java.io.PrintStream
-    val baos = new ByteArrayOutputStream;
-    val ps = new PrintStream(baos);
-    e.printStackTrace(ps);
-    ps.close();
-    baos.toString();
+
+  def logException(ex: Throwable) = {
+    import java.io.StringWriter
+    import java.io.PrintWriter
+    val sw = new StringWriter();
+    ex.printStackTrace(new PrintWriter(sw));
+    Logger.error(sw.toString())
   }
   
   def futureErrorHandler:PartialFunction[Throwable, Any] = {

@@ -43,23 +43,10 @@ class DataCollectManager extends Actor {
   
   def receive = {
     case NewInstrument(inst)=>
-       inst.instType match{
-         case InstrumentType.adam4017=>
-           try{
-             import Adam4017Collector._
-             val param = Adam4017.validateParam(inst.param)
-             val collector = Adam4017Collector.start(inst.serial_port, param)
-             
-             collectorMap += (inst._id -> collector)
-           }catch{
-             case ex:Throwable=>
-               Logger.error(ex.getMessage) 
-               throw ex
-           }
-         case InstrumentType.baseline9000=>
-           //FIXME...
-           Logger.info("Bypass collecting for now")
-       }
+      val instType = InstrumentType.map(inst.instType)
+      val collector = instType.driver.start(inst.protocol, inst.param)
+      collectorMap += (inst._id -> collector)
+      
     case RemoveInstrument(id:String)=>
       val actorOpt = collectorMap.get(id)
       if(actorOpt.isEmpty){

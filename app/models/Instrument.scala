@@ -6,34 +6,42 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.joda.time.LocalTime
-case class InstrumentInfo(_id: String, instType: InstrumentType.Value, 
-    protocol: Protocol.Value, protocolParam:String, monitorTypes:String)
+import Protocol.ProtocolParam
+case class InstrumentInfo(_id: String, instType: String, active:Boolean,
+    protocol: String, protocolParam:String, monitorTypes:String, calibrationTime:Option[String])
     
 case class Instrument(_id: String, instType: InstrumentType.Value, 
-    protocol: Protocol.Value, tcp_url: String, serial_port: Int, param: String){
+    protocol: ProtocolParam, param: String, active:Boolean=true){
+  
   def getMonitorTypes:List[MonitorType.Value] = {
-    instType match{
-      case InstrumentType.adam4017=>
-        val p = Adam4017.validateParam(param)
-        p.ch.flatMap  { _.mt }.toList
-      case InstrumentType.baseline9000=>
-        List(MonitorType.withName("CH4"))
-    }
+    val instTypeCase = InstrumentType.map(instType)
+    instTypeCase.driver.getMonitorTypes(param)
+  }
+  
+  def getCalibrationTime = {
+    val instTypeCase = InstrumentType.map(instType)
+    instTypeCase.driver.getCalibrationTime(param)
   }
   
   def getInfoClass={
     val mtStr = getMonitorTypes.map { MonitorType.map(_).desp }.mkString(",")
     val protocolParam =
-      protocol match{
+      protocol.protocol match{
       case Protocol.tcp=>
-        tcp_url
+        protocol.host.get
       case Protocol.serial=>
-        s"COM$serial_port" 
+        s"COM${protocol.comPort.get}" 
     }
-    InstrumentInfo(_id, instType, protocol, protocolParam, mtStr) 
+    val calibrationTime = getCalibrationTime.map { t => t.toString("HH:mm") }
+      
+    InstrumentInfo(_id, InstrumentType.map(instType).desp, active, Protocol.map(protocol.protocol), protocolParam, mtStr, calibrationTime) 
   }
-    
+  
+  def replaceParam(newParam:String)={
+    Instrument(_id, instType, protocol, newParam)
+  }
 }
+
 import org.mongodb.scala._
 import ModelHelper._
 
@@ -46,11 +54,19 @@ object Instrument {
   val collection = MongoDB.database.getCollection(collectionName)
   def toDocument(inst: Instrument) = {
     val json = Json.toJson(inst)
-    Document(json.toString())
+    val doc = Document(json.toString())
+    val param = doc.get("param").get.asString().getValue
+
+    val paramDoc = Document(param.toString())
+    
+    doc ++ Document("param" -> paramDoc)
   }
 
   def toInstrument(doc: Document) = {
-    val ret = Json.parse(doc.toJson()).validate[Instrument]
+    val param = doc.get("param").get.asDocument().toJson()
+    val doc1 = doc ++ Document("param"->param)
+    
+    val ret = Json.parse(doc1.toJson()).validate[Instrument]
     ret.fold(error => {
       throw new Exception(JsError.toJson(error).toString)
     },
@@ -81,4 +97,19 @@ object Instrument {
     waitReadyResult(f)
     true
   }
+  
+  def activate(id:String) = {
+    import org.mongodb.scala.model.Updates._
+    val f = collection.updateOne(equal("_id", id), set("active", true)).toFuture()
+    waitReadyResult(f)
+    true
+  }
+
+  def deactivate(id:String) = {
+    import org.mongodb.scala.model.Updates._
+    val f = collection.updateOne(equal("_id", id), set("active", false)).toFuture()
+    waitReadyResult(f)
+    true
+  }
+
 }

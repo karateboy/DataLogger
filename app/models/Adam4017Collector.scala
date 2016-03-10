@@ -6,16 +6,20 @@ import play.api.libs.concurrent.Akka
 import ModelHelper._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-import akka.actor.ActorContext
+
 object Adam4017Collector {
   import Adam4017._
+  import Protocol.ProtocolParam
+  
   case class PrepareCollect(com: Int, param: Adam4017Param)
   object Collect
 
   var count = 0
-  def start(com: Int, param: Adam4017Param)(implicit context:ActorContext) = {
+  def start(protocolParam:ProtocolParam, param: Adam4017Param)(implicit context:ActorContext) = {
     val collector = context.actorOf(Props[Adam4017Collector], name = "Adam4017Collector" + count)
     count += 1
+    assert(protocolParam.protocol == Protocol.serial)
+    val com = protocolParam.comPort.get
     collector ! PrepareCollect(com, param)
     collector
   }

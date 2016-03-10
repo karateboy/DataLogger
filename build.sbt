@@ -11,7 +11,7 @@ libraryDependencies ++= Seq(
   cache,
   ws,
   specs2 % Test,
-  "com.github.nscala-time" %% "nscala-time" % "2.8.0",
+  "com.github.nscala-time" %% "nscala-time" % "2.10.0",
 //  "org.scalikejdbc" %% "scalikejdbc"                  % "2.3.1",
 //  "org.scalikejdbc" %% "scalikejdbc-config"           % "2.3.1",
 //  "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.4.3", 
@@ -19,6 +19,8 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-ext" % "3.3.0", 
   "org.mongodb.scala" %% "mongo-scala-driver" % "1.1.0"
 )
+
+//libraryDependencies += "com.google.guava" % "guava" % "19.0"
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 

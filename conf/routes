@@ -38,6 +38,8 @@ GET		/ManageInstrument			controllers.Application.manageInstrument
 PUT		/Instrument					controllers.Application.newInstrument
 GET		/Instrument					controllers.Application.getInstrumentList
 DELETE  /Instrument/:ids			controllers.Application.removeInstrument(ids)
+PUT		/DeactivateInstrument/:ids	controllers.Application.deactivateInstrument(ids)
+PUT		/ActivateInstrument/:ids	controllers.Application.activateInstrument(ids)
 
 #Realtime
 GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()

@@ -24,17 +24,18 @@ function hideModal(){
   	</div>
 <div class="ibox float-e-margins">
   	<div class="ibox-content">
-  	<div class="col-lg-1 col-lg-offset-1">
-		<button type="button" class="btn btn-primary dim" data-toggle="modal" data-target="#newEquipModal">新增</button>							
+  	<div class="col-lg-3 col-lg-offset-1">
+		<button type="button" class="btn btn-primary dim" data-toggle="modal" data-target="#newEquipModal"><i class="fa fa-plus-circle"></i> 新增</button>
+		<button type="button" class="btn btn-primary dim" id="activateInstrument"><i class="fa fa-check-circle"></i> 啟用</button>
+		<button type="button" class="btn btn-primary dim" id="deactivateInstrument"><i class="fa fa-ban"></i> 停用</button>
+		<button type="button" class="btn btn-danger dim" id="deleteInstrument"><i class="fa fa-trash"></i> 刪除</button>							
 	</div>
-	<div class="col-lg-1">							
-		<button type="button" class="btn btn-danger dim" id="deleteInstrument">刪除</button>
-	</div>							
 	<table id="instrumentTable" class="table table-bordered table-hover" cellspacing="0" width="100%">
 		<thead>
             <tr>
                 <th>儀器名稱</th>
                 <th>種類</th>
+                <th>連線中</th>
                 <th>通訊協定</th>
                 <th>通訊參數</th>
                 <th>每日校正時刻</th>
@@ -56,6 +57,7 @@ $( document ).ready(function() {
 		columns: [
 		          { data: '_id' },
 		          { data: 'instType' },
+		          { data: 'active'},
 		          { data: 'protocol' },
 		          { data: 'protocolParam' },
 		          { data: 'calibrationTime',
@@ -72,44 +74,50 @@ $( document ).ready(function() {
 	        style: 'os'
 	    }
 	} );
+
+	function handler(url, action){
+		return function(){
+			var api = oTable.api();
+			var selected = api.rows({ selected: true }).data();
+			if(selected.length ==0){
+				alert("請選擇儀器");
+				return;
+			}
+			
+			var names='';
+			for(var i=0;i<selected.length;i++){
+				if(names.length == 0)
+					names += selected[i]._id;
+				else
+					names += "," + selected[i]._id;
+			}
+			$.ajax({
+				url: url+names,
+				data: JSON.stringify(names),
+				contentType: "application/json; charset=utf-8",
+				method: action,
+				dataType: "json",
+				success: function(ret){				
+					if(ret.ok){
+						alert("成功");
+					}else
+						alert("失敗:"+ret.msg);
+
+					api.ajax.reload();													
+				},
+				error: function(xhr, status, errorThrown){
+					alert("失敗:"+ errorThrown);
+				},
+
+				complete: function(xhr, status){
+				}					
+			});							
+		};
+	}
 	
-	$("#deleteInstrument").click(function(){
-		var api = oTable.api();
-		var selected = api.rows({ selected: true }).data();
-		if(selected.length ==0){
-			alert("請選擇要移除的儀器");
-			return;
-		}
-		
-		var names='';
-		for(var i=0;i<selected.length;i++){
-			if(names.length == 0)
-				names += selected[i]._id;
-			else
-				names += "," + selected[i]._id;
-		}
-		$.ajax({
-			url: "/Instrument/"+names,
-			data: JSON.stringify(names),
-			contentType: "application/json; charset=utf-8",
-			method: "DELETE",
-			dataType: "json",
-			success: function(ret){				
-				if(ret.ok){
-					alert("成功");
-				}else
-					alert("失敗:"+ret.msg);
+	$("#deactivateInstrument").click(handler("/DeactivateInstrument/", "PUT"));
+	$("#activateInstrument").click(handler("/ActivateInstrument/", "PUT"));
+	$("#deleteInstrument").click(handler("/Instrument/", "DELETE"));
 
-				api.ajax.reload();													
-			},
-			error: function(xhr, status, errorThrown){
-				alert("失敗:"+ errorThrown);
-			},
-
-			complete: function(xhr, status){
-			}					
-		});
-
-	});
 });
 </script>

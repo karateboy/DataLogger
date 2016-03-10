@@ -38,13 +38,8 @@
 	            <div class="col-lg-10">
 	            	<div class="btn-group" data-toggle="buttons">	            				
 	            		@for(pr<-Protocol.values.toList.sorted){
-	            			@if(pr == Protocol.values.toList.sorted.head){
-	            				<label class="btn btn-outline btn-primary dim active">
-								<input type="radio" name="protocol" id="@pr" checked>@Protocol.map(pr)</label>	
-	            			}else{
-	            				<label class="btn btn-outline btn-primary dim">
-								<input type="radio" name="protocol" id="@pr" >@Protocol.map(pr)</label>
-	            			}	            					
+	            			<label class="btn btn-outline btn-primary dim">
+							<input type="radio" name="protocol" id="@pr" >@Protocol.map(pr)</label>
 	            		}
 	            	</div>
 	            </div>	            			            		
@@ -52,9 +47,9 @@
 	        <h3>TCP參數</h3>
 	        <div id="tcpParam">
 		        <div class="form-group">
-		        	<label class="col-lg-2 control-label">URL</label>
+		        	<label class="col-lg-2 control-label">主機位址</label>
 	    	        <div class="col-lg-10">
-	    	        	<input type="text" id="tcp_url" value="127.0.0.1:1234">
+	    	        	<input type="text" id="host" value="localhost">
 	        	    </div>	            			            		
 	        	</div>
 	        </div>
@@ -63,7 +58,7 @@
 	        	<div class="form-group">
 		        	<label class="col-lg-2 control-label">COM</label>
 	    	        <div class="col-lg-10">
-	    	        	<input type="number" id="serial_port" value="1">
+	    	        	<input type="number" id="comPort" value="1">
 	        	    </div>	            		
 	        	</div>	        
 	        </div>
@@ -75,7 +70,10 @@
         	</div>
             <div id="baseline9000Cfg" style="display:none">
             	@baseline9000Config("instrumentConfig")
-            </div>            
+            </div> 
+            <div id="tapiCfg" style="display:none">
+            	@tapiConfig("instrumentConfig")
+            </div>           
         </section>
         <h3>結束</h3>
         <section>
@@ -179,8 +177,15 @@ $( document ).ready(function() {
 				    alert("請選擇通訊協定");
 				    return false;
 			    }
-			    var instrumentType = $("input[name='instType']:checked")[0].id
-			    $("#"+instrumentType + "Cfg").css('display','block');
+			    var tapiInstrument=['t100', 't200', 't300', 't400', 't500', 't600', 't700'];
+			    var instType = $("input[name='instType']:checked")[0].id
+			    if(tapiInstrument.indexOf(instType) != -1){ // TAPI instrument
+			    	$("#tapiCfg").css('display','block');
+			    	console.log(instrumentConfig[instType]);
+			    	instrumentConfig[instType].defaultValue(instType);
+			    }else{
+			    	$("#"+instType + "Cfg").css('display','block');
+			    }
 		    }
 		    
 		    if(newIndex == 3){
@@ -191,8 +196,8 @@ $( document ).ready(function() {
 			    var summary = "<strong>儀器名稱:</strong>"+$("#name").val() + "<br/>";
 			    summary += "<strong>儀器種類:</strong>" + instrumentTypes[instrumentType].desp + "<br/>";
 			    summary += "<strong>通訊協定:</strong>" + $("input[name='protocol']:checked")[0].id + "<br/>";			    
-			    summary += "<strong>TCP參數:</strong>" + $("#tcp_url").val() + "<br/>";
-			    summary += "<strong>RS232參數:</strong>COM" + $("#serial_port").val() + "<br/>";
+			    summary += "<strong>TCP參數:</strong>" + $("#host").val() + "<br/>";
+			    summary += "<strong>RS232參數:</strong>COM" + $("#comPort").val() + "<br/>";
 			    summary += "<strong>儀器細部設定:</strong>" + instrumentConfig[instrumentType].summary();
 			    $('#summary').html(summary);
 		    }
@@ -207,23 +212,20 @@ $( document ).ready(function() {
 	    },
 	    onFinished: function (event, currentIndex)
 	    {
-		    /*
-		    var calibrationTime;
-		    if($("#calibrationTime").val().length == 0)
-		    	calibrationTime = null;
-		    else
-		    	calibrationTime = $("#calibrationTime").val();
-	    	*/
-	    	var param = instrumentConfig['adam4017'].param();
+	    	var instType = $("input[name='instType']:checked")[0].id
+	    	var param = instrumentConfig[instType].param();
 	    	console.log(param);
 	    	
 		    var newInstrument= {
 				_id:$("#name").val(),
 				instType:$("input[name='instType']:checked")[0].id,
-				protocol:$("input[name='protocol']:checked")[0].id,
-				tcp_url:$("#tcp_url").val(),
-				serial_port:parseInt($("#serial_port").val()),
-				param:JSON.stringify(param)
+				protocol:{
+					protocol:$("input[name='protocol']:checked")[0].id,
+					host:$("#host").val(),
+					comPort:parseInt($("#comPort").val()),
+				},
+				param:JSON.stringify(param),
+				active:true
 		    };
 			$.ajax({
 				url: "/Instrument",

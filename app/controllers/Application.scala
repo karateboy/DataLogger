@@ -129,14 +129,14 @@ object Application extends Controller {
           BadRequest(e.toString)
       }
   }
-  
+
   def getInstrumentTypes = Security.Authenticated {
-    implicit val write = Json.writes[InstrumentType]
-    val iTypes = InstrumentType.map.values.toSeq
+    implicit val write = Json.writes[InstrumentTypeInfo]
+    val iTypes = InstrumentType.map.values.toSeq.map { t => InstrumentTypeInfo(t.id, t.desp, t.protocol) }
     Ok(Json.toJson(iTypes))
   }
-  
-  def newInstrument = Security.Authenticated(BodyParsers.parse.json){
+
+  def newInstrument = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       val instrumentResult = request.body.validate[Instrument]
 
@@ -145,47 +145,73 @@ object Application extends Controller {
           Logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
-        instrument => {
-          try{
-            instrument.instType match{
-              case InstrumentType.adam4017=>
-                Adam4017.validateParam(instrument.param)
-              case InstrumentType.baseline9000=>
-                //FIXME 
-            }
-            Instrument.newInstrument(instrument)
-            DataCollectManager.startCollect(instrument)
+        rawInstrument => {
+          try {
+            val instType = InstrumentType.map(rawInstrument.instType)
+            val instParam = instType.driver.verifyParam(rawInstrument.param)
+            val newInstrument = rawInstrument.replaceParam(instParam)
+            Instrument.newInstrument(newInstrument)
+            DataCollectManager.startCollect(newInstrument)
             Ok(Json.obj("ok" -> true))
-          }catch{
-            case ex:Throwable=>
-              Logger.error(ex.getMessage)
+          } catch {
+            case ex: Throwable =>
+              ModelHelper.logException(ex)
               Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
-          }          
+          }
         })
   }
-  
+
   def manageInstrument = Security.Authenticated {
     Ok(views.html.manageInstrument(""))
   }
-  
+
   def getInstrumentList = Security.Authenticated {
     import Instrument._
     val ret = Instrument.getInstrumentList()
     val ret2 = ret.map { _.getInfoClass }
     Ok(Json.toJson(ret2))
   }
-  
-  def removeInstrument(instruments:String)  = Security.Authenticated {
+
+  def removeInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
-    try{
-      ids.foreach{ DataCollectManager.stopCollect(_)}
-      ids.map { Instrument.delete }  
-    }catch{
-      case ex:Throwable=>  
+    try {
+      ids.foreach { DataCollectManager.stopCollect(_) }
+      ids.map { Instrument.delete }
+    } catch {
+      case ex: Throwable =>
         Logger.error(ex.toString)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
-    
+
     Ok(Json.obj("ok" -> true))
   }
+
+  def deactivateInstrument(instruments: String) = Security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.foreach { DataCollectManager.stopCollect(_) }
+      ids.map { Instrument.deactivate }
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.toString)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
+
+  def activateInstrument(instruments: String) = Security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.foreach { DataCollectManager.stopCollect(_) }
+      ids.map { Instrument.activate }
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.toString)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
+
 }
