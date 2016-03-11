@@ -160,8 +160,11 @@ h5 {
   font-size: 12px;
 }
 .nav-header {
-  padding: 33px 25px;
-  background: url("patterns/header-profile.png") no-repeat;
+  padding-top: 180px;
+  padding-right: 30px;
+  padding-left: 30px;
+  padding-bottom: 30px;
+  background: url("images/logo.png") no-repeat;
 }
 .pace-done .nav-header {
   transition: all 0.4s;
@@ -298,7 +301,7 @@ body.mini-navbar .navbar-default .nav > li > .nav-second-level li a {
   text-align: center;
   font-size: 18px;
   font-weight: 600;
-  color: white;
+  color: green;
   display: none;
   padding: 18px 0;
 }

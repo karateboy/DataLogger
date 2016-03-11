@@ -23,10 +23,10 @@ object InstrumentType extends Enumeration{
   //val baseline9000 = Value
   val adam4017 = Value
   val t100 = Value
-  def map = Map(
+  val map = Map(
       //baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(tcp, serial)),
       adam4017->InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017),
-      t100->InstrumentType(t100, "TAPI T100", List(tcp), TapiTxx.getModelDriver("T100"))
+      t100->InstrumentType(t100, "TAPI T100", List(tcp), TapiT100)
       ) 
 }
 
