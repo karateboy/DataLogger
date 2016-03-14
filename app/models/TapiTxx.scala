@@ -6,7 +6,7 @@ import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
-case class TapiConfig(slaveID: String, calibrationTime: Option[LocalTime], monitorTypes: Option[List[MonitorType.Value]])
+case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[MonitorType.Value]])
 case class ModelConfig(model: String, monitorTypeIDs: List[String])
 
 object TapiTxx {
@@ -22,15 +22,18 @@ object TapiTxx {
   case class CoilReg(addr: Int, desc: String)
   case class ModelReg(inputRegs:List[InputReg], holdingRegs:List[HoldingReg], 
       modeRegs:List[DiscreteInputReg], warnRegs:List[DiscreteInputReg], coilRegs:List[CoilReg])
+  case class ModelRegValue(inputRegs:List[Float], holdingRegs:List[Float], 
+      modeRegs:List[Boolean], warnRegs:List[Boolean], coilRegs:List[Boolean])
   
 }
 
-class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
+abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
   implicit val cfgReads = Json.reads[TapiConfig]
   implicit val cfgWrites = Json.writes[TapiConfig]
   import Protocol.ProtocolParam
   import TapiTxx._
   
+  def getModel = modelConfig.model
   def readModelSetting = {
     val model = modelConfig.model
     val driverConfig = ConfigFactory.load(model)
@@ -116,12 +119,6 @@ class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
       config.monitorTypes.get
     else
       List.empty[MonitorType.Value]
-  }
-
-  import akka.actor.ActorContext
-  override def start(protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
-    val config = validateParam(param)
-    TapiTxxCollector.start(protocolParam, config)
   }
 
   def validateParam(json: String) = {

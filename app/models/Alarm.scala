@@ -18,31 +18,49 @@ import play.api.libs.json.Reads._
 //                  'S':"System"
 
 object Alarm {
-  def getSrc(mt: MonitorType.Value) = s"T:${mt.toString}"
-  def getSrc(inst: Instrument) = s"I:${inst._id}"
-  def getSrc() = "S:System"
-  case class Alarm(time: DateTime, src: String, alarmType: String, trigger: Boolean)
+  object Level extends Enumeration{
+    val INFO = Value
+    val WARN = Value
+    val ERR = Value
+    val map = Map(INFO->"通知", WARN->"警告", ERR->"錯誤")
+  }
+  
+  def Src(mt: MonitorType.Value) = s"T:${mt.toString}"
+  def Src(inst: Instrument) = s"I:${inst._id}"
+  def instStr(id:String)= s"I:$id"
+  def Src() = "S:System"
+  
+  def getSrcForDisplay(src:String)={
+    val part = src.split(':')
+    val srcType = part(0) match{
+      case "S"=>
+        "系統"
+      case "I"=>
+        "設備:" + part(1)
+      case "T"=>
+        "測項:" + MonitorType.map(MonitorType.withName(part(1))).desp
+    }
+    srcType
+  }
+  
+  case class Alarm(time: DateTime, src: String, level: Level.Value, desc: String)
 
-  implicit val format = Json.format[Alarm]
+  //implicit val format = Json.format[Alarm]
 
   val collectionName = "alarms"
   val collection = MongoDB.database.getCollection(collectionName)
   def toDocument(ar: Alarm) = {
     import org.mongodb.scala.bson._
-    Document("time"->(ar.time:BsonDateTime), "src"->ar.src, "alarmType"->ar.alarmType, "trigger"->ar.trigger)
+    Document("time"->(ar.time:BsonDateTime), "src"->ar.src, "level"->ar.level.toString(), "desc"->ar.desc)
   }
 
   def toAlarm(doc: Document) = {
     val time = new DateTime(doc.get("time").get.asDateTime().getValue)
     val src = doc.get("src").get.asString().getValue
-    val alarmType = doc.get("alarmType").get.asString().getValue
-    val trigger = doc.get("trigger").get.asBoolean().getValue
-    Alarm(time, src, alarmType, trigger)
+    val level = doc.get("level").get.asString().getValue
+    val desc = doc.get("desc").get.asString().getValue
+    Alarm(time, src, Level.withName(level), desc)
   }
-
-  val defaultAlarm = List(
-    Alarm(DateTime.now, getSrc(), "", true),
-    Alarm(DateTime.now, "T:WIN_SPEED", "", true))
 
   def init(colNames: Seq[String]) {
     import org.mongodb.scala.model.Indexes._
@@ -51,8 +69,7 @@ object Alarm {
       f.onFailure(futureErrorHandler)
       f.onSuccess({
         case _: Seq[_] =>
-          collection.createIndex(ascending("time", "src"))
-          collection.insertMany(defaultAlarm.map { toDocument }).toFuture()
+          collection.createIndex(ascending("time", "level", "src"))
       })
     }
   }
@@ -66,9 +83,18 @@ object Alarm {
     val startB:BsonDateTime = start
     val endB:BsonDateTime = end
     val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(ascending("time")).toFuture()
-    //val f = collection.find().toFuture()
+
     val docs = waitReadyResult(f)
     docs.map { toAlarm }
   }
 
+  def log(ar:Alarm){
+    //None blocking...
+    collection.insertOne(toDocument(ar)).toFuture()
+  }
+  
+  def log(src: String, level: Level.Value, desc: String){
+    val ar = Alarm(DateTime.now(), src, level, desc)
+    log(ar)
+  }
 }

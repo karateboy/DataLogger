@@ -30,14 +30,14 @@ case class Stat(
   }
 
   val isEffective = {
-    effectPercent.isDefined && effectPercent.get > 75 
+    effectPercent.isDefined && effectPercent.get > 75
   }
   val overPercent = {
     if (count > 0)
       Some(overCount.toDouble * 100 / total)
     else
       None
-  }  
+  }
 }
 
 object Query extends Controller {
@@ -88,8 +88,8 @@ object Query extends Controller {
     count
   }
 
-  def getPeriodReportMap(mt: MonitorType.Value, period: Period, statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime) = {
-    val recordList = Record.getRecordMap(Record.HourCollection)(List(mt), start, end)(mt)
+  def getPeriodReportMap(mt: MonitorType.Value, tabType: TableType.Value, period: Period, statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime) = {
+    val recordList = Record.getRecordMap(TableType.mapCollection(tabType))(List(mt), start, end)(mt)
     def periodSlice(period_start: DateTime, period_end: DateTime) = {
       recordList.dropWhile { _.time < period_start }.takeWhile { _.time < period_end }
     }
@@ -179,11 +179,15 @@ object Query extends Controller {
     Map(pairs: _*)
   }
 
-  def trendHelper(monitorTypes: Array[MonitorType.Value], reportUnit: ReportUnit.Value, start: DateTime, end: DateTime) = {
+  def trendHelper(monitorTypes: Array[MonitorType.Value], tabType: TableType.Value, reportUnit: ReportUnit.Value, start: DateTime, end: DateTime) = {
 
     val windMtv = MonitorType.WIN_DIRECTION
     val period: Period =
       reportUnit match {
+        case ReportUnit.Min =>
+          1.minute
+        case ReportUnit.TenMin =>
+          10.minute
         case ReportUnit.Hour =>
           1.hour
         case ReportUnit.Day =>
@@ -204,7 +208,7 @@ object Query extends Controller {
       val mtReportPairs =
         for {
           mt <- monitorTypes
-          reportMap = getPeriodReportMap(mt, period)(start, end)
+          reportMap = getPeriodReportMap(mt, tabType, period)(start, end)
         } yield {
           mt -> reportMap
         }
@@ -243,6 +247,10 @@ object Query extends Controller {
 
     val title =
       reportUnit match {
+        case ReportUnit.Min =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+        case ReportUnit.TenMin =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"      
         case ReportUnit.Hour =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Day =>
@@ -335,15 +343,16 @@ object Query extends Controller {
     chart
   }
 
-  def historyTrendChart(monitorTypeStr: String, reportUnitStr: String,
+  def historyTrendChart(monitorTypeStr: String, tabTypeStr: String, reportUnitStr: String,
                         startStr: String, endStr: String, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
       import scala.collection.JavaConverters._
       val monitorTypeStrArray = monitorTypeStr.split(':')
       val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
+      val tabType = TableType.withName(tabTypeStr)
       val reportUnit = ReportUnit.withName(reportUnitStr)
       val (start, end) =
-        if (reportUnit == ReportUnit.Hour) {
+        if (reportUnit == ReportUnit.Hour||reportUnit == ReportUnit.Min || reportUnit == ReportUnit.TenMin) {
           (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
         } else if (reportUnit == ReportUnit.Day) {
@@ -356,7 +365,7 @@ object Query extends Controller {
 
       val outputType = OutputType.withName(outputTypeStr)
 
-      val chart = trendHelper(monitorTypes, reportUnit, start, end)
+      val chart = trendHelper(monitorTypes, tabType, reportUnit, start, end)
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
@@ -380,19 +389,25 @@ object Query extends Controller {
       Ok(views.html.history())
   }
 
-  def historyReport(monitorTypeStr: String,
+  def historyReport(monitorTypeStr: String, tabTypeStr: String,
                     startStr: String, endStr: String) = Security.Authenticated {
     implicit request =>
       import scala.collection.JavaConverters._
       val monitorTypeStrArray = monitorTypeStr.split(':')
       val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
+      val tabType = TableType.withName(tabTypeStr)
       val (start, end) =
         (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
           DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
 
-      val timeList = getPeriods(start, end, 1.hour)
+      val timeList = tabType match {
+        case TableType.hour =>
+          getPeriods(start, end, 1.hour)
+        case TableType.min =>
+          getPeriods(start, end, 1.minute)
+      }
 
-      val recordMap = Record.getRecordMap(Record.HourCollection)(monitorTypes.toList, start, end)
+      val recordMap = Record.getRecordMap(TableType.mapCollection(tabType))(monitorTypes.toList, start, end)
       val recordTimeMap = recordMap.map { p =>
         val recordSeq = p._2
         val timePair = recordSeq.map { r => r.time -> r }

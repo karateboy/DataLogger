@@ -203,7 +203,7 @@ object Application extends Controller {
   def activateInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      ids.foreach { DataCollectManager.stopCollect(_) }
+      ids.foreach { DataCollectManager.startCollect(_) }
       ids.map { Instrument.activate }
     } catch {
       case ex: Throwable =>

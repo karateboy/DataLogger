@@ -38,6 +38,21 @@
 	            			</div>            		
 	                    </div>
 	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">資料來源</label>						
+	            			<div class="col-lg-11 btn-group" data-toggle="buttons">
+           						@for(tt<-TableType.values.toList.sorted){
+           							@if(tt == TableType.values.toList.sorted.last){
+           								<label class="btn btn-outline btn-primary dim active">
+										<input type="radio" name="tableType" id="@tt" checked>@TableType.map(tt)</label>
+           							}else{
+           								<label class="btn btn-outline btn-primary dim">
+										<input type="radio" name="tableType" id="@tt">@TableType.map(tt)</label>
+           							}            								
+            					}
+	            			</div>            		
+	                    </div>
+	                    
+	                    <div class="form-group">
 	            			<label class="col-lg-1 control-label">圖表類型</label>						
 	            			<div class="col-lg-11 btn-group" data-toggle="buttons">
            						<label class="btn btn-outline btn-primary dim active">
@@ -125,12 +140,12 @@ $( document ).ready(function() {
 
     $("input[name='reportUnit']").change(function(){
 		var me = $(this)
-		if(me.attr('id') == 'hour'){
+		if(me.attr('id') == 'Hour'||me.attr('id') == 'Min'||me.attr('id') == 'TenMin'){
 			$('#reportStart').data("DateTimePicker").format("YYYY-M-D HH:mm");
 			$('#reportEnd').data("DateTimePicker").format("YYYY-M-D HH:mm");
 			$('#reportStart').data("DateTimePicker").daysOfWeekDisabled([]);
 			$('#reportEnd').data("DateTimePicker").daysOfWeekDisabled([]);						
-		}else if(me.attr('id') == 'day'){
+		}else if(me.attr('id') == 'Day'){
 			$('#reportStart').data("DateTimePicker").format("YYYY-M-D");
 			$('#reportEnd').data("DateTimePicker").format("YYYY-M-D");
 			$('#reportStart').data("DateTimePicker").daysOfWeekDisabled([]);
@@ -190,7 +205,9 @@ $( document ).ready(function() {
 				monitorTypeParam += ':' + monitorTypes[i].id;
 		}	
 
-		var base_url = 	monitorTypeParam + "/" + reportUnit + "/"+reportStart + "/" + reportEnd;
+		var tabType = $("input[name='tableType']:checked").attr('id');
+		
+		var base_url = 	monitorTypeParam + "/" + tabType + "/" + reportUnit + "/"+reportStart + "/" + reportEnd;
 		var url = "/JSON/HistoryTrend/" + base_url; 
 		function pointFormatter(){
 			var d = new Date(this.x);

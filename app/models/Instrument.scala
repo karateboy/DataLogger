@@ -91,7 +91,12 @@ object Instrument {
     waitReadyResult(f).map { toInstrument }
   }
   
-  import org.mongodb.scala.model.Filters._
+  import org.mongodb.scala.model.Filters._  
+  def getInstrument(id:String) = {
+    val f = collection.find(equal("_id", id)).toFuture()
+    waitReadyResult(f).map { toInstrument }
+  }
+  
   def delete(id:String) = {
     val f = collection.deleteOne(equal("_id", id)).toFuture()
     waitReadyResult(f)

@@ -13,21 +13,17 @@
 	<tr>		
 		<th>時間</th>
 		<th>來源</th>
-		<th>種類</th>
-		<th>事件</th>
+		<th>層級</th>
+		<th>說明</th>
 	</tr>
 </thead>
 <tbody>
-	@for(a <- report){
+	@for(ar <- report){
 		<tr>
-			<td>@a.time.toString("YYYY/MM/dd HH:mm")</td>
-			<td>@a.src</td>
-			<td>@a.alarmType</td>
-			@if(a.trigger){
-				<td>觸發</td>
-			}else{
-				<td>解除</td>
-			}
+			<td>@ar.time.toString("YYYY/MM/dd HH:mm")</td>
+			<td>@getSrcForDisplay(ar.src)</td>
+			<td>@Level.map(ar.level)</td>
+			<td>@ar.desc</td>
 		</tr>
 	}
 </tbody>

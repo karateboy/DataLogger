@@ -33,16 +33,28 @@ object MonitorStatus {
   val collectionName = "status"
   val collection = MongoDB.database.getCollection(collectionName)
   
+  val normalStatus = "010"
+  val overNormalStatus = "011"
+  val belowNormalStatus = "012"
+  val zeroCalibrationStatus = "020"
+  val spanCalibrationStatus = "021"
+  val invalidDataStatus = "030"
+  val repairStatus = "031"
+  val exceedRangeStatus = "032"
+  
+  
   val defaultStatus = List(
-    MonitorStatus("010", "正常量測值"),
-    MonitorStatus("011", "超過預設高值測值"),
-    MonitorStatus("012", "低於預設低值測值"),
-    MonitorStatus("020", "零點偏移測試量測值"),
-    MonitorStatus("021", "全幅偏移測試量測值"),
-    MonitorStatus("030", "無效數據"),
-    MonitorStatus("031", "監測設施維修、保養量測值"),
-    MonitorStatus("032", "超過儀器量測範圍")
+    MonitorStatus(normalStatus, "正常量測值"),
+    MonitorStatus(overNormalStatus, "超過預設高值測值"),
+    MonitorStatus(belowNormalStatus, "低於預設低值測值"),
+    MonitorStatus(zeroCalibrationStatus, "零點偏移測試量測值"),
+    MonitorStatus(spanCalibrationStatus, "全幅偏移測試量測值"),
+    MonitorStatus(invalidDataStatus, "無效數據"),
+    MonitorStatus(repairStatus, "監測設施維修、保養量測值"),
+    MonitorStatus(exceedRangeStatus, "超過儀器量測範圍")
   )
+  
+  
   import org.mongodb.scala._
   def toDocument(ms:MonitorStatus)={
     Document(Json.toJson(ms).toString())

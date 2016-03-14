@@ -24,6 +24,20 @@
 	            			</div>	            			            		
 	                    </div>
 	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">資料來源</label>						
+	            			<div class="col-lg-11 btn-group" data-toggle="buttons">
+           						@for(tt<-TableType.values.toList.sorted){
+           							@if(tt == TableType.values.toList.sorted.last){
+           								<label class="btn btn-outline btn-primary dim active">
+										<input type="radio" name="tableType" id="@tt" checked>@TableType.map(tt)</label>
+           							}else{
+           								<label class="btn btn-outline btn-primary dim">
+										<input type="radio" name="tableType" id="@tt">@TableType.map(tt)</label>
+           							}            								
+            					}
+	            			</div>            		
+	                    </div>	                    
+	                    <div class="form-group">
 	            			<label class="col-lg-1 control-label">查詢區間</label>	
 	            			<div class="col-lg-5">
 	            				<div class="input-daterange input-group" id="datepicker">
@@ -53,12 +67,12 @@
 <script>
 $( document ).ready(function() {
 	$('#reportStart').datetimepicker({
-		format: 'YYYY-M-D HH:00',
+		format: 'YYYY-M-D HH:mm',
 		defaultDate: moment().subtract(1, 'days'),
     	locale: "zh-TW"
 	});
 	$('#reportEnd').datetimepicker({
-		format: 'YYYY-M-D HH:00',
+		format: 'YYYY-M-D HH:mm',
 		defaultDate: moment(),
     	locale: "zh-TW"
 	});
@@ -109,7 +123,8 @@ $( document ).ready(function() {
 				monitorTypeParam += ':' + monitorTypes[i].id;
 		}	
 
-		var base_url = 	monitorTypeParam + "/"+reportStart + "/" + reportEnd;
+		var tabType = $("input[name='tableType']:checked").attr('id');
+		var base_url = 	monitorTypeParam + "/" + tabType + "/" + reportStart + "/" + reportEnd;
 		var url = "/HistoryReport/" + base_url; 
 		console.log(url);
 		

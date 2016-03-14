@@ -41,9 +41,9 @@ object Adam4017 extends DriverOps {
 
   import Protocol.ProtocolParam
 
-  override def start(protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
+  override def start(id:String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
     val driverParam = Adam4017.validateParam(param)
-    Adam4017Collector.start(protocolParam, driverParam)
+    Adam4017Collector.start(id, protocolParam, driverParam)
   }
 
   def stop = {
