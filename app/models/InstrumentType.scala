@@ -8,7 +8,7 @@ case class InstrumentType(id:InstrumentType.Value ,desp:String, protocol:List[Pr
 trait DriverOps {
   import Protocol.ProtocolParam
   import akka.actor._
-
+  
   def verifyParam(param:String):String
   def getMonitorTypes(param:String):List[MonitorType.Value]
   def getCalibrationTime(param:String):Option[LocalTime]

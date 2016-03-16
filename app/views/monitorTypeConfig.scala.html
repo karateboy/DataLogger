@@ -26,6 +26,7 @@
             		<thead>
             			<tr>
             				<th>測項代碼</th>
+            				<th>測量儀器</th>
             				<th>名稱</th>
             				<th>單位</th>
             				<th>小時內控值</th>
@@ -38,9 +39,10 @@
             			</tr>
             		</thead>
             		<tbody>
-            			@for(mt<-MonitorType.mtvList){
+            			@for(mt<-MonitorType.activeMtvList){
             				<tr id="@map(mt)._id">
             					<th>@map(mt)._id</th>
+            					<th>@map(mt).measuredBy</th>
             					<td col="desp">@map(mt).desp</td>
             					<td col="unit">@map(mt).unit</td>
             					<td col="std_internal">@MonitorType.format(mt, map(mt).std_internal) </td>
@@ -71,7 +73,7 @@ $(document).ready(function() {
 				url: dataTableL10N,							
 			},
         	searching: false,
-        	ordering:  false,
+        	ordering:  true,
 			paging: false
         });
 		

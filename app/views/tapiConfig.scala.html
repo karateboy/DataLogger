@@ -7,23 +7,44 @@
     </div>	            		
 </div>
 <div class="form-group">
-	<label class="col-lg-2 control-label">每日校正時間</label>
+	<label class="col-lg-2 control-label">每日校正時間:</label>
    	<div class="col-lg-4">
     	<input type="time" id="calibrationTime" class="form-control" >
     </div>	            		
 </div>
+<div class="form-group">
+	<label class="col-lg-2 control-label">校正上升時間(秒):</label>
+   	<div class="col-lg-4">
+    	<input type="number" id="raiseTime" class="form-control" >
+    </div>	            		
+</div>
+<div class="form-group">
+	<label class="col-lg-2 control-label">校正下降時間(秒):</label>
+   	<div class="col-lg-4">
+    	<input type="number" id="downTime" class="form-control" >
+    </div>	            		
+</div>
 <script>
-var summary = function tapi_getSummary(){
-	var desc="";
-	desc += "<br/>slave ID:" + $("#slaveID").val();
-	desc += "<br/>校正時間:" + $("#calibrationTime").val();
-	return desc;
+var summary = function(model){
+	return function(){
+		var desc="";
+		desc += "<br/>slave ID:" + $("#slaveID").val();
+		if(model != 't700'){
+			desc += "<br/>校正時間:" + $("#calibrationTime").val();
+			desc += "<br/>校正上升時間:" + $("#raiseTime").val();
+			desc += "<br/>校正下降時間:" + $("#downTime").val();
+		}
+		return desc;
+	}
 }
+
 
 var getParam = function tapi_getParam(){	
 	var param={
 			slaveID:parseInt($("#slaveID").val()),
-			calibrationTime:$("#calibrationTime").val()
+			calibrationTime:$("#calibrationTime").val(),
+			raiseTime:parseInt($("#raiseTime").val()),
+			downTime:parseInt($("#downTime").val())
 		};
 	
 	return param;
@@ -34,39 +55,52 @@ var validate = function(model){
 			alert("沒有設定slaveID!");
 			return false;
 		}
+		if(model == 't700')
+			return true;
 		
 		if($("#calibrationTime").val().length ==0){
 			alert("沒有設定校正時間!");
 			return false;
 		}
-		
+
+		if($("#raiseTime").val().length ==0){
+			alert("沒有設定校正上升時間!");
+			return false;
+		}
+
+		if($("#downTime").val().length ==0){
+			alert("沒有設定校正下降時間!");
+			return false;
+		}
 		return true;					
 	}
 
 }
-var setDefault = function(model){
+var setDefault = function(model, raiseTime, downTime){
 	return function(){
-		$("#slaveID").val(model);		 
+		$("#slaveID").val(model);
+		$("#raiseTime").val(raiseTime);
+		$("#downTime").val(downTime);				 
 	}
 }
 
-function getTapiConfig(model){
+function getTapiConfig(model, raiseTime, downTime){
 	var taipConfig={
-			summary:summary,
+			summary:summary(model),
 			param:getParam,
 			validate:validate(model),
-			defaultValue:setDefault(model)
+			defaultValue:setDefault(model, raiseTime, downTime)
 		};
 	return taipConfig;
 }
 
 </script>
 <script>
-@{obj}['t100'] = getTapiConfig(100);
-@{obj}['t200'] = getTapiConfig(200);
-@{obj}['t300'] = getTapiConfig(300);
-@{obj}['t400'] = getTapiConfig(400);
-@{obj}['t500'] = getTapiConfig(500);
-@{obj}['t600'] = getTapiConfig(600);
-@{obj}['t700'] = getTapiConfig(700);
+@{obj}['t100'] = getTapiConfig(100, 300, 300);
+@{obj}['t200'] = getTapiConfig(200, 300, 300);
+@{obj}['t300'] = getTapiConfig(300, 300, 300);
+@{obj}['t400'] = getTapiConfig(400, 300, 300);
+@{obj}['t500'] = getTapiConfig(500, 300, 300);
+@{obj}['t600'] = getTapiConfig(600, 300, 300);
+@{obj}['t700'] = getTapiConfig(700, 300, 300);
 </script>

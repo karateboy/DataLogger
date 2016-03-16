@@ -151,6 +151,10 @@ object Application extends Controller {
             val instParam = instType.driver.verifyParam(rawInstrument.param)
             val newInstrument = rawInstrument.replaceParam(instParam)
             Instrument.newInstrument(newInstrument)
+            val mtList = instType.driver.getMonitorTypes(instParam)
+            for (mt <- mtList) {
+              MonitorType.updateMonitorTypeInstrument(mt, newInstrument._id)
+            }
             DataCollectManager.startCollect(newInstrument)
             Ok(Json.obj("ok" -> true))
           } catch {
@@ -178,7 +182,7 @@ object Application extends Controller {
       ids.foreach { DataCollectManager.stopCollect(_) }
       ids.map { Instrument.delete }
     } catch {
-      case ex: Throwable =>
+      case ex: Exception =>
         Logger.error(ex.toString)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
@@ -203,8 +207,8 @@ object Application extends Controller {
   def activateInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      ids.foreach { DataCollectManager.startCollect(_) }
-      ids.map { Instrument.activate }
+      val f = ids.map { Instrument.activate }
+      ids.foreach { DataCollectManager.startCollect(_) }      
     } catch {
       case ex: Throwable =>
         Logger.error(ex.toString)
@@ -214,4 +218,41 @@ object Application extends Controller {
     Ok(Json.obj("ok" -> true))
   }
 
+  def toggleMaintainInstrument(instruments: String) = Security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.map { id =>
+        Instrument.getInstrument(id).map { inst =>
+          val newState =
+            if (inst.state == MonitorStatus.MaintainStat)
+              MonitorStatus.NormalStat
+            else
+              MonitorStatus.MaintainStat
+
+          DataCollectManager.setInstrumentState(id, newState)
+        }
+      }
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.toString)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
+
+  def calibrateInstrument(instruments: String) = Security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.map { id =>        
+          DataCollectManager.setInstrumentState(id, MonitorStatus.ZeroCalibrationStat)        
+      }
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.toString)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
 }

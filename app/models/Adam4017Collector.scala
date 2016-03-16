@@ -12,7 +12,7 @@ object Adam4017Collector {
   import Protocol.ProtocolParam
 
   case class PrepareCollect(id: String, com: Int, param: Adam4017Param)
-  object Collect
+  case object Collect
 
   var count = 0
   def start(id: String, protocolParam: ProtocolParam, param: Adam4017Param)(implicit context: ActorContext) = {
@@ -60,6 +60,8 @@ class Adam4017Collector extends Actor {
     context.parent ! ReportData(dataList.toList)
   }
 
+  import DataCollectManager._
+  var collectorState = MonitorStatus.NormalStat
   def receive = {
     case PrepareCollect(id, com, param) =>
       instId = id
@@ -77,6 +79,9 @@ class Adam4017Collector extends Actor {
       if (str != null) {
         decode(str)
       }
+    case SetState(id, state)=>
+      Logger.info(s"$self => $state")
+      collectorState = state
   }
 
   override def postStop(): Unit = {

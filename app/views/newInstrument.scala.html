@@ -6,7 +6,6 @@
 	}
 	var instrumentConfig={};
 </script>
-
 	<form id="new-instrument-form" class="form-horizontal" action="#">
 		<div>
         <h3>基本資料</h3>
@@ -84,6 +83,13 @@
 		</form>
 <script>
 $( document ).ready(function() {
+	function resetForm($form) {
+	    $form.find('input:text, input:password, input:file, select, textarea').val('');
+	    $("#adam4017Cfg").hide();
+	    $("#baseline9000Cfg").hide();
+	    $("#tapiCfg").hide();
+	}
+	
 	var instrumentTypes = {};		
 	function getInstrumentTypes(){
 		$.ajax({
@@ -124,133 +130,149 @@ $( document ).ready(function() {
 	        loading: "載入中 ..."
 	    }
 	};
-	
-	var form = $("#new-instrument-form");
-	form.validate({
-	    errorPlacement: function errorPlacement(error, element) { element.before(error); },
-	    rules: {
-	        confirm: {
-	            equalTo: "#password"
-	        }
-	    }
-	});
-	
-	form.children("div").steps({
-	    headerTag: "h3",
-	    bodyTag: "section",
-	    transitionEffect: "slideLeft",
-	    labels: {
-	        cancel: "取消",
-	        current: "目前步驟:",
-	        pagination: "分頁",
-	        finish: "完成",
-	        next: "下一步",
-	        previous: "前一步",
-	        loading: "載入中 ..."
-	    },
-	    
-	    onStepChanging: function (event, currentIndex, newIndex)
-	    {
-		    if(newIndex == 1){
-			    var instType = $("input[name='instType']:checked")[0].id;
-			    var protocols = $("input[name='protocol']");
-			    for(var i=0;i<protocols.length;i++){
-				    var protocol = protocols[i].id;
-				    if(instrumentTypes[instType].protocol.indexOf(protocol) == -1){
-					    var $prot = $("#"+protocol); 
-					    $prot.prop('disabled', true);
-					    $prot.prop('checked', false);
-					    $prot.parent().removeClass("active");
-					    $prot.parent().addClass("disabled");    
-				    }else{
-				    	var $prot = $("#"+protocol); 
-					    $prot.prop('disabled', false);
-					    $prot.parent().removeClass("disabled");					    
-				    }				    
-			    }
+
+	function setupStep(){
+		var form = $("#new-instrument-form");
+		form.validate({
+		    errorPlacement: function errorPlacement(error, element) { element.before(error); },
+		    rules: {
+		        confirm: {
+		            equalTo: "#password"
+		        }
 		    }
+		});
+		
+		form.children("div").steps({
+		    headerTag: "h3",
+		    bodyTag: "section",
+		    transitionEffect: "slideLeft",
+		    labels: {
+		        cancel: "取消",
+		        current: "目前步驟:",
+		        pagination: "分頁",
+		        finish: "完成",
+		        next: "下一步",
+		        previous: "前一步",
+		        loading: "載入中 ..."
+		    },
 		    
-		    if(newIndex == 2){
-		    				    
-			    var protocols = $("input[name='protocol']:checked");
-			    if(protocols.length == 0){
-				    alert("請選擇通訊協定");
-				    return false;
+		    onStepChanging: function (event, currentIndex, newIndex)
+		    {
+			    if(newIndex == 1){
+				    var instType = $("input[name='instType']:checked")[0].id;
+				    var protocols = $("input[name='protocol']");
+				    for(var i=0;i<protocols.length;i++){
+					    var protocol = protocols[i].id;
+					    if(instrumentTypes[instType].protocol.indexOf(protocol) == -1){
+						    var $prot = $("#"+protocol); 
+						    $prot.prop('disabled', true);
+						    $prot.prop('checked', false);
+						    $prot.parent().removeClass("active");
+						    $prot.parent().addClass("disabled");    
+					    }else{
+					    	var $prot = $("#"+protocol); 
+						    $prot.prop('disabled', false);
+						    $prot.parent().removeClass("disabled");					    
+					    }				    
+				    }
 			    }
-			    var tapiInstrument=['t100', 't200', 't300', 't400', 't500', 't600', 't700'];
-			    var instType = $("input[name='instType']:checked")[0].id
-			    if(tapiInstrument.indexOf(instType) != -1){ // TAPI instrument
-			    	$("#tapiCfg").css('display','block');
-			    	console.log(instrumentConfig[instType]);
-			    	instrumentConfig[instType].defaultValue(instType);
-			    }else{
-			    	$("#"+instType + "Cfg").css('display','block');
-			    }
-		    }
-		    
-		    if(newIndex == 3){
-			    var instrumentType = $("input[name='instType']:checked")[0].id
-			    if(!instrumentConfig[instrumentType].validate())
-				    return false;
 			    
-			    var summary = "<strong>儀器名稱:</strong>"+$("#name").val() + "<br/>";
-			    summary += "<strong>儀器種類:</strong>" + instrumentTypes[instrumentType].desp + "<br/>";
-			    summary += "<strong>通訊協定:</strong>" + $("input[name='protocol']:checked")[0].id + "<br/>";			    
-			    summary += "<strong>TCP參數:</strong>" + $("#host").val() + "<br/>";
-			    summary += "<strong>RS232參數:</strong>COM" + $("#comPort").val() + "<br/>";
-			    summary += "<strong>儀器細部設定:</strong>" + instrumentConfig[instrumentType].summary();
-			    $('#summary').html(summary);
+			    if(newIndex == 2){
+			    				    
+				    var protocols = $("input[name='protocol']:checked");
+				    if(protocols.length == 0){
+					    alert("請選擇通訊協定");
+					    return false;
+				    }
+				    var tapiInstrument=['t100', 't200', 't300', 't400', 't500', 't600', 't700'];
+				    var instType = $("input[name='instType']:checked")[0].id
+				    if(tapiInstrument.indexOf(instType) != -1){ // TAPI instrument
+				    	$("#tapiCfg").css('display','block');
+				    	console.log(instrumentConfig[instType]);
+				    	instrumentConfig[instType].defaultValue(instType);
+				    }else{
+				    	$("#"+instType + "Cfg").css('display','block');
+				    }
+			    }
+			    
+			    if(newIndex == 3){
+				    var instrumentType = $("input[name='instType']:checked")[0].id
+				    if(!instrumentConfig[instrumentType].validate())
+					    return false;
+				    
+				    var summary = "<strong>儀器名稱:</strong>"+$("#name").val() + "<br/>";
+				    summary += "<strong>儀器種類:</strong>" + instrumentTypes[instrumentType].desp + "<br/>";
+				    var protocol = $("input[name='protocol']:checked")[0].id
+				    summary += "<strong>通訊協定:</strong>" + protocol + "<br/>";
+				    
+				    if(protocol == 'tcp')			    
+				    	summary += "<strong>TCP參數:</strong>" + $("#host").val() + "<br/>";
+				    else
+				    	summary += "<strong>RS232參數:</strong>COM" + $("#comPort").val() + "<br/>";
+				    	
+				    summary += "<strong>儀器細部設定:</strong>" + instrumentConfig[instrumentType].summary();
+				    $('#summary').html(summary);
+			    }
+			    
+		        form.validate().settings.ignore = ":disabled,:hidden";
+		        return form.valid();
+		    },
+		    onFinishing: function (event, currentIndex)
+		    {
+		        form.validate().settings.ignore = ":disabled";
+		        return form.valid();
+		    },
+		    onFinished: function (event, currentIndex)
+		    {
+		    	var instType = $("input[name='instType']:checked")[0].id
+		    	var param = instrumentConfig[instType].param();
+		    	console.log(param);
+		    	
+			    var newInstrument= {
+					_id:$("#name").val(),
+					instType:$("input[name='instType']:checked")[0].id,
+					protocol:{
+						protocol:$("input[name='protocol']:checked")[0].id,
+						host:$("#host").val(),
+						comPort:parseInt($("#comPort").val()),
+					},
+					param:JSON.stringify(param),
+					active:true,
+					state:"010"
+			    };
+				$.ajax({
+					url: "/Instrument",
+					data: JSON.stringify(newInstrument),
+					contentType: "application/json; charset=utf-8",
+					method: "PUT",
+					dataType: "json",
+					success: function(ret){				
+						if(ret.ok){
+							alert("成功");
+						}else
+							alert("失敗:"+ret.msg);
+							
+						callback();													
+					},
+					error: function(xhr, status, errorThrown){
+						alert("失敗:"+ errorThrown);
+					},
+
+					complete: function(xhr, status){
+					}					
+				});
+
 		    }
-		    
-	        form.validate().settings.ignore = ":disabled,:hidden";
-	        return form.valid();
-	    },
-	    onFinishing: function (event, currentIndex)
-	    {
-	        form.validate().settings.ignore = ":disabled";
-	        return form.valid();
-	    },
-	    onFinished: function (event, currentIndex)
-	    {
-	    	var instType = $("input[name='instType']:checked")[0].id
-	    	var param = instrumentConfig[instType].param();
-	    	console.log(param);
-	    	
-		    var newInstrument= {
-				_id:$("#name").val(),
-				instType:$("input[name='instType']:checked")[0].id,
-				protocol:{
-					protocol:$("input[name='protocol']:checked")[0].id,
-					host:$("#host").val(),
-					comPort:parseInt($("#comPort").val()),
-				},
-				param:JSON.stringify(param),
-				active:true
-		    };
-			$.ajax({
-				url: "/Instrument",
-				data: JSON.stringify(newInstrument),
-				contentType: "application/json; charset=utf-8",
-				method: "PUT",
-				dataType: "json",
-				success: function(ret){				
-					if(ret.ok){
-						alert("成功");
-					}else
-						alert("失敗:"+ret.msg);
-						
-					callback();													
-				},
-				error: function(xhr, status, errorThrown){
-					alert("失敗:"+ errorThrown);
-				},
+		});
+	}
 
-				complete: function(xhr, status){
-				}					
-			});
-
-	    }
-	});
+	function destroy(){
+		var form = $("#new-instrument-form");
+		form.children("div").steps("destroy");
+		resetForm(form);				
+	}
 	
+	modal.setupStep = setupStep;
+	modal.destroy = destroy;
 });
 </script>

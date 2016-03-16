@@ -2,12 +2,12 @@
 @(chartID: String)
 <div class="ibox">
     <div class="ibox-content">
-    	<div id="@chartID"></div>
+    	<div id="mtRealtimeChart"></div>
     </div>
 </div>
 <script>
 $(document).ready(function(){
-	var chartID = "@chartID";
+	var chartID = "mtRealtimeChart";
 	function dataGenerator(time) {
         var data = [];
         var i;
@@ -23,7 +23,7 @@ $(document).ready(function(){
     
     $('#'+chartID).highcharts({
         chart: {
-            type: 'spline',
+            type: 'areaspline',
 
             marginRight: 10,
             height: 300,

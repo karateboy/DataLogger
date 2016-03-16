@@ -17,18 +17,32 @@ function hideModal(){
           		<h4 class="modal-title">新增設備</h4>
         	</div>
         	<div class="modal-body">
+        		<script>
+					var modal={};
+        		</script>
         		@newInstrument("hideModal()")
+        		<script>
+    				$("#newEquipModal").on('show.bs.modal', function () {        				
+    					modal.setupStep();
+    				});
+    				$("#newEquipModal").on('hidden.bs.modal', function () {        				
+    					modal.destroy();
+    				});
+    			</script>
         	</div>
       		</div>
-    	</div>
+    	</div>    	
   	</div>
 <div class="ibox float-e-margins">
   	<div class="ibox-content">
-  	<div class="col-lg-3 col-lg-offset-1">
-		<button type="button" class="btn btn-primary dim" data-toggle="modal" data-target="#newEquipModal"><i class="fa fa-plus-circle"></i> 新增</button>
-		<button type="button" class="btn btn-primary dim" id="activateInstrument"><i class="fa fa-check-circle"></i> 啟用</button>
-		<button type="button" class="btn btn-primary dim" id="deactivateInstrument"><i class="fa fa-ban"></i> 停用</button>
-		<button type="button" class="btn btn-danger dim" id="deleteInstrument"><i class="fa fa-trash"></i> 刪除</button>							
+  	<div class="col-lg-6 col-lg-offset-1">
+		<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newEquipModal"><i class="fa fa-plus-circle"></i> 新增</button>
+		<button type="button" class="btn btn-primary" id="activateInstrument"><i class="fa fa-check-circle"></i> 啟用</button>
+		<button type="button" class="btn btn-primary" id="deactivateInstrument"><i class="fa fa-ban"></i> 停用</button>
+		<button type="button" class="btn btn-primary" id="maintainInstrument"><i class="fa fa-exchange"></i> 切換維修模式</button>
+		<button type="button" class="btn btn-primary" id="calibrateInstrument"><i class="fa fa-balance-scale"></i> 校正</button>
+		<button type="button" class="btn btn-danger" id="deleteInstrument"><i class="fa fa-trash"></i> 刪除</button>
+									
 	</div>
 	<table id="instrumentTable" class="table table-bordered table-hover" cellspacing="0" width="100%">
 		<thead>
@@ -57,7 +71,7 @@ $( document ).ready(function() {
 		columns: [
 		          { data: '_id' },
 		          { data: 'instType' },
-		          { data: 'active'},
+		          { data: 'state'},
 		          { data: 'protocol' },
 		          { data: 'protocolParam' },
 		          { data: 'calibrationTime',
@@ -118,6 +132,7 @@ $( document ).ready(function() {
 	$("#deactivateInstrument").click(handler("/DeactivateInstrument/", "PUT"));
 	$("#activateInstrument").click(handler("/ActivateInstrument/", "PUT"));
 	$("#deleteInstrument").click(handler("/Instrument/", "DELETE"));
-
+	$("#maintainInstrument").click(handler("/ToggleMaintainInstrument/", "PUT"));
+	$("#calibrateInstrument").click(handler("/CalibrateInstrument/", "PUT"));
 });
 </script>

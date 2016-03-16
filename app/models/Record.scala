@@ -40,8 +40,11 @@ object Record {
 
   def insertRecord(doc: Document)(colName: String) = {
     val col = MongoDB.database.getCollection(colName)
-    col.insertOne(doc).subscribe((doOnNext: Completed) => {},
-      (ex: Throwable) => { Logger.error(ex.getMessage) })
+    val f = col.insertOne(doc).toFuture()
+    f.onFailure({
+        case ex:Exception=>Logger.error(ex.getMessage)
+      })
+    f
   }
 
   def getRecordMap(colName: String)(mtList: List[MonitorType.Value], startTime: DateTime, endTime: DateTime) = {

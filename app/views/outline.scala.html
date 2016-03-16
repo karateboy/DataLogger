@@ -145,14 +145,14 @@
                     	<li><a href="#" onClick="loadPage('/MonitorMonthlyHourReport','報表查詢','月份時報表')">月份時報表</a></li>                    	
                 	</ul>
             	</li>
-            @if(user.isAdmin){
-            	<li>
-                	<a href="#" onClick="loadPage('/ManageInstrument','儀器連接','儀器管理')">
-                	<i class="fa fa-link fa-lg"></i> <span class="nav-label">儀器連接</span></a>
-                </li>
+            @if(user.isAdmin){            	
             	<li>
                 <a href="#"><i class="fa fa-cog fa-lg"></i> <span class="nav-label">系統管理</span></a>
                 <ul class="nav nav-second-level">
+                	<li>
+                		<a href="#" onClick="loadPage('/ManageInstrument','系統管理','儀器管理')">
+                		<i class="fa fa-link fa-lg"></i> <span class="nav-label">儀器管理</span></a>
+                	</li>
                     <li><a href="#" onClick="loadPage('/MonitorTypeConfig','系統管理','測項管理')">測項管理</a></li>
                     <li><a href="#" onClick="loadPage('/ManualAudit','系統管理','人工資料註記')">人工資料註記</a></li>
                     <li><a href="#" onClick="loadPage('/ManualAuditQuery','系統管理','人工註記查詢')">人工註記查詢</a></li>

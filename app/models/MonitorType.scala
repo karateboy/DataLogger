@@ -12,7 +12,7 @@ case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[
                        prec: Int, order: Int, std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
                        span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
-                       masuredBy:Option[String]=None)
+                       measuredBy: Option[String] = None)
 
 object MonitorType extends Enumeration {
   import org.mongodb.scala.bson._
@@ -131,6 +131,7 @@ object MonitorType extends Enumeration {
 
   var map: Map[Value, MonitorType] = Map(mtList.map { e => Value(e._id) -> e }: _*)
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
+  def activeMtvList = mtvList.filter { mt => map(mt).measuredBy.isDefined }
 
   def newMonitorType(mt: MonitorType) = {
     val doc = toDocument(mt)
@@ -147,31 +148,36 @@ object MonitorType extends Enumeration {
     import org.mongodb.scala._
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Updates._
+    import org.mongodb.scala.model.FindOneAndUpdateOptions
+    
     import scala.concurrent.ExecutionContext.Implicits.global
     val idFilter = equal("_id", map(mt)._id)
+    val opt = FindOneAndUpdateOptions().returnDocument(com.mongodb.client.model.ReturnDocument.AFTER)
     val f =
-      if (colname == "desp" || colname == "unit"|| colname=="measuredBy") {
-        collection.findOneAndUpdate(idFilter, set(colname, newValue)).toFuture()
+      if (colname == "desp" || colname == "unit" || colname == "measuredBy") {        
+        
+        collection.findOneAndUpdate(idFilter, set(colname, newValue), opt).toFuture()
       } else if (colname == "prec" || colname == "order") {
         import java.lang.Integer
         val v = Integer.parseInt(newValue)
-        collection.findOneAndUpdate(idFilter, set(colname, v)).toFuture()
+        collection.findOneAndUpdate(idFilter, set(colname, v), opt).toFuture()
       } else {
         if (newValue == "-")
-          collection.findOneAndUpdate(idFilter, set(colname, null)).toFuture()
+          collection.findOneAndUpdate(idFilter, set(colname, null), opt).toFuture()
         else {
           import java.lang.Double
-          collection.findOneAndUpdate(idFilter, set(colname, Double.parseDouble(newValue))).toFuture()
+          collection.findOneAndUpdate(idFilter, set(colname, Double.parseDouble(newValue)), opt).toFuture()
         }
       }
 
     val ret = waitReadyResult(f)
 
     val mtCase = toMonitorType(ret(0))
+    Logger.debug(mtCase.toString)
     map = map + (mt -> mtCase)
   }
-  
-  def updateMonitorTypeInstrument(mt:MonitorType.Value, instrumentID:String)={
+
+  def updateMonitorTypeInstrument(mt: MonitorType.Value, instrumentID: String) = {
     updateMonitorType(mt, "measuredBy", instrumentID)
   }
 

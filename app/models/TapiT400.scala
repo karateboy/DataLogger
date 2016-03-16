@@ -8,11 +8,13 @@ object TapiT400 extends TapiTxx(ModelConfig("T400", List("O3"))){
   import akka.actor._
   def start(id:String, protocol:ProtocolParam, param:String)(implicit context:ActorContext)={
     val config = validateParam(param)
-    TapiTxxCollector.start(id, protocol, config, modelReg, Props[T400Collector])    
+    val props = Props(classOf[T400Collector], id, modelReg, config)
+    TapiTxxCollector.start(protocol, props)    
   }
 }
 
-class T400Collector extends TapiTxxCollector{
+import TapiTxx._
+class T400Collector(instId:String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config){
   import DataCollectManager._
   import TapiTxx._
   val O3 = MonitorType.withName("O3")
@@ -29,7 +31,35 @@ class T400Collector extends TapiTxxCollector{
   override def reportData(regValue:ModelRegValue)={
     val vO3 = regValue.inputRegs(regIdxO3)
     
-    context.parent ! ReportData(List(MonitorTypeData(O3, vO3.toDouble, currentStatus)))
+    context.parent ! ReportData(List(MonitorTypeData(O3, vO3.toDouble, collectorState)))
     
   }
+  
+  def triggerZeroCalibration(){
+    
+  }
+  
+  def readZeroValue(): List[Double]={
+    List(0)
+  }
+  
+  def exitZeroCalibration(){
+    
+  }
+
+  def triggerSpanCalibration(){
+    
+  }
+  def readSpanValue(): List[Double]={
+    List(450)
+  }
+  
+  def exitSpanCalibration(){
+    
+  }
+  
+  def getSpanStandard(): List[Double] ={
+    List(450)
+  }
+
 } 

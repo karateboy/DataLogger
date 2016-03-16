@@ -9,14 +9,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object TapiTxxCollector {
   import TapiTxx._
-  case class ConnectHost(instId: String, host: String, config: TapiConfig, modelReg: ModelReg)
-  object ReadRegister
+  case class ConnectHost(host: String)
+  case object ReadRegister
+
+  case object ReadZeroCalibration
+  case object ReadSpanCalibration
+  case object SpanCalibrationEnd
 
   import Protocol.ProtocolParam
 
   var count = 0
-  def start(instId: String, protocolParam: ProtocolParam,
-            config: TapiConfig, modelReg: ModelReg, props: Props)(implicit context: ActorContext) = {
+  def start(protocolParam: ProtocolParam, props: Props)(implicit context: ActorContext) = {
 
     val model = props.actorClass().getName.split('.')
     val actorName = s"${model(model.length - 1)}_${count}"
@@ -25,24 +28,32 @@ object TapiTxxCollector {
     Logger.info(s"$actorName is created.")
 
     val host = protocolParam.host.get
-    collector ! ConnectHost(instId, host, config, modelReg)
+    collector ! ConnectHost(host)
     collector
   }
 
 }
 
-trait TapiTxxCollector extends Actor {
+import TapiTxx._
+abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: TapiConfig) extends Actor {
   var cancelable: Cancellable = _
+  import DataCollectManager._
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
-  import TapiTxx._
 
-  var instId: String = _
-  var master: ModbusMaster = _
-  var modelReg: ModelReg = _
-  var tapiConfig: TapiConfig = _
-  var currentStatus = MonitorStatus.normalStatus
+  //var instId: String = _
+  var master: Option[ModbusMaster] = _
+  var collectorState = {
+    val instList = Instrument.getInstrument(instId)
+    if (!instList.isEmpty) {
+      instList(0).state
+    } else
+      MonitorStatus.NormalStat
+  }
+  Logger.info(s"$self state=${MonitorStatus.map(collectorState).desp}")
+
+  var instrumentState = MonitorStatus.NormalStat
 
   def readReg = {
     import com.serotonin.modbus4j.BatchRead
@@ -79,9 +90,9 @@ trait TapiTxxCollector extends Actor {
     }
 
     batch.setContiguousRequests(false)
-    assert(master != null)
+    assert(master.isDefined)
 
-    val results = master.send(batch)
+    val results = master.get.send(batch)
     val inputs =
       for (i <- 0 to holdingIdx - 1)
         yield results.getFloatValue(i).toFloat
@@ -110,55 +121,140 @@ trait TapiTxxCollector extends Actor {
   var connected = false
   var oldModelReg: ModelRegValue = _
   import Alarm._
-  def receive = {
-    case ConnectHost(id, host, config, reg) =>
+
+  def receive = normalReceive
+  def readRegHandler = {
+    try {
+      val regValue = readReg
+      connected = true
+      regReadHandler(regValue)
+    } catch {
+      case ex: java.net.ConnectException =>
+        Logger.error(ex.getMessage);
+        if (connected) {
+          log(instStr(instId), Level.ERR, s"讀取發生錯誤:${ex.getMessage}")
+          connected = false
+        }
+    }
+  }
+
+  def startCalibration(monitorTypes: List[MonitorType.Value]) {
+    Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
+    triggerZeroCalibration
+    Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, ReadZeroCalibration)
+    import com.github.nscala_time.time.Imports._
+    val endState = collectorState
+    collectorState = MonitorStatus.ZeroCalibrationStat
+    Instrument.setState(instId, collectorState)
+    context become calibration(DateTime.now, List.empty[Double], List.empty[Double], monitorTypes, endState)
+  }
+
+  def normalReceive(): Receive = {
+    case ConnectHost(host) =>
       Logger.debug(s"${self.toString()}: connect $host")
       try {
-        instId = id
+        //instId = id
         val ipParameters = new IpParameters()
         ipParameters.setHost(host);
         ipParameters.setPort(502);
         val modbusFactory = new ModbusFactory()
 
-        master = modbusFactory.createTcpMaster(ipParameters, true)
-        master.setTimeout(4000)
-        master.setRetries(1)
-        master.setConnected(true)
-        modelReg = reg
-        tapiConfig = config
+        master = Some(modbusFactory.createTcpMaster(ipParameters, true))
+        master.get.setTimeout(4000)
+        master.get.setRetries(1)
+        master.get.setConnected(true)
 
-        master.init();
+        master.get.init();
         connected = true
         cancelable = Akka.system.scheduler.schedule(Duration(3, SECONDS), Duration(3, SECONDS), self, ReadRegister)
       } catch {
-        case ex: com.serotonin.modbus4j.exception.ErrorResponseException =>
-          Logger.error(ex.getErrorResponse().getExceptionMessage());
-          log(instStr(instId), Level.ERR, ex.getErrorResponse().getExceptionMessage())
-          Logger.info("Try again 1 min later")
-          Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(instId, host, config, reg))
-        case ex: Throwable =>
+        case ex: Exception =>
           Logger.error(ex.getMessage);
           log(instStr(instId), Level.ERR, s"無法連接:${ex.getMessage}")
           Logger.error("Try again 1 min later")
-          Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(instId, host, config, reg))
+          Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(host))
       }
 
     case ReadRegister =>
-      try {
-        val regValue = readReg
-        connected = true
-        regReadHandler(regValue)
-      } catch {
+      readRegHandler
 
-        case ex: Throwable =>
-          Logger.error(ex.getMessage);
-          if (connected) {
-            log(instStr(instId), Level.ERR, s"讀取發生錯誤:${ex.getMessage}")
-            connected = false
-          }
+    case SetState(id, state) =>
+      if (state == MonitorStatus.ZeroCalibrationStat) {
+        if (tapiConfig.monitorTypes.isEmpty)
+          Logger.error("There is no monitor type for calibration.")
+        else
+          startCalibration(tapiConfig.monitorTypes.get)
+      } else{
+        collectorState = state
+        Instrument.setState(instId, collectorState)
       }
-
+      Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
   }
+
+  import com.github.nscala_time.time.Imports._
+  def calibration(startTime: DateTime, zeroReading: List[Double], spanReading: List[Double],
+                  monitorTypes: List[MonitorType.Value], endState: String): Receive = {
+    case ConnectHost(host) =>
+      Logger.error("unexpected ConnectHost msg")
+
+    case ReadRegister =>
+      readRegHandler
+
+    case SetState(id, state) =>
+      Logger.error("Cannot change state during calibration")
+
+    case ReadZeroCalibration =>
+      val zeroValue = readZeroValue()
+      Logger.debug(s"ReadZeroCalibration $zeroValue")
+      exitZeroCalibration
+      triggerSpanCalibration
+      collectorState = MonitorStatus.SpanCalibrationStat
+      Instrument.setState(instId, collectorState)
+      Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+      Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.raiseTime.get, SECONDS),
+        self, ReadSpanCalibration)
+      context become calibration(startTime, zeroValue, spanReading, monitorTypes, endState)
+
+    case ReadSpanCalibration =>
+      val spanValue = readSpanValue
+      Logger.debug(s"ReadSpanCalibration $spanValue")
+      exitSpanCalibration
+      Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.downTime.get, SECONDS),
+        self, SpanCalibrationEnd)
+
+      context become calibration(startTime, zeroReading, spanValue, monitorTypes, endState)
+    case SpanCalibrationEnd =>
+      val endTime = DateTime.now()
+      val duration = new Duration(startTime, endTime)
+      Logger.debug(s"SpanCalibrationEnd duration=${duration.getStandardSeconds} sec")
+
+      val spanStdList = getSpanStandard
+      for {
+        mt_idx <- monitorTypes.zipWithIndex
+        mt = mt_idx._1
+        idx = mt_idx._2
+      } {
+        val zero = zeroReading(idx)
+        val span = spanReading(idx)
+        val spanStd = spanStdList(idx)
+        val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
+        Calibration.insert(cal)
+      }
+      Logger.info("All monitorTypes are calibrated.")
+      collectorState = endState
+      Instrument.setState(instId, collectorState)
+      context become normalReceive
+      Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+  }
+
+  def triggerZeroCalibration()
+  def readZeroValue(): List[Double]
+  def exitZeroCalibration()
+
+  def triggerSpanCalibration()
+  def readSpanValue(): List[Double]
+  def exitSpanCalibration()
+  def getSpanStandard(): List[Double]
 
   def reportData(regValue: ModelRegValue)
 
@@ -193,7 +289,7 @@ trait TapiTxxCollector extends Actor {
     if (cancelable != null)
       cancelable.cancel()
 
-    if (master != null)
-      master.destroy()
+    if (master.isDefined)
+      master.get.destroy()
   }
 }

@@ -33,28 +33,27 @@ object MonitorStatus {
   val collectionName = "status"
   val collection = MongoDB.database.getCollection(collectionName)
   
-  val normalStatus = "010"
-  val overNormalStatus = "011"
-  val belowNormalStatus = "012"
-  val zeroCalibrationStatus = "020"
-  val spanCalibrationStatus = "021"
-  val invalidDataStatus = "030"
-  val repairStatus = "031"
-  val exceedRangeStatus = "032"
+  val NormalStat = "010"
+  val OverNormalStat = "011"
+  val BelowNormalStat = "012"
+  val ZeroCalibrationStat = "020"
+  val SpanCalibrationStat = "021"
+  val InvalidDataStat = "030"
+  val MaintainStat = "031"
+  val ExceedRangeStat = "032"
   
   
   val defaultStatus = List(
-    MonitorStatus(normalStatus, "正常量測值"),
-    MonitorStatus(overNormalStatus, "超過預設高值測值"),
-    MonitorStatus(belowNormalStatus, "低於預設低值測值"),
-    MonitorStatus(zeroCalibrationStatus, "零點偏移測試量測值"),
-    MonitorStatus(spanCalibrationStatus, "全幅偏移測試量測值"),
-    MonitorStatus(invalidDataStatus, "無效數據"),
-    MonitorStatus(repairStatus, "監測設施維修、保養量測值"),
-    MonitorStatus(exceedRangeStatus, "超過儀器量測範圍")
+    MonitorStatus(NormalStat, "正常"),
+    MonitorStatus(OverNormalStat, "超過預設高值"),
+    MonitorStatus(BelowNormalStat, "低於預設低值"),
+    MonitorStatus(ZeroCalibrationStat, "零點偏移測試"),
+    MonitorStatus(SpanCalibrationStat, "全幅偏移測試"),
+    MonitorStatus(InvalidDataStat, "無效數據"),
+    MonitorStatus(MaintainStat, "維修、保養"),
+    MonitorStatus(ExceedRangeStat, "超過量測範圍")
   )
-  
-  
+    
   import org.mongodb.scala._
   def toDocument(ms:MonitorStatus)={
     Document(Json.toJson(ms).toString())
@@ -115,13 +114,10 @@ object MonitorStatus {
     }
   }
   
-  val NORMAL_STAT = "010"
-  val OVER_STAT = "011"
-  val BELOW_STAT = "012"
 
   def isValid(s: String) = {
     val tagInfo = getTagInfo(s)
-    val VALID_STATS = List(NORMAL_STAT, OVER_STAT, BELOW_STAT).map(getTagInfo)
+    val VALID_STATS = List(NormalStat,OverNormalStat, BelowNormalStat).map(getTagInfo)
     
     tagInfo.statusType match {
       case StatusType.Internal =>
@@ -135,25 +131,15 @@ object MonitorStatus {
         false
     }
   }
-    
-  val CALBRATION_STAT = "020"
-  val CALBRATION_SPAN_STAT = "021"
-  
+      
   def isCalbration(s: String) = {
-    val CALBRATION_STATS = List(CALBRATION_STAT, CALBRATION_SPAN_STAT).map(getTagInfo)
+    val CALBRATION_STATS = List(ZeroCalibrationStat, SpanCalibrationStat).map(getTagInfo)
     CALBRATION_STATS.contains(getTagInfo(s))
   }
 
-  def isCalbrating(s: String)={
-   val CALBRATION_STATS = List(CALBRATION_STAT, CALBRATION_SPAN_STAT).map(getTagInfo)
-    CALBRATION_STATS.contains(getTagInfo(s))
-  }
-  
-  val REPAIR_MAINTANCE = "031"
-  val OVER_RANGE_DATA = "032"
-  
+    
   def isMaintanceOrRepairing(s: String)={
-    getTagInfo(REPAIR_MAINTANCE) == getTagInfo(s)
+    getTagInfo(MaintainStat) == getTagInfo(s)
   }
         
   def isError(s: String)={
@@ -219,7 +205,7 @@ object MonitorStatus {
       tagInfo.statusType match {
         case StatusType.Auto =>
           val ruleId = tagInfo.auditRule.get.toLower
-          MonitorStatus(key, s"自動註記:")
+          MonitorStatus(key, s"自動註記:${ruleId}")
         case StatusType.Manual =>
           MonitorStatus(key, "人工註記")
         case StatusType.Internal =>

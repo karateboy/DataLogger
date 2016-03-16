@@ -40,6 +40,9 @@ GET		/Instrument					controllers.Application.getInstrumentList
 DELETE  /Instrument/:ids			controllers.Application.removeInstrument(ids)
 PUT		/DeactivateInstrument/:ids	controllers.Application.deactivateInstrument(ids)
 PUT		/ActivateInstrument/:ids	controllers.Application.activateInstrument(ids)
+PUT		/ToggleMaintainInstrument/:ids	controllers.Application.toggleMaintainInstrument(ids)
+PUT		/CalibrateInstrument/:ids	controllers.Application.calibrateInstrument(ids)
+
 
 #Realtime
 GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()

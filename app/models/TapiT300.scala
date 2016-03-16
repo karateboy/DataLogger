@@ -8,11 +8,13 @@ object TapiT300 extends TapiTxx(ModelConfig("T300", List("CO"))){
   import akka.actor._
   def start(id:String, protocol:ProtocolParam, param:String)(implicit context:ActorContext)={
     val config = validateParam(param)
-    TapiTxxCollector.start(id, protocol, config, modelReg, Props[T300Collector])    
+    val props = Props(classOf[T300Collector], id, modelReg, config)
+    TapiTxxCollector.start(protocol, props)    
   }
 }
 
-class T300Collector extends TapiTxxCollector{
+import TapiTxx._
+class T300Collector(instId:String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config){
   import DataCollectManager._
   import TapiTxx._
   val CO = MonitorType.withName("CO")
@@ -29,7 +31,35 @@ class T300Collector extends TapiTxxCollector{
   override def reportData(regValue:ModelRegValue)={
     val vCO = regValue.inputRegs(regIdxCO)
     
-    context.parent ! ReportData(List(MonitorTypeData(CO, vCO.toDouble, currentStatus)))
+    context.parent ! ReportData(List(MonitorTypeData(CO, vCO.toDouble, collectorState)))
     
   }
+  
+  def triggerZeroCalibration(){
+    
+  }
+  
+  def readZeroValue(): List[Double]={
+    List(0)
+  }
+  
+  def exitZeroCalibration(){
+    
+  }
+
+  def triggerSpanCalibration(){
+    
+  }
+  def readSpanValue(): List[Double]={
+    List(450)
+  }
+  
+  def exitSpanCalibration(){
+    
+  }
+  
+  def getSpanStandard(): List[Double] ={
+    List(450)
+  }
+
 } 
