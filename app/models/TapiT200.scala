@@ -1,7 +1,7 @@
 package models
 import play.api._
 
-object TapiT200 extends TapiTxx(ModelConfig("T200", List("NO", "NO2", "NOx"))){
+object TapiT200 extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))){
   val modelReg = readModelSetting
   
   import Protocol.ProtocolParam
@@ -42,31 +42,53 @@ class T200Collector(instId:String, modelReg: ModelReg, config: TapiConfig) exten
         MonitorTypeData(NO2, vNO2.toDouble, collectorState)))
   }
   
-  def triggerZeroCalibration(){
-    
-  }
-  
-  def readZeroValue(): List[Double]={
-    List(0, 0, 0)
-  }
-  
-  def exitZeroCalibration(){
-    
-  }
+  import com.serotonin.modbus4j.locator.BaseLocator
+  import com.serotonin.modbus4j.code.DataType
 
-  def triggerSpanCalibration(){
-    
-  }
-  def readSpanValue(): List[Double]={
-    List(450, 500, 500)
+  def triggerZeroCalibration(v:Boolean) {
+    try {
+      val locator = BaseLocator.coilStatus(config.slaveID, 20)
+      master.get.setValue(locator, v)
+    } catch{
+      case ex:Exception=>
+        ModelHelper.logException(ex)
+    }
   }
   
-  def exitSpanCalibration(){
-    
+  def readCalibratingValue(): List[Double]={
+    try {
+      val noxLoc = BaseLocator.inputRegister(config.slaveID, 18, DataType.FOUR_BYTE_FLOAT)
+      val noxV = master.get.getValue(noxLoc)
+      val noLoc = BaseLocator.inputRegister(config.slaveID, 22, DataType.FOUR_BYTE_FLOAT)
+      val noV = master.get.getValue(noLoc)
+      val no2Loc = BaseLocator.inputRegister(config.slaveID, 26, DataType.FOUR_BYTE_FLOAT)
+      val no2V = master.get.getValue(no2Loc)
+      List(noxV.floatValue(), noV.floatValue(), no2V.floatValue())
+    } catch{
+      case ex:Exception=>
+        ModelHelper.logException(ex)
+        throw ex
+    }
   }
   
+  def triggerSpanCalibration(v:Boolean){
+    try {      
+      if(v){
+      val noxSpanLocator = BaseLocator.holdingRegister(config.slaveID, 0, DataType.FOUR_BYTE_FLOAT)
+      master.get.setValue(noxSpanLocator, 450f)
+      val nonSpanLocator = BaseLocator.holdingRegister(config.slaveID, 2, DataType.FOUR_BYTE_FLOAT)
+      master.get.setValue(noxSpanLocator, 450f)
+      }
+      
+      val locator = BaseLocator.coilStatus(config.slaveID, 21)
+      master.get.setValue(locator, v)
+    } catch{
+      case ex:Exception=>
+        ModelHelper.logException(ex)
+    }    
+  }
+      
   def getSpanStandard(): List[Double] ={
-    List(450, 500, 500)
+    List(450, 450, 450)
   }
-
 } 

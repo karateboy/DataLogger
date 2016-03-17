@@ -25,6 +25,7 @@ object InstrumentType extends Enumeration{
   val t100 = Value
   val t200 = Value
   val t300 = Value
+  val t360 = Value
   val t400 = Value
   val map = Map(
       //baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(tcp, serial)),
@@ -32,6 +33,7 @@ object InstrumentType extends Enumeration{
       t100->InstrumentType(t100, "TAPI T100", List(tcp), TapiT100),
       t200->InstrumentType(t200, "TAPI T200", List(tcp), TapiT200),
       t300->InstrumentType(t300, "TAPI T300", List(tcp), TapiT300),
+      t360->InstrumentType(t360, "TAPI T360", List(tcp), TapiT360),
       t400->InstrumentType(t400, "TAPI T400", List(tcp), TapiT400)
       ) 
 }

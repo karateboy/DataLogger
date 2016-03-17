@@ -184,7 +184,7 @@ $( document ).ready(function() {
 					    alert("請選擇通訊協定");
 					    return false;
 				    }
-				    var tapiInstrument=['t100', 't200', 't300', 't400', 't500', 't600', 't700'];
+				    var tapiInstrument=['t100', 't200', 't300', 't360', 't400', 't500', 't600', 't700'];
 				    var instType = $("input[name='instType']:checked")[0].id
 				    if(tapiInstrument.indexOf(instType) != -1){ // TAPI instrument
 				    	$("#tapiCfg").css('display','block');

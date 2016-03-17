@@ -43,7 +43,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   import com.serotonin.modbus4j.ip.IpParameters
 
   //var instId: String = _
-  var master: Option[ModbusMaster] = _
+  var master: Option[ModbusMaster] = None
   var collectorState = {
     val instList = Instrument.getInstrument(instId)
     if (!instList.isEmpty) {
@@ -140,7 +140,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
   def startCalibration(monitorTypes: List[MonitorType.Value]) {
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
-    triggerZeroCalibration
+    triggerZeroCalibration(true)
     Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, ReadZeroCalibration)
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
@@ -182,6 +182,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       if (state == MonitorStatus.ZeroCalibrationStat) {
         if (tapiConfig.monitorTypes.isEmpty)
           Logger.error("There is no monitor type for calibration.")
+        else if(!connected)
+          Logger.error("Cannot calibration before connected.")
         else
           startCalibration(tapiConfig.monitorTypes.get)
       } else{
@@ -204,10 +206,10 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       Logger.error("Cannot change state during calibration")
 
     case ReadZeroCalibration =>
-      val zeroValue = readZeroValue()
+      val zeroValue = readCalibratingValue
       Logger.debug(s"ReadZeroCalibration $zeroValue")
-      exitZeroCalibration
-      triggerSpanCalibration
+      triggerZeroCalibration(false)
+      triggerSpanCalibration(true)
       collectorState = MonitorStatus.SpanCalibrationStat
       Instrument.setState(instId, collectorState)
       Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
@@ -216,9 +218,9 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       context become calibration(startTime, zeroValue, spanReading, monitorTypes, endState)
 
     case ReadSpanCalibration =>
-      val spanValue = readSpanValue
+      val spanValue = readCalibratingValue
       Logger.debug(s"ReadSpanCalibration $spanValue")
-      exitSpanCalibration
+      triggerSpanCalibration(false)
       Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.downTime.get, SECONDS),
         self, SpanCalibrationEnd)
 
@@ -247,13 +249,10 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
   }
 
-  def triggerZeroCalibration()
-  def readZeroValue(): List[Double]
-  def exitZeroCalibration()
+  def triggerZeroCalibration(v:Boolean)
+  def readCalibratingValue(): List[Double]
 
-  def triggerSpanCalibration()
-  def readSpanValue(): List[Double]
-  def exitSpanCalibration()
+  def triggerSpanCalibration(v:Boolean)
   def getSpanStandard(): List[Double]
 
   def reportData(regValue: ModelRegValue)
