@@ -169,7 +169,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       }
     }
 
-    batch.setContiguousRequests(false)
+    batch.setContiguousRequests(true)
 
     val results = master.get.send(batch)
     val inputs =
