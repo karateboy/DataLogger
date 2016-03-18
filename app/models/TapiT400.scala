@@ -19,19 +19,17 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   import TapiTxx._
   val O3 = MonitorType.withName("O3")
 
-  def findIdx(addr: Int) = {
-    val inputRegs = TapiT400.modelReg.inputRegs.zipWithIndex
-    val idx = inputRegs.find(p => (p._1.addr == addr))
-    assert(idx.isDefined)
-    idx.get._2
-  }
-
-  val regIdxO3 = findIdx(18)
+  var regIdxO3:Option[Int] = None
 
   override def reportData(regValue: ModelRegValue) = {
-    val vO3 = regValue.inputRegs(regIdxO3)
+    def findIdx = findDataRegIdx(regValue)(_)
 
-    context.parent ! ReportData(List(MonitorTypeData(O3, vO3.toDouble, collectorState)))
+    val vO3 = regValue.inputRegs(regIdxO3.getOrElse({
+      regIdxO3 = Some(findIdx(18))
+      regIdxO3.get
+    }))
+
+    context.parent ! ReportData(List(MonitorTypeData(O3, vO3._2.toDouble, collectorState)))
 
   }
 

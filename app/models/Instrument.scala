@@ -10,8 +10,11 @@ import Protocol.ProtocolParam
 case class InstrumentInfo(_id: String, instType: String, state: String,
                           protocol: String, protocolParam: String, monitorTypes: String, calibrationTime: Option[String])
 
+case class InstrumentStatusType(key:String, addr:Int, desc:String, unit:String)                          
 case class Instrument(_id: String, instType: InstrumentType.Value,
-                      protocol: ProtocolParam, param: String, active: Boolean = true, state: String = MonitorStatus.NormalStat) {
+                      protocol: ProtocolParam, param: String, active: Boolean, 
+                      state: String,
+                      statusType:Option[List[InstrumentStatusType]]) {
 
   def getMonitorTypes: List[MonitorType.Value] = {
     val instTypeCase = InstrumentType.map(instType)
@@ -47,7 +50,7 @@ case class Instrument(_id: String, instType: InstrumentType.Value,
   }
 
   def replaceParam(newParam: String) = {
-    Instrument(_id, instType, protocol, newParam)
+    Instrument(_id, instType, protocol, newParam, active, state, statusType)
   }
 }
 
@@ -55,7 +58,9 @@ import org.mongodb.scala._
 import ModelHelper._
 
 object Instrument {
+  implicit val ipRead = Json.reads[InstrumentStatusType]
   implicit val reader = Json.reads[Instrument]
+  implicit val ipWrite = Json.writes[InstrumentStatusType]
   implicit val writer = Json.writes[Instrument]
   implicit val infoWrites = Json.writes[InstrumentInfo]
 
@@ -146,6 +151,21 @@ object Instrument {
   def setState(id:String, state:String) = {
     import org.mongodb.scala.model.Updates._    
     val f = collection.updateOne(equal("_id", id), set("state", state)).toFuture()
+    f.onFailure({
+      case ex:Exception=>
+        ModelHelper.logException(ex)
+    })
+    f
+  }
+  
+  def updateStatusType(id:String, status:List[InstrumentStatusType]) = {
+    import org.mongodb.scala.model.Updates._
+    import org.mongodb.scala.bson.BsonArray
+    val bArray = new BsonArray
+    
+    val statusDoc = status.map{ s => bArray.add(Document(Json.toJson(s).toString).toBsonDocument)}
+    
+    val f = collection.updateOne(equal("_id", id), set("status", bArray)).toFuture()
     f.onFailure({
       case ex:Exception=>
         ModelHelper.logException(ex)

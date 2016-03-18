@@ -19,8 +19,8 @@ object TapiTxx {
   case class CoilReg(addr: Int, desc: String)
   case class ModelReg(inputRegs:List[InputReg], holdingRegs:List[HoldingReg], 
       modeRegs:List[DiscreteInputReg], warnRegs:List[DiscreteInputReg], coilRegs:List[CoilReg])
-  case class ModelRegValue(inputRegs:List[Float], holdingRegs:List[Float], 
-      modeRegs:List[Boolean], warnRegs:List[Boolean], coilRegs:List[Boolean])
+  case class ModelRegValue(inputRegs:List[(InstrumentStatusType, Float)], holdingRegs:List[(InstrumentStatusType, Float)], 
+      modeRegs:List[(InstrumentStatusType, Boolean)], warnRegs:List[(InstrumentStatusType, Boolean)])
   
 }
 

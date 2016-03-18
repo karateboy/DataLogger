@@ -11,7 +11,6 @@ object TapiTxxCollector {
   import TapiTxx._
   case class ConnectHost(host: String)
   case object ReadRegister
-
   case object ReadZeroCalibration
   case object ReadSpanCalibration
   case object SpanCalibrationEnd
@@ -42,95 +41,182 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
 
-  //var instId: String = _
   var master: Option[ModbusMaster] = None
-  var collectorState = {
+  var (collectorState, instrumentStatusTypes) = {
     val instList = Instrument.getInstrument(instId)
     if (!instList.isEmpty) {
-      instList(0).state
+      val inst = instList(0)
+      (inst.state, inst.statusType)
     } else
-      MonitorStatus.NormalStat
+      (MonitorStatus.NormalStat, None)
   }
+
   Logger.info(s"$self state=${MonitorStatus.map(collectorState).desp}")
 
-  var instrumentState = MonitorStatus.NormalStat
+  val InputKey = "Input"
+  val HoldingKey = "Holding"
+  val ModeKey = "Mode"
+  val WarnKey = "Warn"
 
-  def readReg = {
+  def probeInstrumentStatusType = {
+    Logger.info("Probing supported modbus registers...")
+    import com.serotonin.modbus4j.locator.BaseLocator
+    import com.serotonin.modbus4j.code.DataType
+
+    def probeInputReg(addr: Int, desc: String) = {
+      try {
+        val locator = BaseLocator.inputRegister(tapiConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT)
+        master.get.getValue(locator)
+        true
+      } catch {
+        case ex: Throwable =>
+          Logger.info(s"$addr $desc is not supported.")
+          false
+      }
+    }
+
+    def probeHoldingReg(addr: Int, desc: String) = {
+      try {
+        val locator = BaseLocator.holdingRegister(tapiConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT)
+        master.get.getValue(locator)
+        true
+      } catch {
+        case ex: Throwable =>
+          Logger.info(s"$addr $desc is not supported.")
+          false
+      }
+    }
+
+    def probeInputStatus(addr: Int, desc: String) = {
+      try {
+        val locator = BaseLocator.inputStatus(tapiConfig.slaveID, addr)
+        master.get.getValue(locator)
+        true
+      } catch {
+        case ex: Throwable =>
+          Logger.info(s"$addr $desc is not supported.")
+          false
+      }
+    }
+
+    val inputRegs =
+      for { r <- modelReg.inputRegs if probeInputReg(r.addr, r.desc) }
+        yield r
+
+    val inputRegStatusType =
+      for {
+        r_idx <- inputRegs.zipWithIndex
+        r = r_idx._1
+        idx = r_idx._2
+      } yield InstrumentStatusType(key = s"$InputKey$idx", addr = r.addr, desc = r.desc, unit = r.unit)
+
+    val holdingRegs =
+      for (r <- modelReg.holdingRegs if probeHoldingReg(r.addr, r.desc))
+        yield r
+
+    val holdingRegStatusType =
+      for {
+        r_idx <- holdingRegs.zipWithIndex
+        r = r_idx._1
+        idx = r_idx._2
+      } yield InstrumentStatusType(key = s"$HoldingKey$idx", addr = r.addr, desc = r.desc, unit = r.unit)
+
+    val modeRegs =
+      for (r <- modelReg.modeRegs if probeInputStatus(r.addr, r.desc))
+        yield r
+
+    val modeRegStatusType =
+      for {
+        r_idx <- modeRegs.zipWithIndex
+        r = r_idx._1
+        idx = r_idx._2
+      } yield InstrumentStatusType(key = s"$ModeKey$idx", addr = r.addr, desc = r.desc, unit = "-")
+
+    val warnRegs =
+      for (r <- modelReg.warnRegs if probeInputStatus(r.addr, r.desc))
+        yield r
+
+    val warnRegStatusType =
+      for {
+        r_idx <- warnRegs.zipWithIndex
+        r = r_idx._1
+        idx = r_idx._2
+      } yield InstrumentStatusType(key = s"$WarnKey$idx", addr = r.addr, desc = r.desc, unit = "-")
+
+    inputRegStatusType ++ holdingRegStatusType ++ modeRegStatusType ++ warnRegStatusType
+  }
+
+  def readReg(statusTypeList: List[InstrumentStatusType]) = {
     import com.serotonin.modbus4j.BatchRead
     val batch = new BatchRead[Integer]
 
     import com.serotonin.modbus4j.locator.BaseLocator
     import com.serotonin.modbus4j.code.DataType
-    var idx = 0
-    for (r <- modelReg.inputRegs) {
-      batch.addLocator(idx, BaseLocator.inputRegister(tapiConfig.slaveID, r.addr, DataType.FOUR_BYTE_FLOAT))
-      idx += 1
-    }
-    val holdingIdx = idx
-    for (r <- modelReg.holdingRegs) {
-      batch.addLocator(idx, BaseLocator.holdingRegister(tapiConfig.slaveID, r.addr, DataType.FOUR_BYTE_FLOAT))
-      idx += 1
-    }
-    val modeIdx = idx
-    for (r <- modelReg.modeRegs) {
-      batch.addLocator(idx, BaseLocator.inputStatus(tapiConfig.slaveID, r.addr))
-      idx += 1
-    }
 
-    val warnIdx = idx
-    for (r <- modelReg.warnRegs) {
-      batch.addLocator(idx, BaseLocator.inputStatus(tapiConfig.slaveID, r.addr))
-      idx += 1
-    }
-
-    val coilIdx = idx
-    for (r <- modelReg.coilRegs) {
-      batch.addLocator(idx, BaseLocator.coilStatus(tapiConfig.slaveID, r.addr))
-      idx += 1
+    for {
+      st_idx <- statusTypeList.zipWithIndex
+      st = st_idx._1
+      idx = st_idx._2
+    } {
+      if (st.key.startsWith(InputKey)) {
+        batch.addLocator(idx, BaseLocator.inputRegister(tapiConfig.slaveID, st.addr, DataType.FOUR_BYTE_FLOAT))
+      } else if (st.key.startsWith(HoldingKey)) {
+        batch.addLocator(idx, BaseLocator.holdingRegister(tapiConfig.slaveID, st.addr, DataType.FOUR_BYTE_FLOAT))
+      } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
+        batch.addLocator(idx, BaseLocator.inputStatus(tapiConfig.slaveID, st.addr))
+      } else {
+        throw new Exception(s"Unexpected key ${st.key}")
+      }
     }
 
     batch.setContiguousRequests(false)
-    assert(master.isDefined)
 
     val results = master.get.send(batch)
     val inputs =
-      for (i <- 0 to holdingIdx - 1)
-        yield results.getFloatValue(i).toFloat
+      for {
+        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(InputKey)
+        idx = st_idx._2
+      } yield (st_idx._1, results.getFloatValue(idx).toFloat)
 
     val holdings =
-      for (i <- holdingIdx to modeIdx - 1)
-        yield results.getFloatValue(i).toFloat
+      for {
+        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(HoldingKey)
+        idx = st_idx._2
+      } yield (st_idx._1, results.getFloatValue(idx).toFloat)
 
     val modes =
-      for (i <- modeIdx to warnIdx - 1) yield {
-        results.getValue(i).asInstanceOf[Boolean]
-      }
+      for {
+        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(ModeKey)
+        idx = st_idx._2
+      } yield (st_idx._1, results.getValue(idx).asInstanceOf[Boolean])
+
     val warns =
-      for (i <- warnIdx to coilIdx - 1) yield {
-        results.getValue(i).asInstanceOf[Boolean]
-      }
+      for {
+        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(WarnKey)
+        idx = st_idx._2
+      } yield (st_idx._1, results.getValue(idx).asInstanceOf[Boolean])
 
-    val coils =
-      for (i <- coilIdx to idx - 1) yield {
-        results.getValue(i).asInstanceOf[Boolean]
-      }
-
-    ModelRegValue(inputs.toList, holdings.toList, modes.toList, warns.toList, coils.toList)
+    ModelRegValue(inputs, holdings, modes, warns)
   }
 
   var connected = false
-  var oldModelReg: ModelRegValue = _
+  var oldModelReg: Option[ModelRegValue] = None
   import Alarm._
 
   def receive = normalReceive
   def readRegHandler = {
     try {
-      val regValue = readReg
+      instrumentStatusTypes.map { readReg }.map { regReadHandler }
       connected = true
-      regReadHandler(regValue)
     } catch {
       case ex: java.net.ConnectException =>
         Logger.error(ex.getMessage);
+        if (connected) {
+          log(instStr(instId), Level.ERR, s"讀取發生錯誤:${ex.getMessage}")
+          connected = false
+        }
+      case ex: Exception =>
+        logException(ex)
         if (connected) {
           log(instStr(instId), Level.ERR, s"讀取發生錯誤:${ex.getMessage}")
           connected = false
@@ -166,6 +252,10 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
         master.get.init();
         connected = true
+        if (instrumentStatusTypes.isEmpty) {
+          instrumentStatusTypes = Some(probeInstrumentStatusType)
+          Instrument.updateStatusType(instId, instrumentStatusTypes.get)
+        }
         cancelable = Akka.system.scheduler.schedule(Duration(3, SECONDS), Duration(3, SECONDS), self, ReadRegister)
       } catch {
         case ex: Exception =>
@@ -182,11 +272,11 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       if (state == MonitorStatus.ZeroCalibrationStat) {
         if (tapiConfig.monitorTypes.isEmpty)
           Logger.error("There is no monitor type for calibration.")
-        else if(!connected)
+        else if (!connected)
           Logger.error("Cannot calibration before connected.")
         else
           startCalibration(tapiConfig.monitorTypes.get)
-      } else{
+      } else {
         collectorState = state
         Instrument.setState(instId, collectorState)
       }
@@ -249,41 +339,57 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
   }
 
-  def triggerZeroCalibration(v:Boolean)
+  def triggerZeroCalibration(v: Boolean)
   def readCalibratingValue(): List[Double]
 
-  def triggerSpanCalibration(v:Boolean)
+  def triggerSpanCalibration(v: Boolean)
   def getSpanStandard(): List[Double]
 
   def reportData(regValue: ModelRegValue)
 
   def regReadHandler(regValue: ModelRegValue) = {
     reportData(regValue)
-    for (r <- regValue.modeRegs.zipWithIndex) {
-      if (r._1) {
-        val idx = r._2
-        if (oldModelReg == null || oldModelReg.modeRegs(idx) != r._1) {
-          log(instStr(instId), Level.INFO, modelReg.modeRegs(idx).desc)
+    for {
+      r <- regValue.modeRegs.zipWithIndex
+      statusType = r._1._1
+      enable = r._1._2
+      idx = r._2
+    } {
+      if (enable) {
+        if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
+          log(instStr(instId), Level.INFO, statusType.desc)
         }
       }
     }
 
-    for (r <- regValue.warnRegs.zipWithIndex) {
-      val v = r._1
-      val idx = r._2
-      if (v) {
-        if (oldModelReg == null || oldModelReg.warnRegs(idx) != v) {
-          log(instStr(instId), Level.WARN, modelReg.warnRegs(idx).desc)
+    for {
+      r <- regValue.warnRegs.zipWithIndex
+      statusType = r._1._1
+      enable = r._1._2
+      idx = r._2
+    } {
+      if (enable) {
+        if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
+          log(instStr(instId), Level.WARN, statusType.desc)
         }
       } else {
-        if (oldModelReg != null && oldModelReg.warnRegs(idx) != v) {
-          log(instStr(instId), Level.INFO, s"${modelReg.warnRegs(idx).desc} 解除")
+        if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
+          log(instStr(instId), Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }
 
-    oldModelReg = regValue
+    oldModelReg = Some(regValue)
   }
+
+  def findDataRegIdx(regValue: ModelRegValue)(addr: Int) = {
+    val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
+    if (dataReg.isEmpty)
+      throw new Exception("Cannot found Data register!")
+
+    dataReg.get._2
+  }
+
   override def postStop(): Unit = {
     if (cancelable != null)
       cancelable.cancel()

@@ -18,20 +18,17 @@ class T300Collector(instId:String, modelReg: ModelReg, config: TapiConfig) exten
   import DataCollectManager._
   import TapiTxx._
   val CO = MonitorType.withName("CO")
-  
-  def findIdx(addr:Int)={
-    val inputRegs = TapiT300.modelReg.inputRegs.zipWithIndex
-    val idx = inputRegs.find(p=>(p._1.addr == addr))
-    assert(idx.isDefined)
-    idx.get._2    
-  }
-  
-  val regIdxCO = findIdx(18)
+    
+  var regIdxCO:Option[Int]= None
   
   override def reportData(regValue:ModelRegValue)={
-    val vCO = regValue.inputRegs(regIdxCO)
+    def findIdx = findDataRegIdx(regValue)(_)
+    val vCO = regValue.inputRegs(regIdxCO.getOrElse({
+      regIdxCO = Some(findIdx(18))
+      regIdxCO.get
+    }))
     
-    context.parent ! ReportData(List(MonitorTypeData(CO, vCO.toDouble, collectorState)))
+    context.parent ! ReportData(List(MonitorTypeData(CO, vCO._2.toDouble, collectorState)))
     
   }
   
