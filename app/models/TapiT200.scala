@@ -61,7 +61,7 @@ class T200Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   def triggerZeroCalibration(v: Boolean) {
     try {
       val locator = BaseLocator.coilStatus(config.slaveID, 20)
-      master.get.setValue(locator, v)
+      masterOpt.get.setValue(locator, v)
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)
@@ -71,11 +71,11 @@ class T200Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   def readCalibratingValue(): List[Double] = {
     try {
       val noxLoc = BaseLocator.inputRegister(config.slaveID, 18, DataType.FOUR_BYTE_FLOAT)
-      val noxV = master.get.getValue(noxLoc)
+      val noxV = masterOpt.get.getValue(noxLoc)
       val noLoc = BaseLocator.inputRegister(config.slaveID, 22, DataType.FOUR_BYTE_FLOAT)
-      val noV = master.get.getValue(noLoc)
+      val noV = masterOpt.get.getValue(noLoc)
       val no2Loc = BaseLocator.inputRegister(config.slaveID, 26, DataType.FOUR_BYTE_FLOAT)
-      val no2V = master.get.getValue(no2Loc)
+      val no2V = masterOpt.get.getValue(no2Loc)
       List(noxV.floatValue(), noV.floatValue(), no2V.floatValue())
     } catch {
       case ex: Exception =>
@@ -88,13 +88,13 @@ class T200Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     try {
       if (v) {
         val noxSpanLocator = BaseLocator.holdingRegister(config.slaveID, 0, DataType.FOUR_BYTE_FLOAT)
-        master.get.setValue(noxSpanLocator, 450f)
+        masterOpt.get.setValue(noxSpanLocator, 450f)
         val nonSpanLocator = BaseLocator.holdingRegister(config.slaveID, 2, DataType.FOUR_BYTE_FLOAT)
-        master.get.setValue(noxSpanLocator, 450f)
+        masterOpt.get.setValue(noxSpanLocator, 450f)
       }
 
       val locator = BaseLocator.coilStatus(config.slaveID, 21)
-      master.get.setValue(locator, v)
+      masterOpt.get.setValue(locator, v)
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)

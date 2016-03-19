@@ -1,0 +1,50 @@
+@* historyReport Template File *@
+@import com.github.nscala_time.time.Imports._
+@import models.InstrumentStatus._
+@(id:String, start:DateTime, end:DateTime, report:Array[InstrumentStatus], nStatus:Int, timeSeq:Array[DateTime], nameMap:Map[String, String])
+
+<H3>儀器狀態 @id</H3>
+<H5>開始:@start.toString("YYYY-MM-dd")</H5>
+<H5>結束:@end.toString("YYYY-MM-dd")</H5>
+
+<table id="instrumentStatusReport" class="table">
+<thead>
+	<tr>		
+		<th>屬性</th>
+		@for(time_idx<-timeSeq.zipWithIndex){
+			@if(time_idx._2 == 0){
+				<th>@time_idx._1.toString("MM/dd HH:mm")</th>
+			}else{
+				<th>@time_idx._1.toString("HH:mm")</th>
+			}						
+		}
+	</tr>
+</thead>
+<tbody>
+	@for(statIdx <- 0 to nStatus-1){
+		<tr>
+			@if(!report.isEmpty){
+				<td>@nameMap(report(0).statusList(statIdx).key)</td>
+			}			
+			@for(timeIdx <- 0 to timeSeq.length-1){
+				<td>@report(timeIdx).statusList(statIdx).value</td>				
+			}
+		</tr>
+	}
+</tbody>
+</table>
+<script>
+	var localized_url = "/assets/localization/zh_tw.json";
+</script>
+<script>
+$( document ).ready(function() {
+	$('#alarmReport').dataTable( {
+		responsive: true,
+		language: {
+			url: localized_url,							
+		},
+		searching: true,
+		paging: false
+	} );
+});
+</script>

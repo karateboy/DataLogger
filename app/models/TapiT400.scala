@@ -40,10 +40,10 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     try {
       if (v) {
         val targetZeroLocator = BaseLocator.holdingRegister(config.slaveID, 0, DataType.FOUR_BYTE_FLOAT)
-        master.get.setValue(targetZeroLocator, 450f)
+        masterOpt.get.setValue(targetZeroLocator, 450f)
       }
       val locator = BaseLocator.coilStatus(config.slaveID, 20)
-      master.get.setValue(locator, v)
+      masterOpt.get.setValue(locator, v)
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)
@@ -53,7 +53,7 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   def readCalibratingValue(): List[Double] = {
     try {
       val locator = BaseLocator.inputRegister(config.slaveID, 14, DataType.FOUR_BYTE_FLOAT)
-      val v = master.get.getValue(locator)
+      val v = masterOpt.get.getValue(locator)
       List(v.floatValue())
     } catch {
       case ex: Exception =>
@@ -66,11 +66,11 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     try {
       if (v) {
         val targetSpanLocator = BaseLocator.holdingRegister(config.slaveID, 2, DataType.FOUR_BYTE_FLOAT)
-        master.get.setValue(targetSpanLocator, 450f)
+        masterOpt.get.setValue(targetSpanLocator, 450f)
       }
 
       val locator = BaseLocator.coilStatus(config.slaveID, 21)
-      master.get.setValue(locator, v)
+      masterOpt.get.setValue(locator, v)
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)

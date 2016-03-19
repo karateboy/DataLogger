@@ -43,6 +43,8 @@ PUT		/ActivateInstrument/:ids	controllers.Application.activateInstrument(ids)
 PUT		/ToggleMaintainInstrument/:ids	controllers.Application.toggleMaintainInstrument(ids)
 PUT		/CalibrateInstrument/:ids	controllers.Application.calibrateInstrument(ids)
 
+GET		/InstrumentStatus			controllers.Query.instrumentStatus()
+GET		/InstrumentStatusReport/:id/:start/:end		controllers.Query.instrumentStatusReport(id, start, end)
 
 #Realtime
 GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()

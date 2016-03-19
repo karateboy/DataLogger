@@ -455,6 +455,29 @@ object Query extends Controller {
     val report = Alarm.getAlarms(start, end)
     Ok(views.html.alarmReport(start, end, report))
   }
+  
+  def instrumentStatus() = Security.Authenticated {
+    Ok(views.html.instrumentStatus())
+  }
+
+  def instrumentStatusReport(id:String, startStr: String, endStr: String) = Security.Authenticated {
+    val (start, end) =
+      (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
+        DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+    
+    val report = InstrumentStatus.query(start, end + 1.day).toArray
+    val nStatus = {
+      if(report.isEmpty)
+        0
+      else
+        report(0).statusList.length
+    }
+    
+    val timeSeq = report.map { _.time }
+    val statusTypeMap = Instrument.getStatusTypeMap(id) 
+    Ok(views.html.instrumentStatusReport(id, start, end, report, nStatus, timeSeq, statusTypeMap))
+  }
+
   //
   //  def windRose() = Security.Authenticated {
   //    implicit request =>

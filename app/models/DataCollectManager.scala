@@ -32,7 +32,11 @@ object DataCollectManager {
     import scala.concurrent.duration._
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    Akka.system.scheduler.schedule(Duration(1, MINUTES), Duration(1, MINUTES), manager, CalculateData)
+    //Try to trigger at 30 sec
+    val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
+    val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
+    
+    Akka.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), manager, CalculateData)
   }
 
   def startCollect(inst: Instrument) {

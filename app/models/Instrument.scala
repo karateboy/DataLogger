@@ -111,17 +111,6 @@ object Instrument {
     waitReadyResult(f).map { toInstrument }
   }
 
-  /*
-  def getInstrumentState(id: String) = {
-    val instList = getInstrument(id)
-    if (instList.isEmpty)
-      "(已刪除)"
-    else {
-      val inst = instList(0)
-      //InstrumentType.map(inst.instType).driver.g
-    }
-  }*/
-
   def delete(id: String) = {
     val f = collection.deleteOne(equal("_id", id)).toFuture()
     waitReadyResult(f)
@@ -165,11 +154,32 @@ object Instrument {
     
     val statusDoc = status.map{ s => bArray.add(Document(Json.toJson(s).toString).toBsonDocument)}
     
-    val f = collection.updateOne(equal("_id", id), set("status", bArray)).toFuture()
+    val f = collection.updateOne(equal("_id", id), set("statusType", bArray)).toFuture()
     f.onFailure({
       case ex:Exception=>
         ModelHelper.logException(ex)
     })
     f
+  }
+  
+  def getStatusTypeMap(id:String) = {
+    val instList = getInstrument(id)
+    if(instList.length != 1)
+      throw new Exception("no such Instrument")
+    
+    val inst = instList(0)
+    
+    val statusTypeOpt = inst.statusType
+    if(statusTypeOpt.isEmpty)
+      Map.empty[String, String]
+    else{
+      val statusType = statusTypeOpt.get 
+      val kv =
+        for(kv <- statusType)
+          yield
+          kv.key -> kv.desc
+      
+      Map(kv:_*)
+    }
   }
 }
