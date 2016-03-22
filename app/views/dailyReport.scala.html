@@ -4,22 +4,7 @@
 @(reportDate:DateTime, mTypes:List[MonitorType.Value], mtTimeMap: Map[MonitorType.Value, Map[DateTime, Record]], statMap: Map[MonitorType.Value, Map[DateTime, Stat]])
 <h3>監測日報表</h3>
 <h4>日期:@reportDate.toString("yyyy年MM月dd日")</h4>
-<div class="col-lg-offset-4 col-lg-8">
-<table class="table">
-<tbody>
-<tr>
-	<td class="col-lg-1" style="color:black"><strong>標示說明:</strong></td>
-	<td class="col-lg-1" style="color:@OverInternalColor">超過內控值</td>
-	<td class="col-lg-1" style="color:@OverLawColor">超過法規值</td>
-	<td class="col-lg-1" style="color:black;background-color:@CalibrationColor">校正</td>
-	<td class="col-lg-1" style="color:black;background-color:@RepairColor">維修定保</td>
-	<td class="col-lg-1" style="color:black;background-color:@AbnormalColor">異常</td>
-	<td class="col-lg-1" style="color:black;background-color:@AutoAuditColor">自動檢核</td>
-	<td class="col-lg-1" style="color:black;background-color:@ManualAuditColor">人工註記</td>
-</tr>
-</tbody>
-</table>
-</div>
+@recordLegend()
 <table id="reportTable" class="table table-bordered" cellspacing="0" width="100%">
 	<thead>
 		<tr>
@@ -60,7 +45,7 @@
 			<tr>
 			<th>@("%02d:00".format(i))</th>
 			@for(mt<-mTypes){
-				<td style="@MonitorType.getCssStyleStr(mt, mtTimeMap(mt).get(reportDate + i.hour))"
+				<td class="@MonitorType.getCssClassStr(mt, mtTimeMap(mt).get(reportDate + i.hour))"
 				>@MonitorType.formatRecord(mt, mtTimeMap(mt).get(reportDate + i.hour))</td>
 			}
 			</tr>

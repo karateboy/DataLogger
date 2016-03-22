@@ -7,6 +7,7 @@
 					<tr>
 						<th>測項</th>
 						<th>測值</th>
+						<th>狀態</th>
 					</tr>
 				</thead>
             </table>
@@ -25,17 +26,25 @@ $( document ).ready(function(){
 		columns: [
 		          { data: 'desp' },
 		          { data: 'value' },
+		          { data: 'status'}
 		      ],
 		language: {
 			url: local_url,							
 		},
+		rowCallback: function( row, data, index ) {
+		    $(row).addClass(data.classStr);
+		  },
 		paging:   false,
 		searching: false,
+		info: false,
 		responsive: true,
 	} );
-	
-	setInterval(function (){
+
+	function reload(){
 		oTable.api().ajax.reload();
-	}, 1000);
+		setTimeout(reload, 3000);
+	};
+
+	reload();
 });
 </script>

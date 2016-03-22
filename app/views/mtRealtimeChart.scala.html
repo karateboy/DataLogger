@@ -7,7 +7,43 @@
 </div>
 <script>
 $(document).ready(function(){
-	var chartID = "mtRealtimeChart";
+	var chartTypes = ['areaspline', 'column', 'spline']
+	var chartSeries = [];
+	//Init chartSeries
+	$.ajax({
+		url : '/MonitorTypeStatusList',
+		async :false,
+		contentType : "application/json; charset=utf-8",
+		type : "GET",
+		dataType : "json",
+		cache:false,
+		success : function(result) {
+			var now = new Date().getTime();
+			for(var i=0;i<result.length;i++){
+				var data =[];
+				for(j=0;j<20;j++)
+					data.push({
+		            	x:now,
+		            	y:parseFloat(result[i].value)});
+            	
+				var series = 
+					{
+			            name: result[i].desp,
+			            type: chartTypes[i%chartTypes.length],
+			            data: data
+			        }
+				chartSeries.push(series);			
+			}
+		},
+		error : function(xhr, status, errorThrown) {
+			console.log("錯誤訊息:" + status + "-" + errorThrown);
+		},
+
+		complete : function(xhr, status) {
+
+		}
+	});
+	
 	function dataGenerator(time) {
         var data = [];
         var i;
@@ -21,7 +57,7 @@ $(document).ready(function(){
         return data;
     }
     
-    $('#'+chartID).highcharts({
+    $('#mtRealtimeChart').highcharts({
         chart: {
             type: 'areaspline',
 
@@ -33,13 +69,31 @@ $(document).ready(function(){
                     // set up the updating of the chart each second
                     var series = this.series;
                     setInterval(function () {
-                        var x = (new Date()).getTime();                            
-                        for(var i=0;i<2;i++){
-                        	var y = 2 + Math.random();
-                        	series[i].addPoint([x, y], true, true);    
-                        }
-                                                
-                    }, 2000);
+                    	$.ajax({
+                    		url : '/MonitorTypeStatusList',
+                    		async :false,
+                    		contentType : "application/json; charset=utf-8",
+                    		type : "GET",
+                    		dataType : "json",
+                    		cache:false,
+                    		success : function(result) {
+                        		var x = new Date().getTime();
+                    			for(var i=0;i<result.length;i++){
+                        			for(var j=0;j<series.length;j++){
+                            			if(series[j].name == result[i].desp){
+                                			var y = parseFloat(result[i].value);
+                            				series[j].addPoint([x, y], true, true);
+                            				break;
+                            			}
+                        			}                    							
+                    			}
+                    		},
+                    		error : function(xhr, status, errorThrown) {
+                    			console.log("錯誤訊息:" + status + "-" + errorThrown);
+                    		},
+                    		complete : function(xhr, status) {}
+                    	});
+                    }, 3000);
                 }
             }
             
@@ -82,13 +136,7 @@ $(document).ready(function(){
         exporting: {
             enabled: false
         },
-        series: [{
-            name: '二氧化硫',
-            data: dataGenerator(new Date().getTime())
-        },{
-            name: '臭氧',
-            data: dataGenerator(new Date().getTime())
-        }]
+        series: chartSeries
     });
 });
 </script>

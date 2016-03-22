@@ -42,7 +42,7 @@
             			@for(mt<-MonitorType.activeMtvList){
             				<tr id="@map(mt)._id">
             					<th>@map(mt)._id</th>
-            					<th>@map(mt).measuredBy</th>
+            					<th>@displayMeasuredBy(map(mt).measuredBy)</th>
             					<td col="desp">@map(mt).desp</td>
             					<td col="unit">@map(mt).unit</td>
             					<td col="std_internal">@MonitorType.format(mt, map(mt).std_internal) </td>

@@ -360,12 +360,13 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   var nextLoggingStatusTime = {
     def getNextTime(period:Int)={
       val now = DateTime.now()
-      now.withMinuteOfHour((now.getMinuteOfHour/period + 1)*period%60).withSecondOfMinute(0).withMillisOfSecond(0)
+      val nextMin = (now.getMinuteOfHour/period + 1)*period
+      now.withHourOfDay(now.getHourOfDay + (nextMin/60)).withMinuteOfHour(nextMin%60).withSecondOfMinute(0).withMillisOfSecond(0)
     }
     // suppose every 10 min
     val period = 10    
     val nextTime = getNextTime(period)
-    Logger.debug(s"next logging time= $nextTime")
+    Logger.debug(s"$instId next logging time= $nextTime")
     nextTime
   }
   

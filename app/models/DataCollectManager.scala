@@ -55,11 +55,22 @@ object DataCollectManager {
   def setInstrumentState(id: String, state: String){
     manager ! SetState(id, state)
   }
+  
+  case object GetLatestData
+  def getLatestData()={
+    import akka.pattern.ask
+    import akka.util.Timeout
+    import scala.concurrent.duration._
+    implicit val timeout = Timeout(Duration(3, SECONDS))
+    
+    val f = manager ? GetLatestData
+    f.mapTo[Map[MonitorType.Value, Record]]
+  }
 }
 
 class DataCollectManager extends Actor {
   import DataCollectManager._
-  var collectorMap = Map.empty[String, ActorRef]
+  var collectorMap = Map.empty[String, (ActorRef, List[MonitorType.Value])]
   var latestDataMap = Map.empty[MonitorType.Value, Record]
   var mtDataList = List.empty[(DateTime, List[MonitorTypeData])]
 
@@ -67,17 +78,22 @@ class DataCollectManager extends Actor {
     case AddInstrument(inst) =>
       val instType = InstrumentType.map(inst.instType)
       val collector = instType.driver.start(inst._id, inst.protocol, inst.param)
-      collectorMap += (inst._id -> collector)
+      val monitorTypes = instType.driver.getMonitorTypes(inst.param)
+      
+      collectorMap += (inst._id -> (collector, monitorTypes))
 
     case RemoveInstrument(id: String) =>
       val actorOpt = collectorMap.get(id)
       if (actorOpt.isEmpty) {
         Logger.error(s"unknown instrument ID $id")
       } else {
-        val actor = actorOpt.get
+        val (actor, monitorTypes) = actorOpt.get
         Logger.info(s"Stop collecting instrument $id ")
+        Logger.info(s"remove ${monitorTypes.toString()}")
         actor ! PoisonPill
         collectorMap = collectorMap - (id)
+        latestDataMap = latestDataMap -- monitorTypes
+        Logger.debug(s"${latestDataMap.toString}")
       }
     case ReportData(dataList) =>
       val now = DateTime.now
@@ -97,9 +113,13 @@ class DataCollectManager extends Actor {
         f.map { _ => calculateHourData(current) }
       }
     case SetState(instId, state) =>
-      collectorMap.get(instId).map { collector =>
+      collectorMap.get(instId).map { collector_mt =>
+        val collector = collector_mt._1
         collector ! SetState(instId, state)
       }
+      
+    case GetLatestData=>
+      sender ! latestDataMap
   }
 
   import scala.collection.mutable.ListBuffer

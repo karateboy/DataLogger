@@ -132,6 +132,15 @@ object MonitorType extends Enumeration {
   var map: Map[Value, MonitorType] = Map(mtList.map { e => Value(e._id) -> e }: _*)
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   def activeMtvList = mtvList.filter { mt => map(mt).measuredBy.isDefined }
+  def realtimeMtvList = mtvList.filter { mt =>
+    val instIdOpt = map(mt).measuredBy
+    if (instIdOpt.isEmpty)
+      false
+    else {
+      val instrumentList = Instrument.getInstrument(instIdOpt.get)
+      !instrumentList.isEmpty
+    }
+  }
 
   def newMonitorType(mt: MonitorType) = {
     val doc = toDocument(mt)
@@ -149,13 +158,13 @@ object MonitorType extends Enumeration {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Updates._
     import org.mongodb.scala.model.FindOneAndUpdateOptions
-    
+
     import scala.concurrent.ExecutionContext.Implicits.global
     val idFilter = equal("_id", map(mt)._id)
     val opt = FindOneAndUpdateOptions().returnDocument(com.mongodb.client.model.ReturnDocument.AFTER)
     val f =
-      if (colname == "desp" || colname == "unit" || colname == "measuredBy") {        
-        
+      if (colname == "desp" || colname == "unit" || colname == "measuredBy") {
+
         collection.findOneAndUpdate(idFilter, set(colname, newValue), opt).toFuture()
       } else if (colname == "prec" || colname == "order") {
         import java.lang.Integer
@@ -190,43 +199,70 @@ object MonitorType extends Enumeration {
     }
   }
 
-  def formatR(mt: MonitorType.Value, r: Record) = {
-    val prec = map(mt).prec
-    s"%.${prec}f".format(r.value)
+  def overStd(mt: MonitorType.Value, v: Double) = {
+    val mtCase = MonitorType.map(mt)
+    val overInternal =
+      if (mtCase.std_internal.isDefined) {
+        if (v > mtCase.std_internal.get)
+          true
+        else
+          false
+      } else
+        false
+    val overLaw =
+      if (mtCase.std_law.isDefined) {
+        if (v > mtCase.std_law.get)
+          true
+        else
+          false
+      } else
+        false
+    (overInternal, overLaw)
+  }
+
+  def getOverStd(mt: MonitorType.Value, r: Option[Record]) = {
+    if (r.isEmpty)
+      false
+    else {
+      val (overInternal, overLaw) = overStd(mt, r.get.value)
+      overInternal || overLaw
+    }
   }
 
   def formatRecord(mt: MonitorType.Value, r: Option[Record]) = {
     if (r.isEmpty)
       "-"
     else {
+      val (overInternal, overLaw) = overStd(mt, r.get.value)
       val prec = map(mt).prec
-      s"%.${prec}f".format(r.get.value)
+      val value = s"%.${prec}f".format(r.get.value)
+      if(overInternal || overLaw)
+        s"<i class='fa fa-exclamation-triangle'></i>$value"
+      else
+        s"$value"
     }
   }
 
-  def getCssStyleStr(mt: MonitorType.Value, r: Option[Record]) = {
+  def getCssClassStr(mt: MonitorType.Value, r: Option[Record]) = {
     if (r.isEmpty)
       ""
     else {
-      val mtCase = MonitorType.map(mt)
       val v = r.get.value
-      val overInternal =
-        if (mtCase.std_internal.isDefined) {
-          if (v > mtCase.std_internal.get)
-            true
-          else
-            false
-        } else
-          false
-      val overLaw =
-        if (mtCase.std_law.isDefined) {
-          if (v > mtCase.std_law.get)
-            true
-          else
-            false
-        } else
-          false
-      MonitorStatus.getCssStyleStr(r.get.status, overInternal, overLaw)
+      val (overInternal, overLaw) = overStd(mt, v)
+      MonitorStatus.getCssClassStr(r.get.status, overInternal, overLaw)
+    }
+  }
+
+  def displayMeasuredBy(mb: Option[String]) = {
+    if (mb.isEmpty)
+      "未曾使用"
+    else {
+      val id = mb.get
+      val instList = Instrument.getInstrument(id)
+      if (instList.isEmpty)
+        s"$id (已移除)"
+      else
+        s"$id"
     }
   }
 }

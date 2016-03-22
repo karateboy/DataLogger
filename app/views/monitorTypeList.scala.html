@@ -35,17 +35,22 @@ $( document ).ready(function(){
 		          { data: 'value' },
 		          { data: 'unit' },
 		          { data: 'instrument' },
-		          { data: 'state' },
+		          { data: 'status' },
 		          { data: 'lastUpdate',
 		        	defaultContent: "-"
 			           }
+		           
 		      ],
 		language: {
 			url: local_url,							
 		},
+		rowCallback: function( row, data, index ) {
+		    $(row).addClass(data.classStr);
+		  },
 		paging:   false,
+		info: false,
 		searching: false,
-		responsive: true,
+		responsive: true
 	} );
 	
 	setInterval(function (){
