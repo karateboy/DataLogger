@@ -69,6 +69,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
         true
       } catch {
         case ex: Throwable =>
+          Logger.error(ex.getMessage)
           Logger.info(s"$addr $desc is not supported.")
           false
       }
@@ -204,25 +205,6 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   import Alarm._
 
   def receive = normalReceive
-  def readRegHandler = {
-    try {
-      instrumentStatusTypesOpt.map { readReg }.map { regReadHandler }
-      connected = true
-    } catch {
-      case ex: java.net.ConnectException =>
-        Logger.error(ex.getMessage);
-        if (connected) {
-          log(instStr(instId), Level.ERR, s"讀取發生錯誤:${ex.getMessage}")
-          connected = false
-        }
-      case ex: Exception =>
-        logException(ex)
-        if (connected) {
-          log(instStr(instId), Level.ERR, s"讀取發生錯誤:${ex.getMessage}")
-          connected = false
-        }
-    }
-  }
 
   def startCalibration(monitorTypes: List[MonitorType.Value]) {
     import scala.concurrent.duration._
@@ -239,7 +221,27 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
   import scala.concurrent.Future
   import scala.concurrent.blocking
+  def readRegHandler = {
+    Future {
+      blocking {
+        try {
+          instrumentStatusTypesOpt.map { readReg }.map { regReadHandler }
+          connected = true
+        } catch {
+          case ex: Exception =>
+            Logger.error(ex.getMessage)
+            if (connected)
+              log(instStr(instId), Level.ERR, s"${ex.getMessage}")
 
+            connected = false
+        } finally {
+          import scala.concurrent.duration._
+          cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister)
+        }
+      }
+    }
+  }
+  
   def normalReceive(): Receive = {
     case ConnectHost(host) =>
       Logger.debug(s"${self.toString()}: connect $host")
@@ -264,12 +266,11 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
               Instrument.updateStatusType(instId, instrumentStatusTypesOpt.get)
             }
             import scala.concurrent.duration._
-            cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadRegister)
+            cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage);
+              Logger.error(ex.getMessage)
               log(instStr(instId), Level.ERR, s"無法連接:${ex.getMessage}")
-              Logger.error("Try again 1 min later")
               import scala.concurrent.duration._
 
               Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(host))
@@ -278,12 +279,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       }
 
     case ReadRegister =>
-      Future {
-        blocking {
-          readRegHandler
-        }
-      }
-
+      
     case SetState(id, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
         if (tapiConfig.monitorTypes.isEmpty)
@@ -319,7 +315,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     case ReadRegister =>
       Future {
         blocking {
-          readRegHandler
+          instrumentStatusTypesOpt.map { readReg }.map { regReadHandler }
         }
       }
 
