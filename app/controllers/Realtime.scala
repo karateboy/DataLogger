@@ -20,8 +20,6 @@ object Realtime extends Controller {
   def MonitorTypeStatusList() = Security.Authenticated.async {
     implicit request =>
       import MonitorType._
-      val user = request.user
-      val userProfileOpt = User.getUserByEmail(user.id)
 
       implicit val mtsWrite = Json.writes[MonitorTypeStatus]
 
@@ -35,12 +33,11 @@ object Realtime extends Controller {
             } yield {
               val mCase = map(mt)
               val duration = new Duration(record.time, DateTime.now())
-              val (overInternal, overLaw) = MonitorType.overStd(mt, record.value)
+              val (overInternal, overLaw) = overStd(mt, record.value)
               MonitorTypeStatus(mCase.desp, format(mt, Some(record.value)), mCase.unit, mCase.measuredBy.getOrElse("??"),
                 MonitorStatus.map(record.status).desp, s"${duration.getStandardSeconds}秒前", 
                 MonitorStatus.getCssClassStr(record.status, overInternal, overLaw))
             }
-          Logger.debug(list.toString)
           Ok(Json.toJson(list))
         }
 

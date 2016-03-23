@@ -2,7 +2,7 @@ package models
 import play.api._
 
 object TapiT200 extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
-  val modelReg = readModelSetting
+  lazy val modelReg = readModelSetting
 
   import Protocol.ProtocolParam
   import akka.actor._
@@ -50,7 +50,8 @@ class T200Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
       regIdxNo2.get
     }))
 
-    context.parent ! ReportData(List(MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
+    context.parent ! ReportData(List(
+        MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
       MonitorTypeData(NO, vNO._2.toDouble, collectorState),
       MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
   }

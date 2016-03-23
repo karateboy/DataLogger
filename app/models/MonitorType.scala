@@ -53,14 +53,15 @@ object MonitorType extends Enumeration {
 
   lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
-  def init(colNames: Seq[String]) {
-    def insertMt {
+  def init(colNames: Seq[String])={
+    def insertMt={
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
       f.onFailure(futureErrorHandler)
       f.onSuccess({
         case _: Seq[t] =>
           refreshMtv
       })
+      f.mapTo[Unit]
     }
 
     if (!colNames.contains(colName)) {
@@ -70,7 +71,9 @@ object MonitorType extends Enumeration {
         case _: Seq[t] =>
           insertMt
       })
-    }
+      Some(f.mapTo[Unit])
+    }else
+      None
   }
 
   def BFName(mt: MonitorType.Value) = {

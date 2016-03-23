@@ -12,8 +12,9 @@ object MongoDB {
   val database: MongoDatabase = mongoClient.getDatabase(dbName.get);
   def init(){
     val f = database.listCollectionNames().toFuture()
-    val colFuture = f.map { colNames => 
-      MonitorType.init(colNames)
+    val colFuture = f.map { colNames =>
+      //MonitorType => 
+      val mtFutureOpt = MonitorType.init(colNames)
       Instrument.init(colNames)
       Record.init(colNames)
       User.init(colNames)
@@ -22,6 +23,12 @@ object MongoDB {
       Alarm.init(colNames)
       InstrumentStatus.init(colNames)
     }
+    //Program need to wait before init complete
+    import scala.concurrent.Await
+    import scala.concurrent.duration._
+    import scala.language.postfixOps
+    
+    Await.result(colFuture, 30 seconds)
   }
   
   def cleanup={

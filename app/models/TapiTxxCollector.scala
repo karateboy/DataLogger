@@ -243,9 +243,9 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   def normalReceive(): Receive = {
     case ConnectHost(host) =>
       Logger.debug(s"${self.toString()}: connect $host")
-      try {
-        Future {
-          blocking {
+      Future {
+        blocking {
+          try {
             val ipParameters = new IpParameters()
             ipParameters.setHost(host);
             ipParameters.setPort(502);
@@ -265,16 +265,16 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             }
             import scala.concurrent.duration._
             cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadRegister)
+          } catch {
+            case ex: Exception =>
+              Logger.error(ex.getMessage);
+              log(instStr(instId), Level.ERR, s"無法連接:${ex.getMessage}")
+              Logger.error("Try again 1 min later")
+              import scala.concurrent.duration._
+
+              Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(host))
           }
         }
-      } catch {
-        case ex: Exception =>
-          Logger.error(ex.getMessage);
-          log(instStr(instId), Level.ERR, s"無法連接:${ex.getMessage}")
-          Logger.error("Try again 1 min later")
-          import scala.concurrent.duration._
-
-          Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(host))
       }
 
     case ReadRegister =>

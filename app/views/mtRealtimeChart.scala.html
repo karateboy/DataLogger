@@ -68,7 +68,8 @@ $(document).ready(function(){
                 load: function () {
                     // set up the updating of the chart each second
                     var series = this.series;
-                    var timer = setInterval(function () {
+                    function reload(){
+                        console.log("mtRealtime chart reloading...");
                     	$.ajax({
                     		url : '/MonitorTypeStatusList',
                     		async :false,
@@ -93,8 +94,11 @@ $(document).ready(function(){
                     		},
                     		complete : function(xhr, status) {}
                     	});
-                    }, 3000);
-                    myInterval.push(timer);
+                    	
+                    	var timer = setTimeout(reload, 3000);
+                    	myTimeout.push(timer);
+                    }
+                    reload();
                 }
             }
             

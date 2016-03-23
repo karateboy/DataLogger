@@ -2,7 +2,7 @@ package models
 import play.api._
 import TapiTxx._
 object TapiT100 extends TapiTxx(ModelConfig("T100", List("SO2"))) {
-  val modelReg = readModelSetting
+  lazy val modelReg = readModelSetting
 
   import Protocol.ProtocolParam
   import akka.actor._

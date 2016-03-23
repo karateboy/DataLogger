@@ -42,10 +42,11 @@ $( document ).ready(function(){
 
 	function reload(){
 		oTable.api().ajax.reload();
-		var timer = setInterval(reload, 3000);
-		myInterval.push(timer);
+		var timer = setTimeout(reload, 3000);
+		myTimeout.push(timer);		
 	};
 
-	reload();
+	var timer = setTimeout(reload, 3000);
+	myTimeout.push(timer);
 });
 </script>

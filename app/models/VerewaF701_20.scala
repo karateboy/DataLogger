@@ -7,7 +7,7 @@ import com.github.nscala_time.time.Imports._
 
 case class F701_20Config(monitorType:MonitorType.Value)
 object VerewaF701_20 extends DriverOps {
-  val supportedMonitorTypes = List(MonitorType.withName("PM2.5"), MonitorType.withName("PM10"))
+  lazy val supportedMonitorTypes = List(MonitorType.withName("PM2.5"), MonitorType.withName("PM10"))
   implicit val configRead = Json.reads[F701_20Config]
   implicit val configWrite = Json.writes[F701_20Config]
   override def verifyParam(json: String) = {

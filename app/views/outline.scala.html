@@ -73,14 +73,13 @@
     	});
     </script>
     <script>
-    var myInterval=[];
+    var myTimeout=[];
     var chartHeight=500;
 	function loadPage(url, root, title){
-		//var elem = $( this );
-		for(var i=0;i<myInterval.length;i++)
-			clearInterval(myInterval[i]);
+		for(var i=0;i<myTimeout.length;i++)
+			clearTimeout(myTimeout[i]);
 
-		myInterval=[];
+		myTimeout=[];
 		
 		$("#breadcrumb-title").text(root + " > " + title);
 		document.title = title;
@@ -91,15 +90,14 @@
 			$("#wrapper-content").load(url);
 		}
 		
-		for(var i=0;i<myInterval.length;i++)
-			clearInterval(myInterval[i]);
+		for(var i=0;i<myTimeout.length;i++)
+			clearTimeout(myTimeout[i]);
 
-		myInterval=[];
+		myTimeout=[];
 		
 		$("#breadcrumb-title").text(root + " > " + title);
 		document.title = title;
 		$("#wrapper-content").load(url);
-		myInterval = setInterval(refreshPage, 60 * 1000);		
 	}
     </script>
 	
