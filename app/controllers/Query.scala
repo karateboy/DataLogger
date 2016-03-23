@@ -469,8 +469,9 @@ object Query extends Controller {
     val nStatus = {
       if(report.isEmpty)
         0
-      else
-        report(0).statusList.length
+      else{
+        report.map{_.statusList.length}.min
+      }
     }
     
     val timeSeq = report.map { _.time }

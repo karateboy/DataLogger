@@ -64,6 +64,10 @@ object MonitorStatus {
     def insertDefaultStatus {
       val f = collection.insertMany(defaultStatus.map { toDocument }).toFuture()
       f.onFailure(futureErrorHandler)
+      f.onSuccess({
+        case _=>
+          refreshMap
+      })
     }
 
     if (!colNames.contains(collectionName)) {
@@ -182,8 +186,6 @@ object MonitorStatus {
     _map
   }
   private var _map: Map[String, MonitorStatus] = refreshMap
-  val msvList = msList.map { r => r.info.toString }
-  val manualMonitorStatusList = { msvList.filter { _map(_).info.statusType == StatusType.Manual } }
 
   def map(key: String) = {
     _map.getOrElse(key, {

@@ -17,6 +17,7 @@ object DataCollectManager {
   case class SetState(instId: String, state: String)
   case class MonitorTypeData(mt: MonitorType.Value, value: Double, status: String)
   case class ReportData(dataList: List[MonitorTypeData])
+  case class ExecuteSeq(id:String, seq:Int)
   case object CalculateData
 
   var manager: ActorRef = _
@@ -54,6 +55,10 @@ object DataCollectManager {
   
   def setInstrumentState(id: String, state: String){
     manager ! SetState(id, state)
+  }
+  
+  def executeSeq(id: String, seq:Int){
+    manager ! ExecuteSeq(id, seq)
   }
   
   case object GetLatestData
@@ -100,8 +105,7 @@ class DataCollectManager extends Actor {
       mtDataList = (now, dataList) :: mtDataList
 
       for (data <- dataList) {
-        latestDataMap += data.mt -> Record(now, data.value, data.status)
-        //Logger.info(s"${MonitorType.map(data.mt).desp} (${data.value},${data.status})")  
+        latestDataMap = latestDataMap + (data.mt -> Record(now, data.value, data.status))
       }
 
     case CalculateData =>
@@ -117,7 +121,11 @@ class DataCollectManager extends Actor {
         val collector = collector_mt._1
         collector ! SetState(instId, state)
       }
-      
+    case ExecuteSeq(instId, seq)=>
+      collectorMap.get(instId).map { collector_mt =>
+        val collector = collector_mt._1
+        collector ! ExecuteSeq(instId, seq)
+      }
     case GetLatestData=>
       sender ! latestDataMap
   }

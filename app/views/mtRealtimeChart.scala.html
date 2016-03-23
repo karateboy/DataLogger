@@ -68,7 +68,7 @@ $(document).ready(function(){
                 load: function () {
                     // set up the updating of the chart each second
                     var series = this.series;
-                    setInterval(function () {
+                    var timer = setInterval(function () {
                     	$.ajax({
                     		url : '/MonitorTypeStatusList',
                     		async :false,
@@ -94,6 +94,7 @@ $(document).ready(function(){
                     		complete : function(xhr, status) {}
                     	});
                     }, 3000);
+                    myInterval.push(timer);
                 }
             }
             

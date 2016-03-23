@@ -24,7 +24,7 @@
 	@for(statIdx <- 0 to nStatus-1){
 		<tr>
 			@if(!report.isEmpty){
-				<td>@nameMap(report(0).statusList(statIdx).key)</td>
+				<td>@nameMap.getOrElse(report(0).statusList(statIdx).key, report(0).statusList(statIdx).key)</td>
 			}			
 			@for(timeIdx <- 0 to timeSeq.length-1){
 				<td>@report(timeIdx).statusList(statIdx).value</td>				

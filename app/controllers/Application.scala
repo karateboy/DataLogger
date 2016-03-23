@@ -255,4 +255,35 @@ object Application extends Controller {
 
     Ok(Json.obj("ok" -> true))
   }
+
+  def getExecuteSeq(instruments: String, seq:Int) = Security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.map { id =>        
+          DataCollectManager.executeSeq(id, seq)        
+      }
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.toString)
+        Ok(ex.getMessage)
+    }
+
+    Ok(s"Execute $instruments $seq")
+  }
+
+  def executeSeq(instruments: String, seq:Int) = Security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.map { id =>        
+          DataCollectManager.executeSeq(id, seq)        
+      }
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.toString)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
+
 }

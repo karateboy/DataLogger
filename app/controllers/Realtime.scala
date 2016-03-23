@@ -39,7 +39,8 @@ object Realtime extends Controller {
               MonitorTypeStatus(mCase.desp, format(mt, Some(record.value)), mCase.unit, mCase.measuredBy.getOrElse("??"),
                 MonitorStatus.map(record.status).desp, s"${duration.getStandardSeconds}秒前", 
                 MonitorStatus.getCssClassStr(record.status, overInternal, overLaw))
-            }          
+            }
+          Logger.debug(list.toString)
           Ok(Json.toJson(list))
         }
 

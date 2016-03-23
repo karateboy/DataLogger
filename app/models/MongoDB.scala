@@ -13,8 +13,8 @@ object MongoDB {
   def init(){
     val f = database.listCollectionNames().toFuture()
     val colFuture = f.map { colNames => 
-      Instrument.init(colNames)
       MonitorType.init(colNames)
+      Instrument.init(colNames)
       Record.init(colNames)
       User.init(colNames)
       Calibration.init(colNames)

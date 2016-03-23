@@ -73,11 +73,15 @@
     	});
     </script>
     <script>
-    var myInterval;
+    var myInterval=[];
     var chartHeight=500;
 	function loadPage(url, root, title){
 		//var elem = $( this );
-		clearInterval(myInterval);
+		for(var i=0;i<myInterval.length;i++)
+			clearInterval(myInterval[i]);
+
+		myInterval=[];
+		
 		$("#breadcrumb-title").text(root + " > " + title);
 		document.title = title;
 		$("#wrapper-content").load(url);
@@ -87,7 +91,11 @@
 			$("#wrapper-content").load(url);
 		}
 		
-		clearInterval(myInterval);		
+		for(var i=0;i<myInterval.length;i++)
+			clearInterval(myInterval[i]);
+
+		myInterval=[];
+		
 		$("#breadcrumb-title").text(root + " > " + title);
 		document.title = title;
 		$("#wrapper-content").load(url);

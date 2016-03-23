@@ -142,6 +142,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
         idx = r_idx._2
       } yield InstrumentStatusType(key = s"$WarnKey$idx", addr = r.addr, desc = r.desc, unit = "-")
 
+    Logger.info("Finish probing.")
     inputRegStatusType ++ holdingRegStatusType ++ modeRegStatusType ++ warnRegStatusType
   }
 
@@ -236,30 +237,36 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     context become calibration(DateTime.now, List.empty[Double], List.empty[Double], monitorTypes, endState)
   }
 
+  import scala.concurrent.Future
+  import scala.concurrent.blocking
+
   def normalReceive(): Receive = {
     case ConnectHost(host) =>
       Logger.debug(s"${self.toString()}: connect $host")
       try {
-        //instId = id
-        val ipParameters = new IpParameters()
-        ipParameters.setHost(host);
-        ipParameters.setPort(502);
-        val modbusFactory = new ModbusFactory()
+        Future {
+          blocking {
+            val ipParameters = new IpParameters()
+            ipParameters.setHost(host);
+            ipParameters.setPort(502);
+            val modbusFactory = new ModbusFactory()
 
-        masterOpt = Some(modbusFactory.createTcpMaster(ipParameters, true))
-        masterOpt.get.setTimeout(4000)
-        masterOpt.get.setRetries(1)
-        masterOpt.get.setConnected(true)
+            masterOpt = Some(modbusFactory.createTcpMaster(ipParameters, true))
+            masterOpt.get.setTimeout(4000)
+            masterOpt.get.setRetries(1)
+            masterOpt.get.setConnected(true)
 
-        masterOpt.get.init();
-        connected = true
-        if (instrumentStatusTypesOpt.isEmpty) {
-          instrumentStatusTypesOpt = Some(probeInstrumentStatusType)
-          Instrument.updateStatusType(instId, instrumentStatusTypesOpt.get)
+            masterOpt.get.init();
+            connected = true
+
+            if (instrumentStatusTypesOpt.isEmpty) {
+              instrumentStatusTypesOpt = Some(probeInstrumentStatusType)
+              Instrument.updateStatusType(instId, instrumentStatusTypesOpt.get)
+            }
+            import scala.concurrent.duration._
+            cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadRegister)
+          }
         }
-        import scala.concurrent.duration._
-
-        cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadRegister)
       } catch {
         case ex: Exception =>
           Logger.error(ex.getMessage);
@@ -271,7 +278,11 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       }
 
     case ReadRegister =>
-      readRegHandler
+      Future {
+        blocking {
+          readRegHandler
+        }
+      }
 
     case SetState(id, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
@@ -279,13 +290,24 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
           Logger.error("There is no monitor type for calibration.")
         else if (!connected)
           Logger.error("Cannot calibration before connected.")
-        else
-          startCalibration(tapiConfig.monitorTypes.get)
+        else {
+          Future {
+            blocking {
+              startCalibration(tapiConfig.monitorTypes.get)
+            }
+          }
+        }
       } else {
         collectorState = state
         Instrument.setState(instId, collectorState)
       }
       Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+    case ExecuteSeq(id, seq) =>
+      executeSeq(seq)
+  }
+
+  def executeSeq(seq: Int) {
+    // Do nothing...
   }
 
   import com.github.nscala_time.time.Imports._
@@ -295,57 +317,75 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       Logger.error("unexpected ConnectHost msg")
 
     case ReadRegister =>
-      readRegHandler
+      Future {
+        blocking {
+          readRegHandler
+        }
+      }
 
     case SetState(id, state) =>
       Logger.error("Cannot change state during calibration")
 
     case ReadZeroCalibration =>
-      val zeroValue = readCalibratingValue
-      Logger.debug(s"ReadZeroCalibration $zeroValue")
-      triggerZeroCalibration(false)
-      triggerSpanCalibration(true)
-      collectorState = MonitorStatus.SpanCalibrationStat
-      Instrument.setState(instId, collectorState)
-      Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
-      
-      import scala.concurrent.duration._
-      Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.raiseTime.get, SECONDS),
-        self, ReadSpanCalibration)
-      context become calibration(startTime, zeroValue, spanReading, monitorTypes, endState)
+      Future {
+        blocking {
+          val zeroValue = readCalibratingValue
+          Logger.debug(s"ReadZeroCalibration $zeroValue")
+          triggerZeroCalibration(false)
+          triggerSpanCalibration(true)
+          collectorState = MonitorStatus.SpanCalibrationStat
+          Instrument.setState(instId, collectorState)
+          Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+
+          import scala.concurrent.duration._
+          Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.raiseTime.get, SECONDS),
+            self, ReadSpanCalibration)
+          context become calibration(startTime, zeroValue, spanReading, monitorTypes, endState)
+
+        }
+      }
 
     case ReadSpanCalibration =>
-      val spanValue = readCalibratingValue
-      Logger.debug(s"ReadSpanCalibration $spanValue")
-      triggerSpanCalibration(false)
-      import scala.concurrent.duration._
+      Future {
+        blocking {
+          val spanValue = readCalibratingValue
+          Logger.debug(s"ReadSpanCalibration $spanValue")
+          triggerSpanCalibration(false)
+          import scala.concurrent.duration._
 
-      Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.downTime.get, SECONDS),
-        self, SpanCalibrationEnd)
+          Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.downTime.get, SECONDS),
+            self, SpanCalibrationEnd)
 
-      context become calibration(startTime, zeroReading, spanValue, monitorTypes, endState)
-    case SpanCalibrationEnd =>
-      val endTime = DateTime.now()
-      val duration = new Duration(startTime, endTime)
-      Logger.debug(s"SpanCalibrationEnd duration=${duration.getStandardSeconds} sec")
+          context become calibration(startTime, zeroReading, spanValue, monitorTypes, endState)
 
-      val spanStdList = getSpanStandard
-      for {
-        mt_idx <- monitorTypes.zipWithIndex
-        mt = mt_idx._1
-        idx = mt_idx._2
-      } {
-        val zero = zeroReading(idx)
-        val span = spanReading(idx)
-        val spanStd = spanStdList(idx)
-        val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
-        Calibration.insert(cal)
+        }
       }
-      Logger.info("All monitorTypes are calibrated.")
-      collectorState = endState
-      Instrument.setState(instId, collectorState)
-      context become normalReceive
-      Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+    case SpanCalibrationEnd =>
+      Future {
+        blocking {
+          val endTime = DateTime.now()
+          val duration = new Duration(startTime, endTime)
+          Logger.debug(s"SpanCalibrationEnd duration=${duration.getStandardSeconds} sec")
+
+          val spanStdList = getSpanStandard
+          for {
+            mt_idx <- monitorTypes.zipWithIndex
+            mt = mt_idx._1
+            idx = mt_idx._2
+          } {
+            val zero = zeroReading(idx)
+            val span = spanReading(idx)
+            val spanStd = spanStdList(idx)
+            val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
+            Calibration.insert(cal)
+          }
+          Logger.info("All monitorTypes are calibrated.")
+          collectorState = endState
+          Instrument.setState(instId, collectorState)
+          context become normalReceive
+          Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+        }
+      }
   }
 
   def triggerZeroCalibration(v: Boolean)
@@ -356,20 +396,19 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
   def reportData(regValue: ModelRegValue)
 
-  
   var nextLoggingStatusTime = {
-    def getNextTime(period:Int)={
+    def getNextTime(period: Int) = {
       val now = DateTime.now()
-      val nextMin = (now.getMinuteOfHour/period + 1)*period
-      now.withHourOfDay(now.getHourOfDay + (nextMin/60)).withMinuteOfHour(nextMin%60).withSecondOfMinute(0).withMillisOfSecond(0)
+      val nextMin = (now.getMinuteOfHour / period + 1) * period
+      now.withHourOfDay(now.getHourOfDay + (nextMin / 60)).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0)
     }
     // suppose every 10 min
-    val period = 10    
+    val period = 10
     val nextTime = getNextTime(period)
     Logger.debug(s"$instId next logging time= $nextTime")
     nextTime
   }
-  
+
   def regReadHandler(regValue: ModelRegValue) = {
     reportData(regValue)
     for {
@@ -403,20 +442,20 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     }
 
     //Log Instrument state
-    if(DateTime.now() > nextLoggingStatusTime){
+    if (DateTime.now() > nextLoggingStatusTime) {
       Logger.debug("Log instrument state")
       logInstrumentStatus(regValue)
       nextLoggingStatusTime = nextLoggingStatusTime + 10.minute
       Logger.debug(s"next logging time = $nextLoggingStatusTime")
     }
-    
+
     oldModelReg = Some(regValue)
   }
 
-  def logInstrumentStatus(regValue:ModelRegValue)={
+  def logInstrumentStatus(regValue: ModelRegValue) = {
     import InstrumentStatus._
-    val isList = regValue.inputRegs.map{
-      kv=>
+    val isList = regValue.inputRegs.map {
+      kv =>
         val k = kv._1
         val v = kv._2
         Status(k.key, v)
@@ -424,7 +463,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     val instStatus = InstrumentStatus(DateTime.now(), instId, isList)
     log(instStatus)
   }
-  
+
   def findDataRegIdx(regValue: ModelRegValue)(addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty)

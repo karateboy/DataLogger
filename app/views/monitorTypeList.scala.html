@@ -53,8 +53,11 @@ $( document ).ready(function(){
 		responsive: true
 	} );
 	
-	setInterval(function (){
+	var timer = setInterval(function (){
 		oTable.api().ajax.reload();
 	}, 1000);
+
+	myInterval.push(timer);
+
 });
 </script>
