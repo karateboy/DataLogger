@@ -20,14 +20,10 @@ function hideModal(){
         		<script>
 					var modal={};
         		</script>
-        		@newInstrument("hideModal()")
+        		@newInstrument2("hideModal()")
         		<script>
-    				$("#newEquipModal").on('show.bs.modal', function () {        				
-    					modal.setupStep();
-    				});
-    				$("#newEquipModal").on('hidden.bs.modal', function () {        				
-    					modal.destroy();
-    				});
+    				$("#newEquipModal").on('show.bs.modal', function () {});
+    				$("#newEquipModal").on('hidden.bs.modal', function () {});
     			</script>
         	</div>
       		</div>

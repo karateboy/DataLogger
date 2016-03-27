@@ -24,6 +24,10 @@ object Application extends Controller {
       val user = request.user
       Ok(views.html.outline(title, user, views.html.dashboard("test")))
   }
+  
+  def dashboard = Security.Authenticated {
+    Ok(views.html.dashboard(""))
+  }
 
   val path = current.path.getAbsolutePath + "/importEPA/"
 

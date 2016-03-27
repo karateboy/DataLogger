@@ -1,0 +1,277 @@
+@* newInstrument Template File *@
+@(endCallback: String)
+
+<script>
+	function callback(){
+		@endCallback
+	}
+	var instrumentConfig={};
+</script>
+
+
+<div ng-app="newInstrumentApp">
+	<form id="new-instrument-form" class="form-horizontal" action="#"
+		ng-controller="MainCtrl as ctrl">
+		<div>
+        <h3>基本資料</h3>
+        <section>
+        	<div class="form-group">
+	        	<label class="col-lg-2 control-label">儀器種類</label>
+	            	<div class="col-lg-10">
+	            		<div class="btn-group" data-toggle="buttons" ng-repeat="instInfoType in ctrl.instrumentTypeInfos">	            				            				
+	            			<label class="btn btn-outline btn-primary dim" ng-bind="instInfoType.desp">
+							<input type="radio" ng-model="ctrl.instType" value="instInfoType.id"></label>	            			
+	            		</div>
+	            	</div>	            			            		
+	        </div>
+            <label for="name">儀器名稱 *</label>
+            <input id="name" name="name" type="text" class="required">
+            <p>(*) 必要</p>
+        </section>
+        <h3>通訊協定</h3>
+        <section>
+        	<div class="form-group">
+	        	<label class="col-lg-2 control-label">通訊協定</label>
+	            <div class="col-lg-10">
+	            	<div class="btn-group" data-toggle="buttons">	            				
+	            		@for(pr<-Protocol.values.toList.sorted){
+	            			<label class="btn btn-outline btn-primary dim">
+							<input type="radio" name="protocol" id="@pr" >@Protocol.map(pr)</label>
+	            		}
+	            	</div>
+	            </div>	            			            		
+	        </div>
+	        <h3>TCP參數</h3>
+	        <div id="tcpParam">
+		        <div class="form-group">
+		        	<label class="col-lg-2 control-label">主機位址</label>
+	    	        <div class="col-lg-10">
+	    	        	<input type="text" id="host" value="localhost">
+	        	    </div>	            			            		
+	        	</div>
+	        </div>
+	        <h3>RS232參數</h3>
+	        <div id="serialParam">
+	        	<div class="form-group">
+		        	<label class="col-lg-2 control-label">COM</label>
+	    	        <div class="col-lg-10">
+	    	        	<input type="number" id="comPort" value="1">
+	        	    </div>	            		
+	        	</div>	        
+	        </div>
+        </section>
+        <h3>儀器細部設定</h3>
+        <section>
+        	<div id="adam4017Cfg" style="display:none">
+        		@adam4017Config("instrumentConfig")
+        	</div>
+            <div id="baseline9000Cfg" style="display:none">
+            	@baseline9000Config("instrumentConfig")
+            </div> 
+            <div id="tapiCfg" style="display:none">
+            	@tapiConfig("instrumentConfig")
+            </div>           
+        </section>
+        <h3>結束</h3>
+        <section>
+        	<h3>新增儀器摘要</h3>
+            <div id="summary"></div>
+        </section>
+    	</div>
+	</form>
+</div>
+<script src="assets/js/app/newInstrument2.js"></script>
+<script>
+$( document ).ready(function() {
+	function resetForm($form) {
+	    $form.find('input:text, input:password, input:file, select, textarea').val('');
+	    $("#adam4017Cfg").hide();
+	    $("#baseline9000Cfg").hide();
+	    $("#tapiCfg").hide();
+	}
+	
+	var instrumentTypes = {};		
+	function getInstrumentTypes(){
+		$.ajax({
+			url: "/InstrumentTypes",
+			data: "",
+			contentType: "application/json; charset=utf-8",
+			method: "GET",
+			cache: false,
+			dataType: "json",
+			success: function(instTypes){				
+				instrumentTypes = {};				
+				for(var i=0;i<instTypes.length;i++){
+					instrumentTypes[instTypes[i].id] = instTypes[i];					
+				}																
+			},
+			error: function(xhr, status, errorThrown){
+				alert("失敗:"+ errorThrown);
+			},
+
+			complete: function(xhr, status){
+			}					
+		});
+	}
+	getInstrumentTypes();
+	var settings = {
+		headerTag: "h3",
+		bodyTag: "section",
+		transitionEffect: "slideLeft",
+		autoFocus: true,
+		/* Labels */
+	    labels: {
+	        cancel: "取消",
+	        current: "目前步驟:",
+	        pagination: "分頁",
+	        finish: "完成",
+	        next: "下一步",
+	        previous: "前一步",
+	        loading: "載入中 ..."
+	    }
+	};
+
+	function setupStep(){
+		var form = $("#new-instrument-form");
+		form.validate({
+		    errorPlacement: function errorPlacement(error, element) { element.before(error); },
+		    rules: {
+		        confirm: {
+		            equalTo: "#password"
+		        }
+		    }
+		});
+		
+		form.children("div").steps({
+		    headerTag: "h3",
+		    bodyTag: "section",
+		    transitionEffect: "slideLeft",
+		    labels: {
+		        cancel: "取消",
+		        current: "目前步驟:",
+		        pagination: "分頁",
+		        finish: "完成",
+		        next: "下一步",
+		        previous: "前一步",
+		        loading: "載入中 ..."
+		    },
+		    
+		    onStepChanging: function (event, currentIndex, newIndex)
+		    {
+			    if(newIndex == 1){
+				    var instType = $("input[name='instType']:checked")[0].id;
+				    var protocols = $("input[name='protocol']");
+				    for(var i=0;i<protocols.length;i++){
+					    var protocol = protocols[i].id;
+					    if(instrumentTypes[instType].protocol.indexOf(protocol) == -1){
+						    var $prot = $("#"+protocol); 
+						    $prot.prop('disabled', true);
+						    $prot.prop('checked', false);
+						    $prot.parent().removeClass("active");
+						    $prot.parent().addClass("disabled");    
+					    }else{
+					    	var $prot = $("#"+protocol); 
+						    $prot.prop('disabled', false);
+						    $prot.parent().removeClass("disabled");					    
+					    }				    
+				    }
+			    }
+			    
+			    if(newIndex == 2){
+			    				    
+				    var protocols = $("input[name='protocol']:checked");
+				    if(protocols.length == 0){
+					    alert("請選擇通訊協定");
+					    return false;
+				    }
+				    var tapiInstrument=['t100', 't200', 't300', 't360', 't400', 't500', 't600', 't700'];
+				    var instType = $("input[name='instType']:checked")[0].id
+				    if(tapiInstrument.indexOf(instType) != -1){ // TAPI instrument
+				    	$("#tapiCfg").css('display','block');
+				    	console.log(instrumentConfig[instType]);
+				    	instrumentConfig[instType].defaultValue(instType);
+				    }else{
+				    	$("#"+instType + "Cfg").css('display','block');
+				    }
+			    }
+			    
+			    if(newIndex == 3){
+				    var instrumentType = $("input[name='instType']:checked")[0].id
+				    if(!instrumentConfig[instrumentType].validate())
+					    return false;
+				    
+				    var summary = "<strong>儀器名稱:</strong>"+$("#name").val() + "<br/>";
+				    summary += "<strong>儀器種類:</strong>" + instrumentTypes[instrumentType].desp + "<br/>";
+				    var protocol = $("input[name='protocol']:checked")[0].id
+				    summary += "<strong>通訊協定:</strong>" + protocol + "<br/>";
+				    
+				    if(protocol == 'tcp')			    
+				    	summary += "<strong>TCP參數:</strong>" + $("#host").val() + "<br/>";
+				    else
+				    	summary += "<strong>RS232參數:</strong>COM" + $("#comPort").val() + "<br/>";
+				    	
+				    summary += "<strong>儀器細部設定:</strong>" + instrumentConfig[instrumentType].summary();
+				    $('#summary').html(summary);
+			    }
+			    
+		        form.validate().settings.ignore = ":disabled,:hidden";
+		        return form.valid();
+		    },
+		    onFinishing: function (event, currentIndex)
+		    {
+		        form.validate().settings.ignore = ":disabled";
+		        return form.valid();
+		    },
+		    onFinished: function (event, currentIndex)
+		    {
+		    	var instType = $("input[name='instType']:checked")[0].id
+		    	var param = instrumentConfig[instType].param();
+		    	console.log(param);
+		    	
+			    var newInstrument= {
+					_id:$("#name").val(),
+					instType:$("input[name='instType']:checked")[0].id,
+					protocol:{
+						protocol:$("input[name='protocol']:checked")[0].id,
+						host:$("#host").val(),
+						comPort:parseInt($("#comPort").val()),
+					},
+					param:JSON.stringify(param),
+					active:true,
+					state:"010"
+			    };
+				$.ajax({
+					url: "/Instrument",
+					data: JSON.stringify(newInstrument),
+					contentType: "application/json; charset=utf-8",
+					method: "PUT",
+					dataType: "json",
+					success: function(ret){				
+						if(ret.ok){
+							alert("成功");
+						}else
+							alert("失敗:"+ret.msg);
+							
+						callback();													
+					},
+					error: function(xhr, status, errorThrown){
+						alert("失敗:"+ errorThrown);
+					},
+
+					complete: function(xhr, status){
+					}					
+				});
+
+		    }
+		});
+	}
+
+	function destroy(){
+		var form = $("#new-instrument-form");
+		form.children("div").steps("destroy");
+		resetForm(form);				
+	}
+
+	setupStep();
+});
+</script>

@@ -279,6 +279,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       }
 
     case ReadRegister =>
+      readRegHandler
       
     case SetState(id, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
@@ -313,11 +314,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       Logger.error("unexpected ConnectHost msg")
 
     case ReadRegister =>
-      Future {
-        blocking {
-          instrumentStatusTypesOpt.map { readReg }.map { regReadHandler }
-        }
-      }
+      readRegHandler
 
     case SetState(id, state) =>
       Logger.error("Cannot change state during calibration")

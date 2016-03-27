@@ -13,6 +13,7 @@ GET		/login						controllers.Login.prompt
 GET		/logout						controllers.Login.logout
 POST	/authenticate				controllers.Login.authenticate
 
+GET		/Dashboard			controllers.Application.dashboard
 GET		/UserManagement		controllers.Application.userManagement
 PUT		/User				controllers.Application.newUser
 GET		/User				controllers.Application.getAllUsers
@@ -34,6 +35,7 @@ GET		/MonitorTypeConfig			controllers.Application.monitorTypeConfig
 POST	/SaveMonitorTypeConfig		controllers.Application.saveMonitorTypeConfig
 
 GET		/InstrumentTypes			controllers.Application.getInstrumentTypes
+GET		/InstrumentTypeInfo			controllers.Application.getInstrumentTypes
 GET		/ManageInstrument			controllers.Application.manageInstrument
 PUT		/Instrument					controllers.Application.newInstrument
 GET		/Instrument					controllers.Application.getInstrumentList

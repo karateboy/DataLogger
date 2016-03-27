@@ -210,8 +210,8 @@ object Query extends Controller {
           1.year
       }
 
-    val timeSet = getPeriods(start, end, period)
-    val timeSeq = timeSet.toList.sorted.zipWithIndex
+    val timeList = getPeriods(start, end, period)
+    val timeSeq = timeList
 
     def getSeries() = {
 
@@ -227,9 +227,8 @@ object Query extends Controller {
       for {
         mt <- monitorTypes
         valueMap = mtReportMap(mt)
-        timeData = timeSeq.map { t =>
-          val time = t._1
-          val x = t._2
+        timeData = timeSeq.map { time =>          
+          
           if (valueMap.contains(time))
             Seq(Some(time.getMillis.toDouble), Some(valueMap(time).toDouble))
           else
