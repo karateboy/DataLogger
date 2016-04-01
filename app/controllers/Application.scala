@@ -24,7 +24,7 @@ object Application extends Controller {
       val user = request.user
       Ok(views.html.outline(title, user, views.html.dashboard("test")))
   }
-  
+
   def dashboard = Security.Authenticated {
     Ok(views.html.dashboard(""))
   }
@@ -135,8 +135,20 @@ object Application extends Controller {
   }
 
   def getInstrumentTypes = Security.Authenticated {
-    implicit val write = Json.writes[InstrumentTypeInfo]
-    val iTypes = InstrumentType.map.values.toSeq.map { t => InstrumentTypeInfo(t.id, t.desp, t.protocol) }
+    import InstrumentType._
+    val iTypes = InstrumentType.map.values.toSeq.map { t =>
+      InstrumentTypeInfo(t.id, t.desp,
+        t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
+    }
+    Ok(Json.toJson(iTypes))
+  }
+
+  def getInstrumentType(id: String) = Security.Authenticated {
+    import InstrumentType._
+    val iTypes = InstrumentType.map.values.filter { p => p.toString() == id }.toSeq.map { t =>
+      InstrumentTypeInfo(t.id, t.desp,
+        t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
+    }
     Ok(Json.toJson(iTypes))
   }
 
@@ -180,6 +192,17 @@ object Application extends Controller {
     Ok(Json.toJson(ret2))
   }
 
+  def getInstrument(id:String) = Security.Authenticated {
+    import Instrument._
+    val ret = Instrument.getInstrument(id)
+    if(ret.isEmpty)
+      BadRequest(s"No such instrument: $id")
+    else{
+      val inst = ret(0)
+      Ok(Json.toJson(inst))
+    }
+  }
+  
   def removeInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
@@ -212,7 +235,7 @@ object Application extends Controller {
     val ids = instruments.split(",")
     try {
       val f = ids.map { Instrument.activate }
-      ids.foreach { DataCollectManager.startCollect(_) }      
+      ids.foreach { DataCollectManager.startCollect(_) }
     } catch {
       case ex: Throwable =>
         Logger.error(ex.toString)
@@ -248,8 +271,8 @@ object Application extends Controller {
   def calibrateInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      ids.map { id =>        
-          DataCollectManager.setInstrumentState(id, MonitorStatus.ZeroCalibrationStat)        
+      ids.map { id =>
+        DataCollectManager.setInstrumentState(id, MonitorStatus.ZeroCalibrationStat)
       }
     } catch {
       case ex: Throwable =>
@@ -260,11 +283,11 @@ object Application extends Controller {
     Ok(Json.obj("ok" -> true))
   }
 
-  def getExecuteSeq(instruments: String, seq:Int) = Security.Authenticated {
+  def getExecuteSeq(instruments: String, seq: Int) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      ids.map { id =>        
-          DataCollectManager.executeSeq(id, seq)        
+      ids.map { id =>
+        DataCollectManager.executeSeq(id, seq)
       }
     } catch {
       case ex: Throwable =>
@@ -275,11 +298,11 @@ object Application extends Controller {
     Ok(s"Execute $instruments $seq")
   }
 
-  def executeSeq(instruments: String, seq:Int) = Security.Authenticated {
+  def executeSeq(instruments: String, seq: Int) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      ids.map { id =>        
-          DataCollectManager.executeSeq(id, seq)        
+      ids.map { id =>
+        DataCollectManager.executeSeq(id, seq)
       }
     } catch {
       case ex: Throwable =>
@@ -292,7 +315,7 @@ object Application extends Controller {
 
   def monitorTypeList = Security.Authenticated {
     val mtList = MonitorType.mtvList.map { mt => MonitorType.map(mt) }
-     
+
     Ok(Json.toJson(mtList))
   }
 }

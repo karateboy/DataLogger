@@ -1,9 +1,9 @@
 @* adam4017Config Template File *@
-@(obj: String)
+<div ng-controller="adam4017Ctrl">
 	<div class="form-group">
 		<label class="col-lg-2 control-label">位址</label>
 	   	<div class="col-lg-2">
-	    	<input type="text" id="4017_addr" class="form-control" value="01" maxlength="2">
+	    	<input type="text" ng-model="param.addr" class="form-control" maxlength="2" required>
 	    </div>	            		
 	</div>
 
@@ -21,25 +21,24 @@
 			</tr>
 		</thead>
 		<tbody>
-		@for(n <- 0 to 7){
-			<tr>
-				<td>CH@n</td>
-				<td><input type="checkbox" id="CH@{n}_enable" class="form-control"></td>
-				<td><select class="form-control" id="CH@{n}_mt">
+			<tr ng-repeat="ch in channels">
+				<td>{{"CH"+ch}}</td>
+				<td><input type="checkbox" ng-model="param.ch[ch].enable" class="form-control"></td>
+				<td><select class="form-control" ng-model="param.ch[ch].mt">
 					@for(mt<-MonitorType.mtvList){
 						<option value="@mt">@MonitorType.map(mt).desp</option>
 					}
   					</select>
 				</td>
-				<td><input type="text" id="CH@{n}_max" class="form-control"></td>
-				<td><input type="text" id="CH@{n}_mtmax" class="form-control"></td>
-				<td><input type="text" id="CH@{n}_min" class="form-control"></td>
-				<td><input type="text" id="CH@{n}_mtmin" class="form-control"></td>
+				<td><input type="text" ng-model="param.ch[ch].max" class="form-control"></td>
+				<td><input type="text" ng-model="param.ch[ch].mtMax" class="form-control"></td>
+				<td><input type="text" ng-model="param.ch[ch].min"  class="form-control"></td>
+				<td><input type="text" ng-model="param.ch[ch].mtMin"  class="form-control"></td>
 			</tr>
-		}	            			
 		</tbody>
 	</table>
 	</div>
+</div>
 <script>
 var summary = function adam4017_getSummary(){
 	var desc="";
@@ -128,7 +127,4 @@ var adam4017Config={
 	param:getParam,
 	validate:validate
 }; 
-</script>
-<script>
-@{obj}['adam4017'] = adam4017Config;
 </script>

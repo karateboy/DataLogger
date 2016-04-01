@@ -4,6 +4,7 @@
 var app = angular.module('dataLoggerApp', 
 		[ 'ngRoute', 
 		  'ngResource',
+		  'ui.bootstrap',
 		  'newInstrumentView' ]);
 
 app.factory('BreadcrumbService', [ function() {

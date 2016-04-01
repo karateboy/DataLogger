@@ -1,8 +1,8 @@
 package models
 import play.api.libs.json._
 import com.github.nscala_time.time.Imports._
-
-case class InstrumentTypeInfo(id:InstrumentType.Value ,desp:String, protocol:List[Protocol.Value])
+case class ProtocolInfo(id:Protocol.Value, desp:String)
+case class InstrumentTypeInfo(id:InstrumentType.Value ,desp:String, protocolInfo:List[ProtocolInfo])
 case class InstrumentType(id:InstrumentType.Value ,desp:String, protocol:List[Protocol.Value], driver:DriverOps)
 
 trait DriverOps {
@@ -19,6 +19,9 @@ object InstrumentType extends Enumeration{
   import Protocol._
   implicit val reader: Reads[InstrumentType.Value] = EnumUtils.enumReads(InstrumentType)
   implicit val writer: Writes[InstrumentType.Value] = EnumUtils.enumWrites
+
+  implicit val prtocolWrite = Json.writes[ProtocolInfo]
+  implicit val write = Json.writes[InstrumentTypeInfo]
 
   //val baseline9000 = Value
   val adam4017 = Value

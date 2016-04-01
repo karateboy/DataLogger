@@ -36,9 +36,11 @@ POST	/SaveMonitorTypeConfig		controllers.Application.saveMonitorTypeConfig
 
 GET		/InstrumentTypes			controllers.Application.getInstrumentTypes
 GET		/InstrumentTypeInfo			controllers.Application.getInstrumentTypes
+GET		/InstrumentTypeInfo/:id		controllers.Application.getInstrumentType(id)
 GET		/ManageInstrument			controllers.Application.manageInstrument
 PUT		/Instrument					controllers.Application.newInstrument
 GET		/Instrument					controllers.Application.getInstrumentList
+GET		/Instrument/:id				controllers.Application.getInstrument(id)
 DELETE  /Instrument/:ids			controllers.Application.removeInstrument(ids)
 PUT		/DeactivateInstrument/:ids	controllers.Application.deactivateInstrument(ids)
 PUT		/ActivateInstrument/:ids	controllers.Application.activateInstrument(ids)
