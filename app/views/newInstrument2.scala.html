@@ -9,18 +9,17 @@
 </script>
 
 
-<div ng-app="newInstrumentApp">
-	<form id="new-instrument-form" class="form-horizontal" action="#"
-		ng-controller="MainCtrl as ctrl">
+<div ng-controller="newInstrumentCtrl as ctrl" id="newCtrl">
+	<form id="new-instrument-form" class="form-horizontal">
 		<div>
         <h3>基本資料</h3>
         <section>
         	<div class="form-group">
 	        	<label class="col-lg-2 control-label">儀器種類</label>
 	            	<div class="col-lg-10">
-	            		<div class="btn-group" data-toggle="buttons" ng-repeat="instInfoType in ctrl.instrumentTypeInfos">	            				            				
-	            			<label class="btn btn-outline btn-primary dim" ng-bind="instInfoType.desp">
-							<input type="radio" ng-model="ctrl.instType" value="instInfoType.id"></label>	            			
+	            		<div class="btn-group" data-toggle="buttons">	            				            				
+	            			<label class="btn btn-outline btn-primary dim" ng-class="ctrl.isSelected(instInfoType.id)" ng-repeat="instInfoType in ctrl.instrumentTypeInfos">{{instInfoType.desp}}
+							<input type="radio" ng-model="ctrl.selectedInstType.id" ng-value="instInfoType.id"></label>	            			
 	            		</div>
 	            	</div>	            			            		
 	        </div>
@@ -83,37 +82,11 @@
 <script src="assets/js/app/newInstrument2.js"></script>
 <script>
 $( document ).ready(function() {
-	function resetForm($form) {
-	    $form.find('input:text, input:password, input:file, select, textarea').val('');
-	    $("#adam4017Cfg").hide();
-	    $("#baseline9000Cfg").hide();
-	    $("#tapiCfg").hide();
+	function getCtrl(){
+		
+		return angular.element($("#newCtrl")).scope().ctrl;
 	}
 	
-	var instrumentTypes = {};		
-	function getInstrumentTypes(){
-		$.ajax({
-			url: "/InstrumentTypes",
-			data: "",
-			contentType: "application/json; charset=utf-8",
-			method: "GET",
-			cache: false,
-			dataType: "json",
-			success: function(instTypes){				
-				instrumentTypes = {};				
-				for(var i=0;i<instTypes.length;i++){
-					instrumentTypes[instTypes[i].id] = instTypes[i];					
-				}																
-			},
-			error: function(xhr, status, errorThrown){
-				alert("失敗:"+ errorThrown);
-			},
-
-			complete: function(xhr, status){
-			}					
-		});
-	}
-	getInstrumentTypes();
 	var settings = {
 		headerTag: "h3",
 		bodyTag: "section",
@@ -159,7 +132,9 @@ $( document ).ready(function() {
 		    onStepChanging: function (event, currentIndex, newIndex)
 		    {
 			    if(newIndex == 1){
-				    var instType = $("input[name='instType']:checked")[0].id;
+
+				    console.log(getCtrl());
+				    //var instType = $("input[name='instType']:checked")[0].id;
 				    var protocols = $("input[name='protocol']");
 				    for(var i=0;i<protocols.length;i++){
 					    var protocol = protocols[i].id;
@@ -178,7 +153,7 @@ $( document ).ready(function() {
 			    }
 			    
 			    if(newIndex == 2){
-			    				    
+			    	console.log(getCtrl());			    
 				    var protocols = $("input[name='protocol']:checked");
 				    if(protocols.length == 0){
 					    alert("請選擇通訊協定");

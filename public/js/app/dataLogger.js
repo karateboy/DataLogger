@@ -1,13 +1,17 @@
 /**
  * 
  */
-var app = angular.module('dataLoggerApp', [ 'ngRoute' ]).factory(
-		'BreadcrumbService', [ function() {
-			var service = {
-				title : ""
-			};
-			return service;
-		} ]);
+var app = angular.module('dataLoggerApp', 
+		[ 'ngRoute', 
+		  'ngResource',
+		  'newInstrumentView' ]);
+
+app.factory('BreadcrumbService', [ function() {
+	var service = {
+		title : ""
+	};
+	return service;
+} ]);
 
 app.config([ '$routeProvider', function($routeProvider) {
 	$routeProvider.when('/', {
@@ -122,5 +126,9 @@ app.config([ '$routeProvider', function($routeProvider) {
 
 app.controller('MenuCtrl', [ 'BreadcrumbService', function($breadcrumb) {
 	var self = this;
-	self.breadcrumb = $breadcrumb;	
+	self.breadcrumb = $breadcrumb;
+} ]);
+
+app.factory('MonitorTypeService', [ '$resource', function($resource) {
+	return $resource('/MonitorType/:id');
 } ]);

@@ -290,4 +290,9 @@ object Application extends Controller {
     Ok(Json.obj("ok" -> true))
   }
 
+  def monitorTypeList = Security.Authenticated {
+    val mtList = MonitorType.mtvList.map { mt => MonitorType.map(mt) }
+     
+    Ok(Json.toJson(mtList))
+  }
 }

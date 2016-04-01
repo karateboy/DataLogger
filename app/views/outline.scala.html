@@ -27,8 +27,6 @@
 
 	<!-- Mainly scripts -->
 	<script src="assets/js/jquery-2.2.0.min.js"></script>
-	<script src="assets/js/angular.js"></script>
-	<script src="assets/js/angular-route.min.js"></script>
 	<script src="assets/js/bootstrap.min.js"></script>
 	<script src="assets/js/plugins/metisMenu/jquery.metisMenu.js"></script>
 	<script src="assets/js/plugins/slimscroll/jquery.slimscroll.min.js"></script>
@@ -56,36 +54,10 @@
     <script>
     var myTimeout=[];
     var chartHeight=500;
-	function loadPage(url, root, title){
-		for(var i=0;i<myTimeout.length;i++)
-			clearTimeout(myTimeout[i]);
-
-		myTimeout=[];
-		
-		$("#breadcrumb-title").text(root + " > " + title);
-		document.title = title;
-		$("#wrapper-content").load(url);
-	}
-	function loadRefreshPage(url, root, title){
-		function refreshPage(){
-			$("#wrapper-content").load(url);
-		}
-		
-		for(var i=0;i<myTimeout.length;i++)
-			clearTimeout(myTimeout[i]);
-
-		myTimeout=[];
-		
-		$("#breadcrumb-title").text(root + " > " + title);
-		document.title = title;
-		$("#wrapper-content").load(url);
-	}
     </script>
-	<script src="assets/js/app/dataLogger.js"></script>
 </head>
 
 <body ng-app="dataLoggerApp" >
-
 <div id="wrapper">
     <nav class="navbar-default navbar-static-side" role="navigation">
         <div class="sidebar-collapse">        	
@@ -186,6 +158,13 @@
         <div class="wrapper wrapper-content animated fadeInRight" ng-view></div>
     </div>
 </div>
-</body>
 
+<script src="assets/js/angular.js"></script>
+<script src="assets/js/angular-route.min.js"></script>
+<script src="assets/js/angular-resource.js"></script>
+<script src="assets/js/app/dataLogger.js"></script>
+<script src="assets/js/app/newInstrument2.js"></script>
+<script src="assets/js/app/checklist-model.js"></script>
+
+</body>
 </html>

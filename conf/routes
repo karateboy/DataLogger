@@ -62,6 +62,9 @@ GET		/Excel/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorR
 GET		/MonitorMonthlyHourReport		controllers.Report.monitorMonthlyHourReport
 GET		/MonthlyHourReport/:monitorType/:reportDate	controllers.Report.monthlyHourReport(monitorType, reportDate, outputTypeStr="html")
 
+#JSON
+GET		/MonitorType			controllers.Application.monitorTypeList
+
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)
