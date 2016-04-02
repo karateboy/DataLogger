@@ -2,15 +2,66 @@
  * newInstrument2
  */
 
-'use strict';
 angular.module('newInstrumentView', ['ngSanitize'])
 
 .factory('InstTypeInfoService', [ '$resource', function($resource) {
 	return $resource('/InstrumentTypeInfo/:id');
 } ])
 
+.factory('InstrumentModalService', ['$rootScope', function($rootScope) {
+	return {
+        subscribeInstrumentId: function(scope, callback) {
+            var handler = $rootScope.$on('InstrumentID', callback);
+            scope.$on('$destroy', handler);
+        },
+        
+        subscribeHideModal: function(scope, callback) {
+            var handler = $rootScope.$on('HideModal', callback);
+            scope.$on('$destroy', handler);
+        },
+
+        notifyInstrumentId: function(id) {        	
+            $rootScope.$emit('InstrumentID', id);
+        },
+        
+        notifyHideModal: function() {        	
+            $rootScope.$emit('HideModal');
+        }
+
+    };
+} ])
+.controller('manageInstrumentCtrl', 
+		['InstrumentModalService',
+		 '$log',
+		 '$scope', 
+		 function($instModal, $log, $scope){
+			$scope.modalTitle = "";
+			$scope.instModal = $instModal;
+			$scope.updateInstrument = function(id){
+				$scope.modalTitle= "變更"+id;
+				$instModal.notifyInstrumentId(id);				
+			}
+			
+			$scope.newInstrument = function(){				
+				$scope.modalTitle= "新增儀器";
+				$instModal.notifyInstrumentId("");
+			}
+			
+			$instModal.subscribeHideModal($scope, function(){
+				$("#newEquipModal").modal("hide");
+				console.log($scope);
+				var api = oTable.api();
+				api.ajax.reload();
+			});
+		}])
 .controller('newInstrumentCtrl',
-		[ 'InstTypeInfoService', 'InstConfigService', '$scope', function($instTypeInfoService, $instConfigService, $scope) {
+		[ 'InstTypeInfoService', 
+		  'InstConfigService',
+		  'InstrumentModalService',
+		  '$http',
+		  '$scope', 
+		  function($instTypeInfoService, $instConfigService, $instModal, $http, $scope) {
+			
 			$scope.instrumentID="";
 			
 			var instTypeInfoCache=[];
@@ -84,6 +135,29 @@ angular.module('newInstrumentView', ['ngSanitize'])
 			
 			$scope.getParam = function(){ return $instConfigService.param; }
 			$scope.validateForm = function(){ return $instConfigService.validate(); }
+			
+			$instModal.subscribeInstrumentId($scope, function(event, id){
+				if(id != ""){
+					$http.get("/Instrument/"+id).then(function(response) {
+						var inst = response.data;
+						$scope.instrumentID = inst._id;
+						$scope.selectedInstTypeId = inst.instType;
+						$scope.selectedProtocol = inst.protocol.protocol;
+						$scope.tcpHost = inst.protocol.host;
+						$scope.comPort = inst.protocol.comPort;					
+					}, function(errResponse) {
+						console.error('Error while fetching instrument...');
+					});
+				}else{ //New instrument
+					$scope.instrumentID="";
+					$scope.selectedInstTypeId = "";
+					$scope.selectedProtocol = "";
+					$scope.tcpHost = "localhost";
+					$scope.comPort = 1;
+				}
+			});
+			
+			$scope.notifyHideModal = $instModal.notifyHideModal; 
 		} ])
 		
 .factory('InstConfigService', [function() {

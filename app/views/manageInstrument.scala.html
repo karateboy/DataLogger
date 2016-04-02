@@ -8,23 +8,16 @@ function hideModal(){
 	api.ajax.reload();	
 }
 </script>
-<div class="row">	
+<div class="row" ng-controller="manageInstrumentCtrl" id="manageCtrl">
   	<div class="modal fade" id="newEquipModal" role="dialog">
     	<div class="modal-dialog modal-lg">
       		<div class="modal-content">
       		<div class="modal-header">
           		<button type="button" class="close" data-dismiss="modal">&times;</button>
-          		<h4 class="modal-title">新增設備</h4>
+          		<h4 class="modal-title">{{modalTitle}}</h4>
         	</div>
         	<div class="modal-body">
-        		<script>
-					var modal={};
-        		</script>
         		@newInstrument2("hideModal()")
-        		<script>
-    				$("#newEquipModal").on('show.bs.modal', function () {});
-    				$("#newEquipModal").on('hidden.bs.modal', function () {});
-    			</script>
         	</div>
       		</div>
     	</div>    	
@@ -32,13 +25,13 @@ function hideModal(){
 <div class="ibox float-e-margins">
   	<div class="ibox-content">
   	<div class="col-lg-6 col-lg-offset-1">
-		<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newEquipModal"><i class="fa fa-plus-circle"></i> 新增</button>
+		<button type="button" class="btn btn-primary" id="newInstrument" ><i class="fa fa-plus-circle"></i> 新增</button>
+		<button type="button" class="btn btn-primary" id="updateInstrument"><i class="fa fa-cog fa-lg"></i> 變更</button>
 		<button type="button" class="btn btn-primary" id="activateInstrument"><i class="fa fa-check-circle"></i> 啟用</button>
 		<button type="button" class="btn btn-primary" id="deactivateInstrument"><i class="fa fa-ban"></i> 停用</button>
 		<button type="button" class="btn btn-primary" id="maintainInstrument"><i class="fa fa-exchange"></i> 切換維修模式</button>
 		<button type="button" class="btn btn-primary" id="calibrateInstrument"><i class="fa fa-balance-scale"></i> 校正</button>
-		<button type="button" class="btn btn-danger" id="deleteInstrument"><i class="fa fa-trash"></i> 刪除</button>
-									
+		<button type="button" class="btn btn-danger" id="deleteInstrument"><i class="fa fa-trash"></i> 刪除</button>									
 	</div>
 	<table id="instrumentTable" class="table table-bordered table-hover" cellspacing="0" width="100%">
 		<thead>
@@ -58,7 +51,7 @@ function hideModal(){
 </div>
 <script>
 $( document ).ready(function() {
-	var local_url = '/assets/localization/zh_tw.json';
+
 	oTable = $("#instrumentTable").dataTable( {
 		ajax: {
 	        url: '/Instrument',
@@ -76,7 +69,7 @@ $( document ).ready(function() {
 			      { data: 'monitorTypes'}
 		      ],
 		language: {
-			url: local_url,							
+			url: '/assets/localization/zh_tw.json',							
 		},
 		paging:   false,
 		searching: false,
@@ -124,6 +117,25 @@ $( document ).ready(function() {
 			});							
 		};
 	}
+
+	$("#newInstrument").click(function(){
+		var ctrl = angular.element($("#manageCtrl")).scope();
+		ctrl.newInstrument();
+		$("#newEquipModal").modal("show");
+	});
+	
+	$("#updateInstrument").click(function(){
+		var api = oTable.api();
+		var selected = api.rows({ selected: true }).data();
+		if(selected.length ==0){
+			alert("請選擇儀器");
+			return;
+		}
+
+		var ctrl = angular.element($("#manageCtrl")).scope();
+		ctrl.updateInstrument(selected[0]._id);
+		$("#newEquipModal").modal("show");
+	});
 	
 	$("#deactivateInstrument").click(handler("/DeactivateInstrument/", "PUT"));
 	$("#activateInstrument").click(handler("/ActivateInstrument/", "PUT"));

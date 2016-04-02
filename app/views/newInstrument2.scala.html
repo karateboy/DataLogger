@@ -1,14 +1,6 @@
 @* newInstrument Template File *@
 @(endCallback: String)
 
-<script>
-	function callback(){
-		@endCallback
-	}
-	var instrumentConfig={};
-</script>
-
-
 <div ng-controller="newInstrumentCtrl" id="newCtrl">
 	<form id="new-instrument-form" class="form-horizontal">
 		<div>
@@ -66,11 +58,12 @@
         			@adam4017Config()
         		</div>
         		<div ng-switch-when="baseline9000Cfg">
-            		@baseline9000Config("instrumentConfig")
+            		@baseline9000Config("")
             	</div> 
         		<div ng-switch-when="tapiCfg">
-            		@tapiConfig("instrumentConfig")
+            		@tapiConfig("")
             	</div>	
+        		
         	</div>        	                       
         </section>
         <h3>結束</h3>
@@ -81,7 +74,6 @@
     	</div>
 	</form>
 </div>
-<script src="assets/js/app/newInstrument2.js"></script>
 <script>
 $( document ).ready(function() {
 	function getCtrlScope(){		
@@ -157,9 +149,8 @@ $( document ).ready(function() {
 		    onFinished: function (event, currentIndex)
 		    {
 		    	var ctrl = getCtrlScope();
-		    	console.log(ctrl);
 		    	var param = ctrl.getParam();
-		    	console.log(param);
+
 		    	
 			    var newInstrument= {
 					_id: ctrl.instrumentID,
@@ -184,21 +175,26 @@ $( document ).ready(function() {
 						if(ret.ok){
 							alert("成功");
 						}else
-							alert("失敗:"+ret.msg);
-							
-						callback();													
+							alert("失敗:"+ret.msg);																										
 					},
 					error: function(xhr, status, errorThrown){
 						alert("失敗:"+ errorThrown);
 					},
 
 					complete: function(xhr, status){
+						var ctrl = getCtrlScope();
+						ctrl.notifyHideModal();
 					}					
 				});
 		    }
 		});
 	}
 
+	function updateInstrument(instID){
+		var ctrl = getCtrlScope();
+		ctrl.load(instID);
+	}
+	
 	setupStep();
 });
 </script>
