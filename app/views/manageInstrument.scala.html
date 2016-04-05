@@ -1,13 +1,5 @@
 @* instrumentList Template File *@
 @(param: Any)
-<script>
-var oTable;
-function hideModal(){
-	$("#newEquipModal").modal("hide");
-	var api = oTable.api();
-	api.ajax.reload();	
-}
-</script>
 <div class="row" ng-controller="manageInstrumentCtrl" id="manageCtrl">
   	<div class="modal fade" id="newEquipModal" role="dialog">
     	<div class="modal-dialog modal-lg">
@@ -119,9 +111,9 @@ $( document ).ready(function() {
 	}
 
 	$("#newInstrument").click(function(){
-		var ctrl = angular.element($("#manageCtrl")).scope();
-		ctrl.newInstrument();
 		$("#newEquipModal").modal("show");
+		var ctrl = angular.element($("#manageCtrl")).scope();		
+		ctrl.newInstrument();		
 	});
 	
 	$("#updateInstrument").click(function(){

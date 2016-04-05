@@ -15,7 +15,7 @@ object Adam4017 extends DriverOps {
 
   override def getMonitorTypes(param: String) = {
     val p = Adam4017.validateParam(param)
-    p.ch.flatMap { _.mt }.toList
+    p.ch.filter{ _.enable}.flatMap { _.mt }.toList
   }
 
   override def verifyParam(json: String) = {

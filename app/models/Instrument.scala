@@ -94,8 +94,11 @@ object Instrument {
     }
   }
 
-  def newInstrument(inst: Instrument) = {
-    val f = collection.insertOne(toDocument(inst)).toFuture()
+  import org.mongodb.scala.model.Filters._
+  def upsertInstrument(inst: Instrument) = {    
+    import org.mongodb.scala.model.UpdateOptions
+    import org.mongodb.scala.bson.BsonString
+    val f = collection.replaceOne(equal("_id", inst._id), toDocument(inst), UpdateOptions().upsert(true)).toFuture()
     waitReadyResult(f)
     true
   }
@@ -105,7 +108,7 @@ object Instrument {
     waitReadyResult(f).map { toInstrument }
   }
 
-  import org.mongodb.scala.model.Filters._
+  
   def getInstrument(id: String) = {
     val f = collection.find(equal("_id", id)).toFuture()
     waitReadyResult(f).map { toInstrument }

@@ -136,7 +136,7 @@ object Application extends Controller {
 
   def getInstrumentTypes = Security.Authenticated {
     import InstrumentType._
-    val iTypes = InstrumentType.map.values.toSeq.map { t =>
+    val iTypes = InstrumentType.values.toList.map{InstrumentType.map}.map { t =>
       InstrumentTypeInfo(t.id, t.desp,
         t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
     }
@@ -165,11 +165,16 @@ object Application extends Controller {
           try {
             val instType = InstrumentType.map(rawInstrument.instType)
             val instParam = instType.driver.verifyParam(rawInstrument.param)
-            val newInstrument = rawInstrument.replaceParam(instParam)
-            Instrument.newInstrument(newInstrument)
+            val newInstrument = rawInstrument.replaceParam(instParam)            
+            Instrument.upsertInstrument(newInstrument)
+            
+            //Stop measuring if any
+            DataCollectManager.stopCollect(newInstrument._id)
+            MonitorType.stopMeasuring(newInstrument._id)
+            
             val mtList = instType.driver.getMonitorTypes(instParam)
             for (mt <- mtList) {
-              MonitorType.updateMonitorTypeInstrument(mt, newInstrument._id)
+              MonitorType.setMeasuringBy(mt, newInstrument._id)
             }
             DataCollectManager.startCollect(newInstrument)
             Ok(Json.obj("ok" -> true))
@@ -207,6 +212,7 @@ object Application extends Controller {
     val ids = instruments.split(",")
     try {
       ids.foreach { DataCollectManager.stopCollect(_) }
+      ids.foreach { MonitorType.stopMeasuring }
       ids.map { Instrument.delete }
     } catch {
       case ex: Exception =>

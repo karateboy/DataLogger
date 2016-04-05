@@ -1,6 +1,29 @@
 /**
  * newInstrument2
  */
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+function isEmpty(obj) {
+    // null and undefined are "empty"
+    if (obj == null) return true;
+
+    // Assume if it has a length property with a non-zero value
+    // that that property is correct.
+    if (obj.length > 0)    return false;
+    if (obj.length === 0)  return true;
+
+    // Otherwise, does it have any properties of its own?
+    // Note that this doesn't handle
+    // toString and valueOf enumeration bugs in IE < 9
+    for (var key in obj) {
+        if (hasOwnProperty.call(obj, key)) return false;
+    }
+
+    return true;
+}
+function getCtrlScope(){		
+	return angular.element($("#newCtrl")).scope();
+}
 
 angular.module('newInstrumentView', ['ngSanitize'])
 
@@ -33,13 +56,15 @@ angular.module('newInstrumentView', ['ngSanitize'])
 .controller('manageInstrumentCtrl', 
 		['InstrumentModalService',
 		 '$log',
+		 '$route',
 		 '$scope', 
-		 function($instModal, $log, $scope){
+		 function($instModal, $log, $route, $scope){
+						
 			$scope.modalTitle = "";
 			$scope.instModal = $instModal;
 			$scope.updateInstrument = function(id){
 				$scope.modalTitle= "變更"+id;
-				$instModal.notifyInstrumentId(id);				
+				$instModal.notifyInstrumentId(id);
 			}
 			
 			$scope.newInstrument = function(){				
@@ -49,7 +74,6 @@ angular.module('newInstrumentView', ['ngSanitize'])
 			
 			$instModal.subscribeHideModal($scope, function(){
 				$("#newEquipModal").modal("hide");
-				console.log($scope);
 				var api = oTable.api();
 				api.ajax.reload();
 			});
@@ -60,7 +84,7 @@ angular.module('newInstrumentView', ['ngSanitize'])
 		  'InstrumentModalService',
 		  '$http',
 		  '$scope', 
-		  function($instTypeInfoService, $instConfigService, $instModal, $http, $scope) {
+		  function($instTypeInfoService, $instConfigService, $instModal, $http, $scope) {			
 			
 			$scope.instrumentID="";
 			
@@ -99,8 +123,10 @@ angular.module('newInstrumentView', ['ngSanitize'])
 			$scope.comPort = 1;
 			
 			$scope.getConfigPage = function(){
+				$instConfigService.instrumentType = $scope.selectedInstTypeId;
+				
 				var tapiInstrument= ['t100', 't200', 't300', 't360', 't400', 't700'];
-				if(tapiInstrument.indexOf($scope.selectedInstTypeId)!= -1){
+				if(tapiInstrument.indexOf($scope.selectedInstTypeId)!= -1){					
 					return "tapiCfg";
 				}else if($scope.selectedInstTypeId === "baseline9000"){
 					return "baseline9000Cfg";
@@ -144,7 +170,8 @@ angular.module('newInstrumentView', ['ngSanitize'])
 						$scope.selectedInstTypeId = inst.instType;
 						$scope.selectedProtocol = inst.protocol.protocol;
 						$scope.tcpHost = inst.protocol.host;
-						$scope.comPort = inst.protocol.comPort;					
+						$scope.comPort = inst.protocol.comPort;
+						$instConfigService.param = JSON.parse(inst.param);
 					}, function(errResponse) {
 						console.error('Error while fetching instrument...');
 					});
@@ -154,6 +181,7 @@ angular.module('newInstrumentView', ['ngSanitize'])
 					$scope.selectedProtocol = "";
 					$scope.tcpHost = "localhost";
 					$scope.comPort = 1;
+					$instConfigService.param= {};
 				}
 			});
 			
@@ -162,83 +190,11 @@ angular.module('newInstrumentView', ['ngSanitize'])
 		
 .factory('InstConfigService', [function() {
 	var service = {
+		instrumentType:"",
 		summary:function(){ return "";},
 		param:{},
 		validate:function() {return true;}	
 	};
 	
 	return service;
-} ])
-		
-.controller('adam4017Ctrl', ['InstConfigService', '$scope', function($config, $scope) {
-	$scope.channels=[];
-
-	$scope.param={};
-	$scope.param.addr = '01';
-	$scope.param.ch=[];
-	for(var i=0;i<8;i++){
-		$scope.channels.push(i);
-		$scope.param.ch.push({});
-	}
-	
-	$config.summary = function(){
-		var desc="";
-		desc += "<br/>位址:" + $scope.param.addr;
-		for(var i=0;i<8;i++){
-			if($scope.param.ch[i].enable){
-				desc += "<br/>CH"+i +":啟用";			
-				desc += "<br/><strong>測項:" + $scope.param.ch[i].mt + "</strong>";
-				desc += "<br/>最大值:" + $scope.param.ch[i].max;
-				desc += "<br/>測項最大值:" + $scope.param.ch[i].mtMax;
-				desc += "<br/>最小值:" + $scope.param.ch[i].min;
-				desc += "<br/>測項最小值:" + $scope.param.ch[i].mtMin;						
-			}	
-		}
-		
-		return desc;
-	}
-	
-	$config.param = $scope.param;
-	
-	$config.validate=function(){
-		console.log("adam 4017 validate...")
-		if($scope.param.addr.length == 0){
-			alert("位址是空的!");
-			return false;
-		}
-
-		for(var i=0;i<8;i++){
-			if($scope.param.ch[i].enable){
-				try{
-					if($scope.param.ch[i].max.length == 0){
-						alert("請指定最大值");
-						return false;
-					}
-					if($scope.param.ch[i].mtMax.length == 0){
-						alert("請指定測項最大值");
-						return false;
-					}
-					if($scope.param.ch[i].min.length == 0){
-						alert("請指定最小值");
-						return false;
-					}
-					if($scope.param.ch[i].mtMin.length == 0){
-						alert("請指定測項最小值");
-						return false;
-					}				
-					
-					$scope.param.ch[i].max = parseFloat($scope.param.ch[i].max);
-					$scope.param.ch[i].mtMax = parseFloat($scope.param.ch[i].mtMax);
-					$scope.param.ch[i].min = parseFloat($scope.param.ch[i].min);
-					$scope.param.ch[i].mtMin = parseFloat($scope.param.ch[i].mtMin);
-				}catch(ex){
-					alert(ex.toString());
-					return false;
-				}
-			}else
-				$scope.param.ch[i].enable = false;
-		}
-		return true;
-	}
-}]);
-
+} ]);

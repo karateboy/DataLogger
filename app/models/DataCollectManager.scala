@@ -89,9 +89,7 @@ class DataCollectManager extends Actor {
 
     case RemoveInstrument(id: String) =>
       val actorOpt = collectorMap.get(id)
-      if (actorOpt.isEmpty) {
-        Logger.error(s"unknown instrument ID $id")
-      } else {
+      if (actorOpt.isDefined){
         val (actor, monitorTypes) = actorOpt.get
         Logger.info(s"Stop collecting instrument $id ")
         Logger.info(s"remove ${monitorTypes.toString()}")

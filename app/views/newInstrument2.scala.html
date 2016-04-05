@@ -36,7 +36,7 @@
 		        	<div class="form-group">
 		        		<label class="col-lg-2 control-label">主機位址</label>
 	    	        		<div class="col-lg-10">
-	    	        		<input type="text" ng-model="tcpHost" >
+	    	        		<input type="text" ng-model="$parent.tcpHost" >
 	        	    	</div>	            			            		
 	        		</div>
 	        	</div>
@@ -45,7 +45,7 @@
 		        	<div class="form-group">
 			        	<label class="col-lg-2 control-label">COM</label>
 	    		        <div class="col-lg-10">
-	    		        	<input type="number" ng-model="comPort">
+	    		        	<input type="number" ng-model="$parent.comPort">
 	        		    </div>	            		
 	        		</div>						        	
 	        	</div>
@@ -80,26 +80,9 @@ $( document ).ready(function() {
 		return angular.element($("#newCtrl")).scope();
 	}
 	
-	var settings = {
-		headerTag: "h3",
-		bodyTag: "section",
-		transitionEffect: "slideLeft",
-		autoFocus: true,
-		/* Labels */
-	    labels: {
-	        cancel: "取消",
-	        current: "目前步驟:",
-	        pagination: "分頁",
-	        finish: "完成",
-	        next: "下一步",
-	        previous: "前一步",
-	        loading: "載入中 ..."
-	    }
-	};
-
-	function setupStep(){
-		var form = $("#new-instrument-form");
-		form.validate({
+	var form = $("#new-instrument-form");
+	function setupStep(){		
+		var validator = form.validate({
 		    errorPlacement: function errorPlacement(error, element) { element.before(error); },
 		    rules: {
 		        confirm: {
@@ -108,8 +91,16 @@ $( document ).ready(function() {
 		    }
 		});
 		
-		form.children("div").steps({
+		var wizard = form.children("div").steps({
 		    headerTag: "h3",
+		    enableCancelButton: true,
+		    onCanceled: function (event)
+		    {
+		    	validator.resetForm();
+		    	var ctrl = getCtrlScope();
+				ctrl.notifyHideModal();
+		    },
+		  
 		    bodyTag: "section",
 		    transitionEffect: "slideLeft",
 		    labels: {
@@ -150,7 +141,7 @@ $( document ).ready(function() {
 		    {
 		    	var ctrl = getCtrlScope();
 		    	var param = ctrl.getParam();
-
+		    	console.log(param);
 		    	
 			    var newInstrument= {
 					_id: ctrl.instrumentID,
@@ -190,11 +181,7 @@ $( document ).ready(function() {
 		});
 	}
 
-	function updateInstrument(instID){
-		var ctrl = getCtrlScope();
-		ctrl.load(instID);
-	}
-	
+	var ctrl = getCtrlScope();
 	setupStep();
 });
 </script>

@@ -7,7 +7,7 @@ import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
 case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[MonitorType.Value]], 
-    raiseTime:Option[Int], downTime:Option[Int])
+    raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int])
 case class ModelConfig(model: String, monitorTypeIDs: List[String])
 
 object TapiTxx {
@@ -104,7 +104,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
       param => {
         //Append monitor Type into config
         val mt = modelConfig.monitorTypeIDs.map { MonitorType.withName(_) }
-        val newParam = TapiConfig(param.slaveID, param.calibrationTime, Some(mt), param.raiseTime, param.downTime)
+        val newParam = TapiConfig(param.slaveID, param.calibrationTime, Some(mt), param.raiseTime, param.downTime, param.holdTime)
 
         Json.toJson(newParam).toString()
       })

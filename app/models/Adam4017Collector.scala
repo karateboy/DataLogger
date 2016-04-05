@@ -67,7 +67,7 @@ class Adam4017Collector extends Actor {
       instId = id
       adam4017param = param
       comm = SerialComm.open(com)
-      cancelable = Akka.system.scheduler.schedule(Duration(5, SECONDS), Duration(2, SECONDS), self, Collect)
+      cancelable = Akka.system.scheduler.schedule(Duration(5, SECONDS), Duration(3, SECONDS), self, Collect)
 
     case Collect =>
       val os = comm.os

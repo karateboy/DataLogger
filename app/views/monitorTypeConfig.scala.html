@@ -25,8 +25,8 @@
             	<table id="monitorTypeTable" class="table" cellspacing="0" width="100%">
             		<thead>
             			<tr>
-            				<th>測項代碼</th>
-            				<th>測量儀器</th>
+            				<th>代碼</th>
+            				<th>儀器</th>
             				<th>名稱</th>
             				<th>單位</th>
             				<th>小時內控值</th>
@@ -42,7 +42,7 @@
             			@for(mt<-MonitorType.activeMtvList){
             				<tr id="@map(mt)._id">
             					<th>@map(mt)._id</th>
-            					<th>@displayMeasuredBy(map(mt).measuredBy)</th>
+            					<th>@displayMeasuredBy(mt)</th>
             					<td col="desp">@map(mt).desp</td>
             					<td col="unit">@map(mt).unit</td>
             					<td col="std_internal">@MonitorType.format(mt, map(mt).std_internal) </td>

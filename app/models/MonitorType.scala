@@ -12,8 +12,10 @@ case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[
                        prec: Int, order: Int, std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
                        span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
-                       measuredBy: Option[String] = None)
-
+                       measuredBy: Option[String] = None, measuringBy: Option[String] = None)
+//MeasuredBy => History...
+//MeasuringBy => Current...
+                       
 object MonitorType extends Enumeration {
   import org.mongodb.scala.bson._
   import scala.concurrent._
@@ -136,13 +138,8 @@ object MonitorType extends Enumeration {
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   def activeMtvList = mtvList.filter { mt => map(mt).measuredBy.isDefined }
   def realtimeMtvList = mtvList.filter { mt =>
-    val instIdOpt = map(mt).measuredBy
-    if (instIdOpt.isEmpty)
-      false
-    else {
-      val instrumentList = Instrument.getInstrument(instIdOpt.get)
-      !instrumentList.isEmpty
-    }
+    val instIdOpt = map(mt).measuringBy
+    instIdOpt.isDefined
   }
 
   def newMonitorType(mt: MonitorType) = {
@@ -156,6 +153,18 @@ object MonitorType extends Enumeration {
     map = map + (Value(mt._id) -> mt)
   }
 
+  def setMeasuringBy(mt:MonitorType.Value, id:String)={
+    updateMonitorType(mt, "measuringBy", id)
+    updateMonitorType(mt, "measuredBy", id)
+  }
+  
+  def stopMeasuring(instrumentId:String)={
+    for(mt <- realtimeMtvList.filter { mt => map(mt).measuringBy == Some(instrumentId) }){
+      Logger.debug("stoping $mt")
+      updateMonitorType(mt, "measuringBy", "-")
+    }
+  }
+    
   def updateMonitorType(mt: MonitorType.Value, colname: String, newValue: String) = {
     import org.mongodb.scala._
     import org.mongodb.scala.model.Filters._
@@ -166,9 +175,11 @@ object MonitorType extends Enumeration {
     val idFilter = equal("_id", map(mt)._id)
     val opt = FindOneAndUpdateOptions().returnDocument(com.mongodb.client.model.ReturnDocument.AFTER)
     val f =
-      if (colname == "desp" || colname == "unit" || colname == "measuredBy") {
-
-        collection.findOneAndUpdate(idFilter, set(colname, newValue), opt).toFuture()
+      if (colname == "desp" || colname == "unit" || colname == "measuringBy" || colname == "measuredBy") {
+        if( newValue == "-")
+          collection.findOneAndUpdate(idFilter, set(colname, null), opt).toFuture()
+        else
+          collection.findOneAndUpdate(idFilter, set(colname, newValue), opt).toFuture()
       } else if (colname == "prec" || colname == "order") {
         import java.lang.Integer
         val v = Integer.parseInt(newValue)
@@ -187,10 +198,6 @@ object MonitorType extends Enumeration {
     val mtCase = toMonitorType(ret(0))
     Logger.debug(mtCase.toString)
     map = map + (mt -> mtCase)
-  }
-
-  def updateMonitorTypeInstrument(mt: MonitorType.Value, instrumentID: String) = {
-    updateMonitorType(mt, "measuredBy", instrumentID)
   }
 
   def format(mt: MonitorType.Value, v: Option[Double]) = {
@@ -256,16 +263,17 @@ object MonitorType extends Enumeration {
     }
   }
 
-  def displayMeasuredBy(mb: Option[String]) = {
-    if (mb.isEmpty)
-      "未曾使用"
-    else {
-      val id = mb.get
-      val instList = Instrument.getInstrument(id)
-      if (instList.isEmpty)
-        s"$id (已移除)"
-      else
-        s"$id"
+  def displayMeasuredBy(mt: MonitorType.Value) = {
+    val mtCase = map(mt)
+    if (mtCase.measuringBy.isDefined){
+      val id = mtCase.measuringBy.get
+      s"$id"
+    }else {
+      if(mtCase.measuredBy.isDefined){
+        val id = mtCase.measuredBy.get
+        s"$id (停用)"
+      }else
+        "未曾使用"
     }
   }
 }
