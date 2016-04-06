@@ -93,7 +93,6 @@ class Adam4017Collector extends Actor {
           val readCmd = s"#${adam4017param.addr}\r"
           os.write(readCmd.getBytes)
           val str = comm.port.readString()
-          Logger.info(str)
           if (str != null) {
             decode(str)
           }

@@ -201,7 +201,6 @@ class DataCollectManager extends Actor {
 
     val minuteMtAvgList = calculateAvgMap(mtMap)
 
-    Logger.debug(s"update ${currentMintues.minusMinutes(1)} min data")
     mtDataList = currentData
     Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
   }
