@@ -164,7 +164,16 @@ object MonitorType extends Enumeration {
       updateMonitorType(mt, "measuringBy", "-")
     }
   }
-    
+   
+  import org.mongodb.scala.model.Filters._
+  def upsertMonitorType(mt:MonitorType) = {
+      import org.mongodb.scala.model.UpdateOptions
+      import org.mongodb.scala.bson.BsonString
+      val f = collection.replaceOne(equal("_id", mt._id), toDocument(mt), UpdateOptions().upsert(true)).toFuture()
+      waitReadyResult(f)
+      true
+  }
+  
   def updateMonitorType(mt: MonitorType.Value, colname: String, newValue: String) = {
     import org.mongodb.scala._
     import org.mongodb.scala.model.Filters._

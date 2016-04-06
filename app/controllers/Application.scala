@@ -321,7 +321,21 @@ object Application extends Controller {
 
   def monitorTypeList = Security.Authenticated {
     val mtList = MonitorType.mtvList.map { mt => MonitorType.map(mt) }
-
     Ok(Json.toJson(mtList))
+  }
+  
+  def upsertMonitorType(id:String) = Security.Authenticated(BodyParsers.parse.json) {
+    Logger.info(s"upsert Mt:$id")
+    implicit request=>
+      val mtResult = request.body.validate[MonitorType]
+      
+      mtResult.fold(error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
+        mt => {
+          MonitorType.upsertMonitorType(mt)
+          Ok(Json.obj("ok" -> true))
+        })
   }
 }

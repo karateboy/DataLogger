@@ -1,5 +1,4 @@
 @* monitorTypeConfig Template File *@
-@import MonitorType._
 <div class="row">
     <div class="col-lg-12">
     	<div class="panel panel-primary">
@@ -20,8 +19,8 @@
         <div class="panel-heading panel-title"" >
         	<a data-toggle="collapse" data-parent="#accordion" href="#monitorType">點擊測項參數加以編輯</a>	
         </div>
-        <div class="panel-body panel-collapse" id="monitorType">    		
-			<div id="monitorTypeDiv" align="center">
+        <div class="panel-body panel-collapse" ng-controller="mtConfigCtrl">    		
+			<div align="center">
             	<table id="monitorTypeTable" class="table" cellspacing="0" width="100%">
             		<thead>
             			<tr>
@@ -38,22 +37,20 @@
             				<th>全幅偏移法規值</th>
             			</tr>
             		</thead>
-            		<tbody>
-            			@for(mt<-MonitorType.activeMtvList){
-            				<tr id="@map(mt)._id">
-            					<th>@map(mt)._id</th>
-            					<th>@displayMeasuredBy(mt)</th>
-            					<td col="desp">@map(mt).desp</td>
-            					<td col="unit">@map(mt).unit</td>
-            					<td col="std_internal">@MonitorType.format(mt, map(mt).std_internal) </td>
-            					<td col="std_law">@MonitorType.format(mt, map(mt).std_law) </td>
-            					<td col="prec">@map(mt).prec</td>
-            					<td col="zd_internal">@MonitorType.format(mt, map(mt).zd_internal) </td>
-            					<td col="zd_law">@MonitorType.format(mt, map(mt).zd_law) </td>
-            					<td col="span_dev_internal">@MonitorType.format(mt, map(mt).span_dev_internal)</td>
-            					<td col="span_dev_law">@MonitorType.format(mt, map(mt).span_dev_law)</td> 
-            				</tr>
-            			}
+            		<tbody ng-repeat="mt in monitorTypeList">            			
+            				<tr id="mt._id">
+            					<th>{{mt._id}}</th>
+            					<th>{{$parent.displayInstrument(mt)}}</th>
+            					<td col="desp"><input type="text" ng-model="mt.desp"></td>
+            					<td col="unit">{{mt.unit}}</td>
+            					<td col="std_internal">{{mt.std_internal}}</td>
+            					<td col="std_law">{{mt.std_law}}</td>
+            					<td col="prec">{{mt.prec}}</td>
+            					<td col="zd_internal">{{mt.zd_internal}}</td>
+            					<td col="zd_law">{{mt.zd_law}}</td>
+            					<td col="span_dev_internal">{{mt.span_dev_internal}}</td>
+            					<td col="span_dev_law">{{mt.span_dev_law}}</td> 
+            				</tr>            			
             		</tbody>
             	</table>          		
             </div>
@@ -66,8 +63,7 @@ var dataTableL10N = '/assets/localization/zh_tw.json';
 </script>
 <script>
 $(document).ready(function() {
-        /* Init DataTables */
-        
+/*
         var oTable = $('#monitorTypeTable').dataTable({
         	language: {
 				url: dataTableL10N,							
@@ -77,7 +73,6 @@ $(document).ready(function() {
 			paging: false
         });
 		
-        /* Apply the jEditable handlers to the table */
         oTable.$('td').editable( '/SaveMonitorTypeConfig', {
         	indicator : '儲存中...',
             tooltip   : '點擊該項目加以編輯...',
@@ -99,5 +94,6 @@ $(document).ready(function() {
             "width": "90%",
             "height": "100%"
         } );
+    */
 });
 </script>

@@ -66,6 +66,8 @@ GET		/MonthlyHourReport/:monitorType/:reportDate	controllers.Report.monthlyHourR
 
 #JSON
 GET		/MonitorType			controllers.Application.monitorTypeList
+POST	/MonitorType/:id		controllers.Application.upsertMonitorType(id)
+PUT		/MonitorType/:id		controllers.Application.upsertMonitorType(id)
 
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose

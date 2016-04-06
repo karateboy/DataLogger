@@ -7,7 +7,8 @@ var app = angular.module('dataLoggerApp',
 		  'ui.bootstrap',
 		  'newInstrumentView',
 		  'adam4017View',
-		  'tapiConfigView']);
+		  'tapiConfigView',
+		  'mtConfigView']);
 
 app.factory('BreadcrumbService', [ function() {
 	var service = {
