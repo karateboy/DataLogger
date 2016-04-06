@@ -71,9 +71,9 @@ object Query extends Controller {
     val windRecord = windSpeed.zip(windDir)
     val wind_sin = windRecord.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
     val wind_cos = windRecord.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
-    windAvg(wind_sin, wind_cos)    
+    windAvg(wind_sin, wind_cos)
   }
-  
+
   def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
     import scala.collection.mutable.ListBuffer
 
@@ -227,8 +227,8 @@ object Query extends Controller {
       for {
         mt <- monitorTypes
         valueMap = mtReportMap(mt)
-        timeData = timeSeq.map { time =>          
-          
+        timeData = timeSeq.map { time =>
+
           if (valueMap.contains(time))
             Seq(Some(time.getMillis.toDouble), Some(valueMap(time).toDouble))
           else
@@ -259,7 +259,7 @@ object Query extends Controller {
         case ReportUnit.Min =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.TenMin =>
-          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"      
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Hour =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Day =>
@@ -361,7 +361,7 @@ object Query extends Controller {
       val tabType = TableType.withName(tabTypeStr)
       val reportUnit = ReportUnit.withName(reportUnitStr)
       val (start, end) =
-        if (reportUnit == ReportUnit.Hour||reportUnit == ReportUnit.Min || reportUnit == ReportUnit.TenMin) {
+        if (reportUnit == ReportUnit.Hour || reportUnit == ReportUnit.Min || reportUnit == ReportUnit.TenMin) {
           (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
         } else if (reportUnit == ReportUnit.Day) {
@@ -454,28 +454,30 @@ object Query extends Controller {
     val report = Alarm.getAlarms(start, end)
     Ok(views.html.alarmReport(start, end, report))
   }
-  
+
   def instrumentStatus() = Security.Authenticated {
     Ok(views.html.instrumentStatus())
   }
 
-  def instrumentStatusReport(id:String, startStr: String, endStr: String) = Security.Authenticated {
+  def instrumentStatusReport(id: String, startStr: String, endStr: String) = Security.Authenticated {
     val (start, end) =
       (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+
+    val report = InstrumentStatus.query(id, start, end + 1.day)
+    val keyList = report.map {_.statusList}.maxBy { _.length }.map { _.key }
     
-    val report = InstrumentStatus.query(start, end + 1.day).toArray
-    val nStatus = {
-      if(report.isEmpty)
-        0
-      else{
-        report.map{_.statusList.length}.min
-      }
+    
+    
+    val reportMap = for {
+      record <- report
+      time = record.time
+    } yield {
+      (time, record.statusList.map { s => (s.key->s.value) }.toMap)
     }
-    
-    val timeSeq = report.map { _.time }
-    val statusTypeMap = Instrument.getStatusTypeMap(id) 
-    Ok(views.html.instrumentStatusReport(id, start, end, report, nStatus, timeSeq, statusTypeMap))
+
+    val statusTypeMap = Instrument.getStatusTypeMap(id)
+    Ok(views.html.instrumentStatusReport(id, start, end, reportMap.toList, keyList, statusTypeMap))
   }
 
   //

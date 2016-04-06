@@ -1,7 +1,7 @@
 @* historyReport Template File *@
 @import com.github.nscala_time.time.Imports._
 @import models.InstrumentStatus._
-@(id:String, start:DateTime, end:DateTime, report:Array[InstrumentStatus], nStatus:Int, timeSeq:Array[DateTime], nameMap:Map[String, String])
+@(id:String, start:DateTime, end:DateTime, reportArray:List[(DateTime, Map[String, Double])], keyList:List[String], nameMap:Map[String, String])
 
 <H3>儀器狀態 @id</H3>
 <H5>開始:@start.toString("YYYY-MM-dd")</H5>
@@ -10,24 +10,23 @@
 <table id="instrumentStatusReport" class="table">
 <thead>
 	<tr>		
-		<th>屬性</th>
-		@for(time_idx<-timeSeq.zipWithIndex){
-			@if(time_idx._2 == 0){
-				<th>@time_idx._1.toString("MM/dd HH:mm")</th>
-			}else{
-				<th>@time_idx._1.toString("HH:mm")</th>
-			}						
+		<th>時間</th>
+		@for(key<-keyList){
+			<th>@nameMap(key)</th>
 		}
 	</tr>
 </thead>
 <tbody>
-	@for(statIdx <- 0 to nStatus-1){
+	@for(report <- reportArray){
 		<tr>
-			@if(!report.isEmpty){
-				<td>@nameMap.getOrElse(report(0).statusList(statIdx).key, report(0).statusList(statIdx).key)</td>
-			}			
-			@for(timeIdx <- 0 to timeSeq.length-1){
-				<td>@report(timeIdx).statusList(statIdx).value</td>				
+			<th>@report._1.toString("MM/dd HH:mm")</th>
+			@for(key <- keyList){
+				@if(report._2.contains(key)){
+					<td>@formatValue(report._2(key))</td>
+				}else{
+					<td>-</td>
+				}
+								
 			}
 		</tr>
 	}
