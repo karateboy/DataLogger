@@ -61,25 +61,47 @@ class Adam4017Collector extends Actor {
   }
 
   import DataCollectManager._
+  import scala.concurrent.Future
+  import scala.concurrent.blocking
+
   var collectorState = MonitorStatus.NormalStat
   def receive = {
     case PrepareCollect(id, com, param) =>
-      instId = id
-      adam4017param = param
-      comm = SerialComm.open(com)
-      cancelable = Akka.system.scheduler.schedule(Duration(5, SECONDS), Duration(3, SECONDS), self, Collect)
+      Future {
+        blocking {
+          try {
+            instId = id
+            adam4017param = param
+            comm = SerialComm.open(com)
+            cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+          } catch {
+            case ex: Exception =>
+              Logger.error(ex.getMessage)
+              Logger.info("Try again 1 min later...")
+              //Try again
+              cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, PrepareCollect(id, com, param))
+          }
+
+        }
+      }
 
     case Collect =>
-      val os = comm.os
-      val is = comm.is
-      val readCmd = s"#${adam4017param.addr}\r"
-      os.write(readCmd.getBytes)
-      val str = comm.port.readString()
-      Logger.info(str)
-      if (str != null) {
-        decode(str)
+      Future {
+        blocking {
+          val os = comm.os
+          val is = comm.is
+          val readCmd = s"#${adam4017param.addr}\r"
+          os.write(readCmd.getBytes)
+          val str = comm.port.readString()
+          Logger.info(str)
+          if (str != null) {
+            decode(str)
+          }
+          cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+        }
       }
-    case SetState(id, state)=>
+
+    case SetState(id, state) =>
       Logger.info(s"$self => $state")
       collectorState = state
   }

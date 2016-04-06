@@ -29,6 +29,7 @@ $(document).ready(function(){
 				var series = 
 					{
 			            name: result[i].desp,
+			            visible:i==0,
 			            type: chartTypes[i%chartTypes.length],
 			            data: data
 			        }
