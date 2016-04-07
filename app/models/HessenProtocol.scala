@@ -29,15 +29,15 @@ object HessenProtocol {
   case class Measure(channel: Int, value: Double, status: Byte, error: Byte, serial: String, free: String)
   def decode(reply: String) = {
     val params = reply.split(" ")
-    Logger.debug(s"param #=${params.length}")
+      
     val nMeasure = params(0).substring(3).toInt
-
+    
     for {
-      idx <- 0 to nMeasure
+      idx <- 0 to nMeasure-1
       measureOffset = idx * 6
     } yield {
       def getValue(str: String): Double = {
-        val mantissa = Integer.parseInt(str.substring(0, 5)).toDouble / 1000000
+        val mantissa = Integer.parseInt(str.substring(0, 5)).toDouble / 1000
         val exponent = Integer.parseInt(str.substring(5))
         mantissa * Math.pow(10, exponent)
       }
@@ -45,10 +45,12 @@ object HessenProtocol {
 
       val valueStr = params(1 + measureOffset + 1)
       val statusStr = params(1 + measureOffset + 2)
-      val status = Integer.parseInt("0x" + statusStr).toByte
+
+      val status = Integer.parseInt(statusStr, 16).toByte
 
       val errorStr = params(1 + measureOffset + 3)
-      val error = Integer.parseInt("0x" + errorStr).toByte
+
+      val error = Integer.parseInt(errorStr, 16).toByte
       val serialStr = params(1 + measureOffset + 4)
       val freeStr = params(1 + measureOffset + 5)
 
