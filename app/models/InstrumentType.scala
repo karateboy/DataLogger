@@ -43,7 +43,7 @@ object InstrumentType extends Enumeration{
       t400->InstrumentType(t400, "TAPI T400", List(tcp), TapiT400),
       t700->InstrumentType(t700, "TAPI T700", List(tcp), TapiT700),
 
-      verewa_f701->InstrumentType(verewa_f701, "Verewa F701-20", List(tcp, serial), VerewaF701_20)
+      verewa_f701->InstrumentType(verewa_f701, "Verewa F701-20", List(serial), VerewaF701_20)
       ) 
 }
 

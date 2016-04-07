@@ -7,6 +7,7 @@ import Protocol.ProtocolParam
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object VerewaF701Collector {
+  case object ReopenCom
   case object ReadData
 
   var count = 0
@@ -25,8 +26,8 @@ object VerewaF701Collector {
 class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorType.Value) extends Actor {
   import VerewaF701Collector._
   import scala.concurrent.duration._
-  val cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
-  val serial_comm = SerialComm.open(protocolParam.comPort.get)
+  var cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReopenCom)
+  var serial_comm:Option[SerialComm] = None
 
   import scala.concurrent.Future
   import scala.concurrent.blocking
@@ -116,12 +117,22 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
   }
 
   def receive = {
+    case ReopenCom =>
+        try {
+          serial_comm =Some(SerialComm.open(protocolParam.comPort.get))
+          cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
+        } catch {
+          case ex: Exception =>
+            Logger.error(ex.getMessage)
+            Logger.info("Reopen 1 min latter...")
+            cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ReopenCom)
+        }
     case ReadData =>
       val cmd = HessenProtocol.dataQuery
       val f = Future {
         blocking {
-          serial_comm.port.writeBytes(cmd)
-          val reply = serial_comm.port.readString
+          serial_comm.get.port.writeBytes(cmd)
+          val reply = serial_comm.get.port.readString
           Logger.debug(reply)
           val measureList = HessenProtocol.decode(reply)
           Logger.debug(measureList.toString())
@@ -130,16 +141,16 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
             measure = ma_ch._1
             channel = ma_ch._2
           } {
-            if(channel == 0){
+            if (channel == 0) {
               checkStatus(measure.status)
               context.parent ! ReportData(List(MonitorTypeData(mt, measure.value, collectorStatus)))
             }
-            
+
             checkErrorStatus(channel, measure.error)
           }
           //Log instrument status...
-          
-        }//End of blocking
+
+        } //End of blocking
       }
     case SetState(id, state) =>
       Logger.debug(s"SetState(${MonitorStatus.map(state).desp})")
@@ -147,7 +158,8 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
 
   override def postStop(): Unit = {
     cancelable.cancel()
-    SerialComm.close(serial_comm)
+    if(serial_comm.isDefined)
+      SerialComm.close(serial_comm.get)
   }
 
 }

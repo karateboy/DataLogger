@@ -1,14 +1,16 @@
 /**
- * 
+ *
  */
-var app = angular.module('dataLoggerApp', 
-		[ 'ngRoute', 
+var app = angular.module('dataLoggerApp',
+		[ 'ngRoute',
 		  'ngResource',
 		  'ui.bootstrap',
 		  'newInstrumentView',
 		  'adam4017View',
 		  'tapiConfigView',
-		  'mtConfigView']);
+		  'mtConfigView',
+			'verewaConfigView',
+		  'mtRealtimeChartView']);
 
 app.factory('BreadcrumbService', [ function() {
 	var service = {

@@ -1,0 +1,15 @@
+@* verewaConfig Template File *@
+@(param: Any)
+<div ng-controller="verewaConfigCtrl">
+	<div class="form-group">
+	<label class="col-lg-3 control-label">測項</label>
+   	<div class="col-lg-4">
+    	<select class="form-control" ng-model="param.monitorType">
+			@for(mt<-VerewaF701_20.supportedMonitorTypes){
+				<option value="@mt">@MonitorType.map(mt).desp</option>
+			}
+  		</select>
+    </div>	            		
+	</div>
+</div>
+

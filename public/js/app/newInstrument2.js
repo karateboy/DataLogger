@@ -132,9 +132,10 @@ angular.module('newInstrumentView', ['ngSanitize'])
 					return "baseline9000Cfg";
 				}else if($scope.selectedInstTypeId === "adam4017"){
 					return "adam4017Cfg";
-				}else{
-					return "unknown";
-				}					
+				}else if($scope.selectedInstTypeId === "verewa_f701"){
+					return "verewaCfg";
+				}else
+					return "default";
 			}
 			
 			function getInstrumentTypeDesp(){
