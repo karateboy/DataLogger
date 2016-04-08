@@ -9,8 +9,10 @@ var app = angular.module('dataLoggerApp',
 		  'adam4017View',
 		  'tapiConfigView',
 		  'mtConfigView',
-			'verewaConfigView',
-		  'mtRealtimeChartView']);
+		  'verewaConfigView',
+		  'mtRealtimeChartView',
+		  'miniMonitorTypeListView',
+		  'monitorTypeListView']);
 
 app.factory('BreadcrumbService', [ function() {
 	var service = {

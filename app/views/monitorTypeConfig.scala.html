@@ -19,81 +19,25 @@
         <div class="panel-heading panel-title"" >
         	<a data-toggle="collapse" data-parent="#accordion" href="#monitorType">點擊測項參數加以編輯</a>	
         </div>
-        <div class="panel-body panel-collapse" ng-controller="mtConfigCtrl">    		
+        <div class="panel-body panel-collapse" ng-controller="mtConfigCtrl as ctrl">    		
 			<div align="center">
-            	<table id="monitorTypeTable" class="table" cellspacing="0" width="100%">
-            		<thead>
-            			<tr>
-            				<th>代碼</th>
-            				<th>儀器</th>
-            				<th>名稱</th>
-            				<th>單位</th>
-            				<th>小時內控值</th>
-            				<th>小時法規值</th>
-            				<th>小數點位數</th>
-            				<th>零點偏移內控值</th>
-            				<th>零點偏移法規值</th>
-            				<th>全幅偏移內控值</th>
-            				<th>全幅偏移法規值</th>
-            			</tr>
-            		</thead>
-            		<tbody ng-repeat="mt in monitorTypeList">            			
-            				<tr id="mt._id">
-            					<th>{{mt._id}}</th>
-            					<th>{{$parent.displayInstrument(mt)}}</th>
-            					<td col="desp"><input type="text" ng-model="mt.desp"></td>
-            					<td col="unit">{{mt.unit}}</td>
-            					<td col="std_internal">{{mt.std_internal}}</td>
-            					<td col="std_law">{{mt.std_law}}</td>
-            					<td col="prec">{{mt.prec}}</td>
-            					<td col="zd_internal">{{mt.zd_internal}}</td>
-            					<td col="zd_law">{{mt.zd_law}}</td>
-            					<td col="span_dev_internal">{{mt.span_dev_internal}}</td>
-            					<td col="span_dev_law">{{mt.span_dev_law}}</td> 
-            				</tr>            			
-            		</tbody>
+            	<table ng-table="ctrl.tableParams" class="table table-condensed table-bordered table-striped" show-filter="false">
+        				<tr ng-repeat="mt in ctrl.monitorTypeList track by mt._id">
+        					<td data-title="'代碼'">{{mt._id}}</td>
+        					<td data-title="'儀器'">{{mt.measuringBy}}</td>
+        					<td data-title="'名稱'" ng-bind="mt.desp"></td>
+        					<td data-title="'單位'" col="unit">{{mt.unit}}</td>
+        					<td data-title="'內控值'" col="std_internal">{{mt.std_internal}}</td>
+        					<td data-title="'法規值'" col="std_law">{{mt.std_law}}</td>
+        					<td data-title="'小數點位數'" col="prec">{{mt.prec}}</td>
+        					<td data-title="'零點偏移內控值'" col="zd_internal">{{mt.zd_internal}}</td>
+        					<td data-title="'零點偏移法規值'" col="zd_law">{{mt.zd_law}}</td>
+        					<td data-title="'全幅偏移內控值'" col="span_dev_internal">{{mt.span_dev_internal}}</td>
+        					<td data-title="'全幅偏移法規值'" col="span_dev_law">{{mt.span_dev_law}}</td> 
+        				</tr>            			
             	</table>          		
             </div>
        </div>
        </div>
 	</div>
 </div>
-<script>
-var dataTableL10N = '/assets/localization/zh_tw.json';
-</script>
-<script>
-$(document).ready(function() {
-/*
-        var oTable = $('#monitorTypeTable').dataTable({
-        	language: {
-				url: dataTableL10N,							
-			},
-        	searching: false,
-        	ordering:  true,
-			paging: false
-        });
-		
-        oTable.$('td').editable( '/SaveMonitorTypeConfig', {
-        	indicator : '儲存中...',
-            tooltip   : '點擊該項目加以編輯...',
-            cancel    : '取消',
-            submit    : '確認',            
-            name : 'data', 
-            callback: function( sValue, y ) {
-                console.log("callback");
-                console.log(sValue);
-                console.log(y);
-            },           
-            submitdata: function ( value, settings ) {
-                var $me = $(this);
-                return {                    
-                    id: $me.parent().attr("id") + ":" + $me.attr("col")
-                };
-            },
-
-            "width": "90%",
-            "height": "100%"
-        } );
-    */
-});
-</script>

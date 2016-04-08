@@ -1,16 +1,19 @@
 @* recordLegend Template File *@
+@(showAudit:Boolean=true)
 <div class="col-lg-offset-4 col-lg-8">
 <table class="table">
 <tbody>
 <tr>
-	<td class="col-lg-1 normal"><strong>標示說明:</strong></td>
-	<td class="col-lg-1 over_internal_std"><i class="fa fa-exclamation-triangle"></i>超過內控值</td>
-	<td class="col-lg-1 over_law_std"><i class="fa fa-exclamation-triangle"></i>超過法規值</td>
-	<td class="col-lg-1 normal calibration_status">校正</td>
-	<td class="col-lg-1 normal maintain_status" >維修定保</td>
-	<td class="col-lg-1 normal abnormal_status">異常</td>
-	<td class="col-lg-1 normal auto_audit_status">自動檢核</td>
-	<td class="col-lg-1 normal manual_audit_status">人工註記</td>
+	<td class="col-lg-1 normal text-center"><strong>標示說明:</strong></td>
+	<td class="col-lg-1 over_internal_std text-center"><i class="fa fa-exclamation-triangle"></i>超過內控值</td>
+	<td class="col-lg-1 over_law_std text-center"><i class="fa fa-exclamation-triangle"></i>超過法規值</td>
+	<td class="col-lg-1 normal calibration_status text-center">校正</td>
+	<td class="col-lg-1 normal maintain_status text-center">維修定保</td>
+	<td class="col-lg-1 normal abnormal_status text-center">異常</td>
+@if(showAudit){
+	<td class="col-lg-1 normal auto_audit_status text-center">自動檢核</td>
+	<td class="col-lg-1 normal manual_audit_status text-center">人工註記</td>
+}
 </tr>
 </tbody>
 </table>

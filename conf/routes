@@ -21,8 +21,8 @@ POST	/User/:id			controllers.Application.updateUser(id)
 DELETE  /User/:id			controllers.Application.deleteUser(id)	
 
 GET		/HistoryTrend				controllers.Query.historyTrend
-GET		/JSON/HistoryTrend/:monitorType/:tabType/:reportUnit/:start/:end		controllers.Query.historyTrendChart(monitorType, tabType, reportUnit, start, end, outputTypeStr="html")
-GET		/Excel/HistoryTrend/:monitorType/:reportUnit/:start/:end	controllers.Query.historyTrendChart(monitorType, tabType, reportUnit, start, end, outputTypeStr="excel")
+GET		/JSON/HistoryTrend/:monitorType/:reportUnit/:start/:end		controllers.Query.historyTrendChart(monitorType, reportUnit, start, end, outputTypeStr="html")
+GET		/Excel/HistoryTrend/:monitorType/:reportUnit/:start/:end	controllers.Query.historyTrendChart(monitorType, reportUnit, start, end, outputTypeStr="excel")
 
 GET		/History					controllers.Query.history
 GET		/HistoryReport/:monitorType/:tabType/:start/:end		controllers.Query.historyReport(monitorType, tabType, start, end)

@@ -352,23 +352,27 @@ object Query extends Controller {
     chart
   }
 
-  def historyTrendChart(monitorTypeStr: String, tabTypeStr: String, reportUnitStr: String,
+  def historyTrendChart(monitorTypeStr: String, reportUnitStr: String,
                         startStr: String, endStr: String, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
       import scala.collection.JavaConverters._
       val monitorTypeStrArray = monitorTypeStr.split(':')
       val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
-      val tabType = TableType.withName(tabTypeStr)
       val reportUnit = ReportUnit.withName(reportUnitStr)
-      val (start, end) =
+      val (tabType, start, end) =
         if (reportUnit == ReportUnit.Hour || reportUnit == ReportUnit.Min || reportUnit == ReportUnit.TenMin) {
-          (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
+          val tab = if (reportUnit == ReportUnit.Hour)
+            TableType.hour
+          else
+            TableType.min
+
+          (tab, DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
         } else if (reportUnit == ReportUnit.Day) {
-          (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
+          (TableType.hour, DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
         } else {
-          (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-M")),
+          (TableType.hour, DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-M")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-M")))
         }
 
@@ -451,7 +455,7 @@ object Query extends Controller {
     val (start, end) =
       (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
-    val report = Alarm.getAlarms(start, end)
+    val report = Alarm.getAlarms(start, end + 1.day)
     Ok(views.html.alarmReport(start, end, report))
   }
 
@@ -465,15 +469,13 @@ object Query extends Controller {
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
 
     val report = InstrumentStatus.query(id, start, end + 1.day)
-    val keyList = report.map {_.statusList}.maxBy { _.length }.map { _.key }
-    
-    
-    
+    val keyList = report.map { _.statusList }.maxBy { _.length }.map { _.key }
+
     val reportMap = for {
       record <- report
       time = record.time
     } yield {
-      (time, record.statusList.map { s => (s.key->s.value) }.toMap)
+      (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
     }
 
     val statusTypeMap = Instrument.getStatusTypeMap(id)
