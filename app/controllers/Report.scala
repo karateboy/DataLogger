@@ -13,7 +13,9 @@ object PeriodReport extends Enumeration {
   val MonthlyReport = Value("monthly")
   val MinMonthlyReport = Value("MinMonthly")
   val YearlyReport = Value("yearly")
-  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報", MinMonthlyReport -> "分鐘月報", YearlyReport -> "年報")
+  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報", 
+      MinMonthlyReport -> "分鐘月報", 
+      YearlyReport -> "年報")
 
 }
 
@@ -95,14 +97,20 @@ object Report extends Controller {
               }
               val statMap = Query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.day)
 
-              ("日報", views.html.dailyReport(start, MonitorType.mtvList, mtTimeMap, statMap))
+              ("日報", views.html.dailyReport(start, MonitorType.activeMtvList, mtTimeMap, statMap))
 
             case PeriodReport.MonthlyReport =>
-              val periodMap = Record.getRecordMap(Record.HourCollection)(MonitorType.mtvList, start, start + 1.month)
+              val periodMap = Record.getRecordMap(Record.HourCollection)(MonitorType.activeMtvList, start, start + 1.month)
               val statMap = Query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
               val overallStatMap = getOverallStatMap(statMap)
-              ("月報", views.html.monthlyReport(start, MonitorType.mtvList, statMap, overallStatMap))
+              ("月報", views.html.monthlyReport(start, MonitorType.activeMtvList, statMap, overallStatMap))
 
+            case PeriodReport.YearlyReport =>
+              val periodMap = Record.getRecordMap(Record.HourCollection)(MonitorType.activeMtvList, start, start + 1.year)
+              val statMap = Query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
+              val overallStatMap = getOverallStatMap(statMap)
+              ("年報", views.html.yearlyReport(start, MonitorType.activeMtvList, statMap, overallStatMap))
+              
             //case PeriodReport.MonthlyReport =>
             //val nDays = monthlyReport.typeArray(0).dataList.length
             //("月報", "")

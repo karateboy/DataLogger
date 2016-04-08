@@ -137,10 +137,7 @@ object MonitorType extends Enumeration {
   var map: Map[Value, MonitorType] = Map(mtList.map { e => Value(e._id) -> e }: _*)
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   def activeMtvList = mtvList.filter { mt => map(mt).measuredBy.isDefined }
-  def realtimeMtvList = mtvList.filter { mt =>
-    val instIdOpt = map(mt).measuringBy
-    instIdOpt.isDefined
-  }
+  def realtimeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
 
   def newMonitorType(mt: MonitorType) = {
     val doc = toDocument(mt)

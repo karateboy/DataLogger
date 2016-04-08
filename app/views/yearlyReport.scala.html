@@ -2,13 +2,13 @@
 @import com.github.nscala_time.time.Imports._
 @import MonitorStatus._
 @(reportDate:DateTime, mTypes:List[MonitorType.Value], mtTimeStatMap: Map[MonitorType.Value, Map[DateTime, Stat]], statMap: Map[MonitorType.Value, Stat])
-<h3>監測月報表</h3>
-<h4>日期:@reportDate.toString("yyyy年MM月")</h4>
+<h3>監測年報表</h3>
+<h4>日期:@reportDate.toString("yyyy年")</h4>
 @reportLegend("")
 <table id="reportTable" class="table table-bordered" cellspacing="0" width="100%">
 	<thead>
 		<tr>
-			<th>日期</th>
+			<th>月份</th>
 			@for(mt<-mTypes){
 			<th>@MonitorType.map(mt).desp</th>
 			}
@@ -41,9 +41,9 @@
 		</tr>
 	</tfoot>
 	<tbody>
-		@for(t<-Query.getPeriods(reportDate, reportDate + 1.month, 1.day)){
+		@for(t<-Query.getPeriods(reportDate, reportDate + 1.year, 1.month)){
 			<tr>
-			<th>@t.toString("d")</th>
+			<th>@t.toString("MM")月</th>
 			@for(mt<-mTypes){
 				<td 
 				@if(!mtTimeStatMap(mt)(t).isEffective){
