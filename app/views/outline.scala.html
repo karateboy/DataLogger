@@ -24,7 +24,7 @@
 	<!-- Datepicker -->
 	<link href="assets/css/plugins/datepicker/datepicker3.css" rel="stylesheet">
 	<link href="assets/css/plugins/datetimepicker/bootstrap-datetimepicker.min.css" rel="stylesheet">
-
+	<link rel="stylesheet" href="assets/css/angular/datetimepicker.css"/>
 	<link rel="stylesheet" href="assets/css/ng-table.css">
 
 	<!-- Mainly scripts -->
@@ -53,9 +53,8 @@
 	<script src="assets/js/inspinia.js"></script>
 	<script src="assets/js/plugins/pace/pace.min.js"></script>
 	<script src="assets/localization/highchartOption.js"></script>
-    <script>
-    var myTimeout=[];
-    var chartHeight=500;
+    <script>    
+    	var chartHeight=500;    	
     </script>
 </head>
 
@@ -120,7 +119,7 @@
                 	</li>
                     <li><a href="#/MonitorTypeConfig" >測項管理</a></li>
                     <li><a href="#/ManualAudit" >人工資料註記</a></li>
-                    <li><a href="#/ManualAuditQuery" >人工註記查詢</a></li>
+                    <li><a href="#/ManualAuditHistory" >人工註記查詢</a></li>
                     <li><a href="#/UserManagement" >使用者管理</a></li>                    
                  </ul>
             	</li>
@@ -169,7 +168,9 @@
 <script src="assets/js/angular/angular-sanitize.js"></script>
 <script src="assets/js/angular/ui-bootstrap-tpls-1.2.5.js"></script>
 <script src="assets/js/angular/ng-table.js"></script>
-
+<script src="assets/js/angular/dateTimeInput.js"></script>
+<script src="assets/js/angular/datetimepicker.js"></script>
+<script src="assets/js/angular/datetimepicker.templates.js"></script>
 
 <!-- App JS -->
 <script src="assets/js/app/dataLogger.js"></script>
@@ -181,5 +182,6 @@
 <script src="assets/js/app/mtRealtimeChart.js"></script>
 <script src="assets/js/app/miniMtList.js"></script>
 <script src="assets/js/app/monitorTypeList.js"></script>
+<script src="assets/js/app/manualAudit.js"></script>
 </body>
 </html>

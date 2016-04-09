@@ -20,3 +20,4 @@ server.pid
 /.settings
 /.sbtserver
 /conf/application.conf
+/node_modules

@@ -1,0 +1,71 @@
+@* manualAudit Template File *@
+@(param: Any)
+<div class="row" ng-controller="manualAuditCtrl as ctrl">
+   	<div class="col-lg-12">
+   			<div class="panel panel-primary">
+            	<div class="panel-heading panel-title" >
+            		查詢參數	
+                </div>
+            	<div class="panel-body panel-collapse in">
+            		<form class="form-horizontal">
+	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">測項</label>
+	            			<div class="col-lg-11">
+	            				<div class="btn-group">	            				            				
+	            					<label class="btn btn-outline btn-primary" ng-model="$parent.selectedMtId" ng-repeat="mt in ctrl.monitorTypeList | filter:ctrl.activeMt"  
+	            					uib-btn-radio="mt._id">{{mt.desp}}</label>	            			
+	            				</div>
+	            			</div>	            			            		
+	                    </div>
+	                    
+	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">查詢區間</label>
+	            			<div class="col-lg-4">
+								<div class="dropdown">
+  									<a class="dropdown-toggle" id="dropdown1" role="button" data-toggle="dropdown" data-target="#">
+    									<div class="input-group date">
+      									<input type="text" class="form-control" data-ng-model="dateRangeStart" date-time-input="YYYY-MM-DD HH:mm">
+      									<span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+    									</div>
+  									</a>
+  									<ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+    								<datetimepicker data-ng-model="dateRangeStart" 
+    									data-datetimepicker-config="{ dropdownSelector: '#dropdown1', minView:'hour', modelType:'moment' }" 
+    									data-before-render="beforeRenderStartDate($view, $dates, $leftDate, $upDate, $rightDate)"/>
+  									</ul>
+								</div>									            			
+	            			</div>
+	            			<div class="col-lg-4">
+								<div class="dropdown">
+  									<a class="dropdown-toggle" id="dropdown2" role="button" data-toggle="dropdown" data-target="#">
+    									<div class="input-group date">
+      									<input type="text" class="form-control" data-ng-model="dateRangeEnd" date-time-input="YYYY-MM-DD HH:mm">
+      									<span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+    									</div>
+  									</a>
+  									<ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+    								<datetimepicker data-ng-model="dateRangeEnd" 
+    								data-datetimepicker-config="{ dropdownSelector: '#dropdown2', minView:'hour', modelType:'moment' }" 
+    								data-before-render="beforeRenderEndDate($view, $dates, $leftDate, $upDate, $rightDate)"/>
+  									</ul>
+								</div>	            			
+	            			</div>
+	            		</div>
+
+													                    
+						<div class="form-group">
+							<div class="col-lg-1 col-lg-offset-1">
+								<button type="button" class="btn btn-primary" ng-click="ctrl.query()">查詢</button>
+							</div>							
+						</div>	                    	                    	                    
+            		</form>
+            	</div>
+        	</div>
+        	<div class="panel panel-success" id="reportPanel" ng-show="ctrl.displayResult" >
+            	<div class="panel-body panel-collapse">
+					<div id="reportDiv" style="width:99%">
+            		</div>
+            	</div>
+        	</div>
+	</div>
+</div>

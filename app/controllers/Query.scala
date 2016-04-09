@@ -410,11 +410,17 @@ object Query extends Controller {
       val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
       val tabType = TableType.withName(tabTypeStr)
       val (start, end) =
+        if(tabType ==TableType.hour){
+          val orignal_start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+          val orignal_end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+              
+          (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0)+1.hour)
+        }else
         (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
           DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
-
+      
       val timeList = tabType match {
-        case TableType.hour =>
+        case TableType.hour =>          
           getPeriods(start, end, 1.hour)
         case TableType.min =>
           getPeriods(start, end, 1.minute)
@@ -482,6 +488,10 @@ object Query extends Controller {
     Ok(views.html.instrumentStatusReport(id, start, end, reportMap.toList, keyList, statusTypeMap))
   }
 
+  def manualAudit()= Security.Authenticated {
+    Ok(views.html.manualAudit(""))
+  }
+  
   //
   //  def windRose() = Security.Authenticated {
   //    implicit request =>

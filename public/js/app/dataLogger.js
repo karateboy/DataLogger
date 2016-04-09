@@ -12,7 +12,8 @@ var app = angular.module('dataLoggerApp',
 		  'verewaConfigView',
 		  'mtRealtimeChartView',
 		  'miniMonitorTypeListView',
-		  'monitorTypeListView']);
+		  'monitorTypeListView',
+		  'manualAuditView']);
 
 app.factory('BreadcrumbService', [ function() {
 	var service = {
@@ -106,8 +107,8 @@ app.config([ '$routeProvider', function($routeProvider) {
 				return bs.title = "系統管理>人工資料註記";
 			} ]
 		}
-	}).when('/ManualAuditQuery', {
-		templateUrl : "/ManualAuditQuery",
+	}).when('/ManualAuditHistory', {
+		templateUrl : "/ManualAuditHistory",
 		resolve : {
 			breadcrumb : [ 'BreadcrumbService', function(bs) {
 				return bs.title = "系統管理>人工註記查詢";

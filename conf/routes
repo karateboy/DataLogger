@@ -51,6 +51,7 @@ PUT		/ExecuteSeq/:ids/:seq		controllers.Application.executeSeq(ids, seq:Int)
 
 GET		/InstrumentStatus			controllers.Query.instrumentStatus()
 GET		/InstrumentStatusReport/:id/:start/:end		controllers.Query.instrumentStatusReport(id, start, end)
+GET		/ManualAudit			controllers.Query.manualAudit()
 
 #Realtime
 GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()
