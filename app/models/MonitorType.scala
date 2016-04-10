@@ -45,7 +45,7 @@ object MonitorType extends Enumeration {
     MonitorType("NH4", "氨", "ppb", None, 1, 12),
     MonitorType("TSP", "TSP", "μg/m3", None, 1, 13),
     MonitorType("PM10", "PM10懸浮微粒", "μg/m3", None, 1, 14),
-    MonitorType("PM2.5", "PM2.5細懸浮微粒", "μg/m3", None, 1, 15),
+    MonitorType("PM2_5", "PM2.5細懸浮微粒", "μg/m3", None, 1, 15),
     MonitorType("WD_SPEED", "風速", "m/sec", None, 1, 16),
     MonitorType("WD_DIR", "風向", "degrees", None, 1, 17),
     MonitorType("TEMP", "溫度", "℃", None, 1, 18),

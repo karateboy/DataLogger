@@ -410,17 +410,17 @@ object Query extends Controller {
       val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
       val tabType = TableType.withName(tabTypeStr)
       val (start, end) =
-        if(tabType ==TableType.hour){
+        if (tabType == TableType.hour) {
           val orignal_start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
           val orignal_end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-              
-          (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0)+1.hour)
-        }else
-        (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
-          DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
-      
+
+          (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
+        } else
+          (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
+            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
+
       val timeList = tabType match {
-        case TableType.hour =>          
+        case TableType.hour =>
           getPeriods(start, end, 1.hour)
         case TableType.min =>
           getPeriods(start, end, 1.minute)
@@ -488,10 +488,49 @@ object Query extends Controller {
     Ok(views.html.instrumentStatusReport(id, start, end, reportMap.toList, keyList, statusTypeMap))
   }
 
-  def manualAudit()= Security.Authenticated {
+  def manualAudit() = Security.Authenticated {
     Ok(views.html.manualAudit(""))
   }
-  
+
+  def recordList(mtStr: String, startLong: Long, endLong: Long) = Security.Authenticated {
+    val monitorType = MonitorType.withName(mtStr)
+
+    val (start, end) = (new DateTime(startLong), new DateTime(endLong))
+
+    val recordMap = Record.getRecordMap(Record.HourCollection)(List(monitorType), start, end)
+    Ok(Json.toJson(recordMap(monitorType)))
+  }
+
+  case class ManualAuditParam(reason:String, updateList:Seq[UpdateRecordParam])
+  case class UpdateRecordParam(time: Long, status: String)
+  def updateRecord(monitorTypeStr: String) = Security.Authenticated(BodyParsers.parse.json) {
+    implicit request =>
+      val user = request.user
+      implicit val read = Json.reads[UpdateRecordParam]
+      implicit val maParamRead = Json.reads[ManualAuditParam]
+      val result = request.body.validate[ManualAuditParam]
+
+      val monitorType = MonitorType.withName(monitorTypeStr)
+
+      result.fold(err => {
+        Logger.error(JsError.toJson(err).toString())
+        BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(err).toString()))
+      },
+        maParam => {
+          for(param <- maParam.updateList){
+            Record.updateRecordStatus(param.time, monitorType, param.status)(Record.HourCollection)
+            val log = ManualAuditLog(new DateTime(param.time), mt = monitorType, modifiedTime = DateTime.now(), 
+                operator = user.name, changedStatus = param.status, reason = maParam.reason)
+            Logger.debug(log.toString)
+            ManualAuditLog.upsertLog(log)
+          }
+        })
+      Ok(Json.obj("ok" -> true))
+  }
+
+  def manualAuditHistory = Security.Authenticated {
+    Ok("")
+  }
   //
   //  def windRose() = Security.Authenticated {
   //    implicit request =>

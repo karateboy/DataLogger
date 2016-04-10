@@ -127,8 +127,11 @@ object MonitorStatus {
           true
         else
           false
-      case _ =>
-        false
+      case StatusType.Manual =>
+        if (tagInfo.auditRule.isDefined && tagInfo.auditRule.get.isLower)
+          true
+        else
+          false
     }
   }
 

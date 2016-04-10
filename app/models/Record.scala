@@ -9,6 +9,11 @@ import org.mongodb.scala._
 case class Record(time: DateTime, value: Double, status: String)
 
 object Record {
+  import play.api.libs.json._
+  import play.api.libs.functional.syntax._
+
+  implicit val writer = Json.writes[Record]
+  
   val HourCollection = "hour_data"
   val MinCollection = "min_data"
   def init(colNames: Seq[String]) {
@@ -47,6 +52,22 @@ object Record {
     f
   }
 
+  def updateRecordStatus(dt:Long, mt:MonitorType.Value, status:String)(colName: String)={
+    import org.mongodb.scala.bson._
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Updates._
+    
+    val col = MongoDB.database.getCollection(colName)
+    val bdt = new BsonDateTime(dt)
+    val fieldName = s"${MonitorType.BFName(mt)}.s"
+    
+    val f = col.updateOne(equal("_id", bdt), set(fieldName, status)).toFuture()
+    f.onFailure({
+        case ex:Exception=>Logger.error(ex.getMessage)
+      })
+    f
+  }
+  
   def getRecordMap(colName: String)(mtList: List[MonitorType.Value], startTime: DateTime, endTime: DateTime) = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._

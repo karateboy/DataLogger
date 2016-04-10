@@ -52,6 +52,7 @@ PUT		/ExecuteSeq/:ids/:seq		controllers.Application.executeSeq(ids, seq:Int)
 GET		/InstrumentStatus			controllers.Query.instrumentStatus()
 GET		/InstrumentStatusReport/:id/:start/:end		controllers.Query.instrumentStatusReport(id, start, end)
 GET		/ManualAudit			controllers.Query.manualAudit()
+GET		/ManualAuditHistory		controllers.Query.manualAuditHistory()
 
 #Realtime
 GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()
@@ -69,6 +70,9 @@ GET		/MonthlyHourReport/:monitorType/:reportDate	controllers.Report.monthlyHourR
 GET		/MonitorType			controllers.Application.monitorTypeList
 POST	/MonitorType/:id		controllers.Application.upsertMonitorType(id)
 PUT		/MonitorType/:id		controllers.Application.upsertMonitorType(id)
+
+GET		/Record/:monitorType/:start/:end		controllers.Query.recordList(monitorType, start:Long, end:Long)
+PUT		/Record/:monitorType					controllers.Query.updateRecord(monitorType)
 
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
