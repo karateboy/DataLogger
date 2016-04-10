@@ -53,6 +53,7 @@ GET		/InstrumentStatus			controllers.Query.instrumentStatus()
 GET		/InstrumentStatusReport/:id/:start/:end		controllers.Query.instrumentStatusReport(id, start, end)
 GET		/ManualAudit			controllers.Query.manualAudit()
 GET		/ManualAuditHistory		controllers.Query.manualAuditHistory()
+GET		/ManualAuditHistory/:start/:end		controllers.Query.manualAuditHistoryReport(start:Long, end:Long)
 
 #Realtime
 GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()

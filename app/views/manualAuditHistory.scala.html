@@ -9,17 +9,7 @@
             	<div class="panel-body panel-collapse in">
             		<form class="form-horizontal">
 	                    <div class="form-group">
-	            			<label class="col-lg-1 control-label">測項</label>
-	            			<div class="col-lg-11">
-	            				<div class="btn-group">	            				            				
-	            					<label class="btn btn-outline btn-primary" ng-model="$parent.selectedMtId" ng-repeat="mt in ctrl.monitorTypeList | filter:ctrl.activeMt"  
-	            					uib-btn-radio="mt._id">{{mt.desp}}</label>	            			
-	            				</div>
-	            			</div>	            			            		
-	                    </div>
-	                    
-	                    <div class="form-group">
-	            			<label class="col-lg-1 control-label">查詢區間</label>
+	            			<label class="col-lg-1 control-label">資料區間</label>
 	            			<div class="col-lg-4">
 								<div class="dropdown">
   									<a class="dropdown-toggle" id="dropdown1" role="button" data-toggle="dropdown" data-target="#">
@@ -53,7 +43,7 @@
 	            		</div>													                    
 						<div class="form-group">
 							<div class="col-lg-1 col-lg-offset-1">
-								<button type="submit" class="btn btn-primary" ng-click="ctrl.query()" ng-disabled="selectedMtId == null">查詢</button>
+								<button type="submit" class="btn btn-primary" ng-click="ctrl.query()">查詢</button>
 							</div>							
 						</div>	                    	                    	                    
             		</form>
@@ -61,44 +51,30 @@
         	</div>
         	<div class="panel panel-success" id="reportPanel" ng-show="ctrl.showRecord" >
             	<div class="panel-body panel-collapse">
-            		@recordLegend()
             		<strong ng-show="ctrl.noData">無資料</strong>
             		<strong ng-bind="ctrl.displaySelectMtName()" ng-show="!ctrl.noData"></strong>            		
-					<table st-table="recordList" class="table" ng-show="!ctrl.noData">
+					<table st-table="displayCollection" st-safe-src="logList" class="table table-striped" ng-show="!ctrl.noData">
 						<thead>
 							<tr>
-								<th></th>
-								<th>時間</th>
-								<th>數值</th>								
+								<th st-sort="dataTime">資料時間</th>
+								<th st-sort="mt">測項</th>
+								<th st-sort="modifiedTime">註記時間</th>
+								<th st-sort="operator">註記人員</th>
+								<th st-sort="changedStatus">註記內容</th>			
+								<th st-sort="reason">註記理由</th>		
 							</tr>
 						</thead>
 						<tbody>
-							<tr ng-repeat="record in recordList">
-								<td><input type="checkbox" ng-model="record.selected"></td>
-								<td>{{ctrl.displayTime(record.time)}}</td>
-								<td ng-class="ctrl.getStatus(record.value, record.status)">{{record.value | number:ctrl.getPrec()}}</td>
+							<tr ng-repeat="log in displayCollection">
+								<td >{{ctrl.displayTime(log.dataTime)}}</td>
+								<td>{{ctrl.displayMt(log.mt)}}</td>
+								<td>{{ctrl.displayTime(log.modifiedTime)}}</td>
+								<td>{{log.operator}}</td>
+								<td>{{log.changedStatus}}</td>
+								<td>{{log.reason}}</td>
 							</tr>
 						</tbody>
 					</table>
-					<form name="auditForm" class="form-horizontal">
-						<div class="form-group">
-							<label class="col-lg-1 control-label">註記理由</label>
-							<textarea class="col-lg-5" row=3 ng-model="ctrl.reason" required></textarea>
-						</div>
-						<div class="form-group">
-							<label  class="col-lg-1 control-label">註記代碼</label>	
-							<select class="col-lg-2" ng-model="ctrl.auditStatus" required>
-								<option value='0'>復原註記</option>
-								<option value='m'>人工註記:有效資料</option>
-								<option value='M'>人工註記:無效資料</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<div class="col-lg-1 col-lg-offset-1">
-							<button type="button" class="btn btn-primary" ng-click="ctrl.manualAudit()" ng-disabled="auditForm.$invalid">註記</button>
-							</div>
-						</div>
-					</form>										
             	</div>
         	</div>
 	</div>

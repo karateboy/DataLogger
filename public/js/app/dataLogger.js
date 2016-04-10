@@ -13,7 +13,8 @@ var app = angular.module('dataLoggerApp',
 		  'mtRealtimeChartView',
 		  'miniMonitorTypeListView',
 		  'monitorTypeListView',
-		  'manualAuditView']);
+		  'manualAuditView',
+		  'manualAuditHistoryView']);
 
 app.factory('BreadcrumbService', [ function() {
 	var service = {

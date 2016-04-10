@@ -529,7 +529,23 @@ object Query extends Controller {
   }
 
   def manualAuditHistory = Security.Authenticated {
-    Ok("")
+    Ok(views.html.manualAuditHistory(""))
+  }
+  
+  import scala.concurrent.ExecutionContext.Implicits.global
+  def manualAuditHistoryReport(start:Long, end:Long) = Security.Authenticated.async {
+    val startTime = new DateTime(start)
+    val endTime = new DateTime(end)
+    
+    val logFuture = ManualAuditLog.queryLog(startTime, endTime)
+    val resultF =
+      for{logList <- logFuture
+        }
+        yield{
+        Ok(Json.toJson(logList))
+      }
+    
+    resultF
   }
   //
   //  def windRose() = Security.Authenticated {

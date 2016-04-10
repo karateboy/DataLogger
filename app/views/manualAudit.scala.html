@@ -64,7 +64,7 @@
             		@recordLegend()
             		<strong ng-show="ctrl.noData">無資料</strong>
             		<strong ng-bind="ctrl.displaySelectMtName()" ng-show="!ctrl.noData"></strong>            		
-					<table st-table="recordList" class="table" ng-show="!ctrl.noData">
+					<table st-table="recordList" class="table table-bordered" ng-show="!ctrl.noData">
 						<thead>
 							<tr>
 								<th></th>
@@ -80,7 +80,8 @@
 							</tr>
 						</tbody>
 					</table>
-					<form name="auditForm" class="form-horizontal">
+					<br/>
+					<form name="auditForm" class="form-horizontal" ng-show="!ctrl.noData">
 						<div class="form-group">
 							<label class="col-lg-1 control-label">註記理由</label>
 							<textarea class="col-lg-5" row=3 ng-model="ctrl.reason" required></textarea>
