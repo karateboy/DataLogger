@@ -22,11 +22,7 @@ angular.module('monitorTypeListView', [])
 		          { data: 'value' },
 		          { data: 'unit' },
 		          { data: 'instrument' },
-		          { data: 'status' },
-		          { data: 'lastUpdate',
-		        	defaultContent: "-"
-			           }
-		           
+		          { data: 'status' }
 		      ],
 		language: {
 			url: local_url,							

@@ -1,5 +1,5 @@
 /**
- * newInstrument2
+ * instrumentWizard
  */
 var hasOwnProperty = Object.prototype.hasOwnProperty;
 
@@ -55,12 +55,12 @@ angular.module('newInstrumentView',
 } ])
 .controller('manageInstrumentCtrl', 
 		['InstrumentModalService',
-		 '$scope', 
+		 '$scope',
 		 function($instModal, $scope){
 						
 			$scope.modalTitle = "";
 			$scope.instModal = $instModal;
-			$scope.updateInstrument = function(id){
+			$scope.updateInstrument = function(id){				
 				$scope.modalTitle= "變更"+id;
 				$instModal.notifyInstrumentId(id);
 			}
@@ -84,53 +84,56 @@ angular.module('newInstrumentView',
 		  '$scope', 
 		  'WizardHandler',
 		  function($instTypeInfoService, $instConfigService, $instModal, $http, $scope, WizardHandler) {			
-			
-			$scope.instrumentID="";
-			
-			var instTypeInfoCache=[];
-			
+						
+			var instTypeInfoCache=[];			
 			$scope.instrumentTypeInfos = $instTypeInfoService.query(function(){
 				instTypeInfoCache = $scope.instrumentTypeInfos;
 			});
 			
-			$scope.selectedInstTypeId = ""; 
+			//RW
+			$scope.param = {};
+			$scope.param.selectedInstTypeId = ""; 
+			$scope.param.instrumentID="";
+			$scope.param.selectedProtocol = "";
+			$scope.param.tcpHost = 'localhost';
+			$scope.param.comPort = 1;
 			
+			//Read only
+			$scope.currentStep;
+			$scope.editMode=false;
+
 			var protocolInfo=[];
+
 			$scope.supportedProtocolInfo= function(){
 				for(var i=0;i<instTypeInfoCache.length;i++){
-					if(instTypeInfoCache[i].id == $scope.selectedInstTypeId){
-						$scope.selectedProtocol = instTypeInfoCache[i].protocolInfo[0].id;
-						protocolInfo = instTypeInfoCache[i].protocolInfo;
+					if(instTypeInfoCache[i].id == $scope.param.selectedInstTypeId){
+						$scope.param.selectedProtocol = instTypeInfoCache[i].protocolInfo[0].id;
+						protocolInfo = instTypeInfoCache[i].protocolInfo; 
 						return instTypeInfoCache[i].protocolInfo;
 					}
 				}
 			}
-			
-			$scope.selectedProtocol = "";
-			
+						
 			function getProtocolDesp(){
 				for(var i=0;i<protocolInfo.length;i++){
-					if(protocolInfo[i].id == $scope.selectedProtocol)
+					if(protocolInfo[i].id == $scope.param.selectedProtocol)
 						return protocolInfo[i].desp;
 				}
 				
 				return "";
 			}
 			
-			$scope.tcpHost = 'localhost';
-			$scope.comPort = 1;
-			
 			$scope.getConfigPage = function(){
-				$instConfigService.instrumentType = $scope.selectedInstTypeId;
+				$instConfigService.instrumentType = $scope.param.selectedInstTypeId;
 				
 				var tapiInstrument= ['t100', 't200', 't300', 't360', 't400', 't700'];
-				if(tapiInstrument.indexOf($scope.selectedInstTypeId)!= -1){					
+				if(tapiInstrument.indexOf($scope.param.selectedInstTypeId)!= -1){					
 					return "tapiCfg";
-				}else if($scope.selectedInstTypeId === "baseline9000"){
+				}else if($scope.param.selectedInstTypeId === "baseline9000"){
 					return "baseline9000Cfg";
-				}else if($scope.selectedInstTypeId === "adam4017"){
+				}else if($scope.param.selectedInstTypeId === "adam4017"){
 					return "adam4017Cfg";
-				}else if($scope.selectedInstTypeId === "verewa_f701"){
+				}else if($scope.param.selectedInstTypeId === "verewa_f701"){
 					return "verewaCfg";
 				}else
 					return "default";
@@ -138,77 +141,91 @@ angular.module('newInstrumentView',
 			
 			function getInstrumentTypeDesp(){
 				for(var i=0;i<instTypeInfoCache.length;i++){
-					if(instTypeInfoCache[i].id == $scope.selectedInstTypeId){
+					if(instTypeInfoCache[i].id == $scope.param.selectedInstTypeId){
 						return instTypeInfoCache[i].desp;
 					}
 				}
 			}
 			
 			$scope.getSummary = function(){
-			    var summary = "<strong>儀器ID:</strong>" + $scope.instrumentID + "<br/>";
+			    var summary = "<strong>儀器ID:</strong>" + $scope.param.instrumentID + "<br/>";
 			    summary += "<strong>儀器種類:</strong>" + getInstrumentTypeDesp() + "<br/>";
 			    summary += "<strong>通訊協定:</strong>" + getProtocolDesp() + "<br/>";
 			    
-			    if($scope.selectedProtocol == 'tcp')			    
-			    	summary += "<strong>TCP參數:</strong>" + $scope.tcpHost + "<br/>";
+			    if($scope.param.selectedProtocol == 'tcp')			    
+			    	summary += "<strong>TCP參數:</strong>" + $scope.param.tcpHost + "<br/>";
 			    else
-			    	summary += "<strong>RS232參數:</strong>COM" + $scope.comPort + "<br/>";
+			    	summary += "<strong>RS232參數:</strong>COM" + $scope.param.comPort + "<br/>";
 			    	
 			    summary += "<strong>儀器細部設定:</strong>" + $instConfigService.summary();
 			    return summary;
 			}
 			
-			$scope.getParam = function(){ return $instConfigService.param; }
+			$scope.getParam = function(){
+				return $instConfigService.param; 
+			}
+			
 			$scope.validateForm = function(){ return $instConfigService.validate(); }
 			
 			$instModal.subscribeInstrumentId($scope, function(event, id){
 				if(id != ""){
 					$http.get("/Instrument/"+id).then(function(response) {
 						var inst = response.data;
-						$scope.instrumentID = inst._id;
-						$scope.selectedInstTypeId = inst.instType;
-						$scope.selectedProtocol = inst.protocol.protocol;
-						$scope.tcpHost = inst.protocol.host;
-						$scope.comPort = inst.protocol.comPort;
+						$scope.param.instrumentID = inst._id;
+						$scope.param.selectedInstTypeId = inst.instType;
+						$scope.param.selectedProtocol = inst.protocol.protocol;
+						$scope.param.tcpHost = inst.protocol.host;
+						$scope.param.comPort = inst.protocol.comPort;
 						$instConfigService.param = JSON.parse(inst.param);
 					}, function(errResponse) {
 						console.error('Error while fetching instrument...');
 					});
+					$scope.editMode = true;
+					WizardHandler.wizard().goTo(0);
 				}else{ //New instrument
-					$scope.instrumentID="";
-					$scope.selectedInstTypeId = "";
-					$scope.selectedProtocol = "";
-					$scope.tcpHost = "localhost";
-					$scope.comPort = 1;
+					$scope.param.instrumentID="";
+					$scope.param.selectedInstTypeId = "";
+					$scope.param.selectedProtocol = "";
+					$scope.param.tcpHost = "localhost";
+					$scope.param.comPort = 1;
 					$instConfigService.param= {};
+					$scope.editMode = false;
+					WizardHandler.wizard().reset();
 				}
 			});
 			
 			$scope.notifyHideModal = $instModal.notifyHideModal; 
 			
 			//Wizard
-			$scope.currentStep;
 			$scope.finishedWizard = function(){
+				if(!$scope.validateForm())
+					return;
+				
 			    var newInstrument= {
-					_id: $scope.instrumentID,
-					instType: $scope.selectedInstTypeId,
+					_id: $scope.param.instrumentID,
+					instType: $scope.param.selectedInstTypeId,
 					protocol:{
-						protocol:$scope.selectedProtocol,
-						host:$scope.tcpHost,
-						comPort:parseInt($scope.comPort),
+						protocol:$scope.param.selectedProtocol,
+						host:$scope.param.tcpHost,
+						comPort:parseInt($scope.param.comPort),
 					},
-					param:JSON.stringify(param),
+					param:JSON.stringify($scope.getParam()),
 					active:true,
 					state:"010"
 				};
-				    
+				
+			    console.log(newInstrument);
+			    
 				$http.put("/Instrument", newInstrument)
-					.then(function(ret){				
-						if(ret.ok){
+					.then(function(ret){
+						console.log(ret);
+						
+						if(ret.data.ok){
 							alert("成功");
 						}else
-							alert("失敗:"+ret.msg);
-							$scope.notifyHideModal();
+							alert("失敗:"+ret.data.msg);
+						
+						$scope.notifyHideModal();
 						},function(error){
 							alert("失敗:"+ error);
 							$scope.notifyHideModal();

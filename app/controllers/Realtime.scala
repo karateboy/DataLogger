@@ -16,7 +16,8 @@ import Highchart._
 import models._
 
 object Realtime extends Controller {
-  case class MonitorTypeStatus(desp: String, value: String, unit: String, instrument: String, status: String, lastUpdate: String, classStr:String)
+  val overTimeLimit = 6
+  case class MonitorTypeStatus(desp: String, value: String, unit: String, instrument: String, status: String, classStr: String)
   def MonitorTypeStatusList() = Security.Authenticated.async {
     implicit request =>
       import MonitorType._
@@ -27,16 +28,27 @@ object Realtime extends Controller {
         for (dataMap <- DataCollectManager.getLatestData()) yield {
           val list =
             for {
-              kv <- dataMap
-              mt = kv._1
-              record = kv._2
+              mt <- MonitorType.realtimeMtvList
+              recordOpt = dataMap.get(mt)
             } yield {
               val mCase = map(mt)
-              val duration = new Duration(record.time, DateTime.now())
-              val (overInternal, overLaw) = overStd(mt, record.value)
-              MonitorTypeStatus(mCase.desp, format(mt, Some(record.value)), mCase.unit, mCase.measuredBy.getOrElse("??"),
-                MonitorStatus.map(record.status).desp, s"${duration.getStandardSeconds}秒前", 
-                MonitorStatus.getCssClassStr(record.status, overInternal, overLaw))
+              if (recordOpt.isDefined) {
+                val record = recordOpt.get
+                val duration = new Duration(record.time, DateTime.now())
+                val (overInternal, overLaw) = overStd(mt, record.value)
+                val status = if(duration.getStandardSeconds <= overTimeLimit)
+                  MonitorStatus.map(record.status).desp
+                else
+                  "通訊中斷"
+                  
+                MonitorTypeStatus(mCase.desp, format(mt, Some(record.value)), mCase.unit, mCase.measuringBy.getOrElse("??"),
+                  MonitorStatus.map(record.status).desp,
+                  MonitorStatus.getCssClassStr(record.status, overInternal, overLaw))
+              }else{
+                MonitorTypeStatus(mCase.desp, format(mt, None), mCase.unit, mCase.measuringBy.getOrElse("??"),
+                  "通訊中斷",
+                  "abnormal_status")
+              }
             }
           Ok(Json.toJson(list))
         }

@@ -1,0 +1,98 @@
+@* newInstrument Template File *@
+@(endCallback: String)
+
+<div ng-controller="newInstrumentCtrl" id="newCtrl">
+<form id="new-instrument-form" class="form-horizontal">
+	<wizard on-finish="finishedWizard()" current-step="currentStep" edit-mode="editMode" template="/assets/html/wizardTemplate.html">
+        <wz-step wz-title="基本資料">
+        	<div class="form-group">
+	        	<label class="col-lg-2 control-label">儀器種類</label>
+	            	<div class="col-lg-10">
+	            		<div class="btn-group">	            				            				
+	            			<label class="btn btn-outline btn-primary" ng-model="param.selectedInstTypeId" ng-repeat="instInfoType in instrumentTypeInfos"  uib-btn-radio="instInfoType.id">
+	            				{{instInfoType.desp}}</label>	            			
+	            		</div>
+	            	</div>	            			            		
+	        </div>
+            <label for="name">儀器ID *</label>
+            <input type="text" ng-model="param.instrumentID" class="required">
+            <p>(*) 必要</p>
+            <div class="row">
+            	<div class="pull-right">
+    				<button type="button" class="btn btn-primary" wz-next>下一步</button>
+    			</div>
+            </div>                        
+        </wz-step>
+        <wz-step wz-title="通訊協定">
+        	<div class="form-group">
+	        	<label class="col-lg-2 control-label">通訊協定</label>
+	            <div class="col-lg-10">
+	            	<div class="btn-group">	            				            				
+	            			<label class="btn btn-outline btn-primary" ng-model="param.selectedProtocol" ng-repeat="protocol in supportedProtocolInfo()"  uib-btn-radio="protocol.id">
+	            				{{protocol.desp}}</label>	            			
+	            		</div>
+	            </div>	            			            		
+	        </div>
+	        <div ng-switch="param.selectedProtocol">
+	        	<div ng-switch-when="tcp">
+					<h3>TCP參數</h3>
+		        	<div class="form-group">
+		        		<label class="col-lg-2 control-label">主機位址</label>
+	    	        		<div class="col-lg-10">
+	    	        		<input type="text" ng-model="param.tcpHost" >
+	        	    	</div>	            			            		
+	        		</div>
+	        	</div>
+	        	<div ng-switch-when="serial">
+					<h3>RS232參數</h3>
+		        	<div class="form-group">
+			        	<label class="col-lg-2 control-label">COM</label>
+	    		        <div class="col-lg-10">
+	    		        	<input type="number" ng-model="param.comPort">
+	        		    </div>	            		
+	        		</div>						        	
+	        	</div>
+	        </div>
+	        <div class="row">
+            	<div class="pull-right">
+            		<button type="button" class="btn btn-primary" wz-previous>前一步</button>
+    				<button type="button" class="btn btn-primary" wz-next>下一步</button>
+    			</div>
+            </div>
+        </wz-step>
+        <wz-step wz-title="儀器細部設定">
+        	<div ng-switch="getConfigPage()">
+        		<div ng-switch-when="adam4017Cfg">
+        			@adam4017Config()
+        		</div>
+        		<div ng-switch-when="baseline9000Cfg">
+            		@baseline9000Config("")
+            	</div> 
+        		<div ng-switch-when="tapiCfg">
+            		@tapiConfig("")
+            	</div>
+            	<div ng-switch-when="verewaCfg">
+            		@verewaConfig("")
+            	</div>	
+        		
+        	</div>
+	        <div class="row">
+            	<div class="pull-right">
+            		<button type="button" class="btn btn-primary" wz-previous>前一步</button>
+    				<button type="button" class="btn btn-primary" wz-next>下一步</button>
+    			</div>
+            </div>
+        </wz-step>
+        <wz-step wz-title="結束">
+        	<h3>新增儀器摘要</h3>
+            <div ng-bind-html="getSummary()"></div>
+	        <div class="row">
+            	<div class="pull-right">
+            		<button type="button" class="btn btn-primary" wz-previous>前一步</button>
+    				<button type="button" class="btn btn-primary" wz-finish>完成</button>
+    			</div>
+            </div>
+        </wz-step>
+    </wizard>
+</form>
+</div>

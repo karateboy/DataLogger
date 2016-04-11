@@ -7,17 +7,18 @@ angular.module('tapiConfigView', [])
   '$scope', 
   function($config, $scope) {
 	$scope.param = $config.param;
+	//console.log($scope.param);
 	if(isEmpty($scope.param)){
 		$scope.param={
 				slaveID:10,
-				calibrationTime: new Date(1970, 0, 1, 15, 0, 0),
+				calibrationTimeDate: new Date(1970, 0, 1, 15, 0, 0),
 				raiseTime:300,
 				holdTime:60,
 				downTime:300
 			};
 	}else{
 		//angular require calibrationTime to be Date		
-		$scope.param.calibrationTime = moment($scope.param.calibrationTime, "HH:mm:ss").toDate(); 
+		$scope.param.calibrationTimeDate = moment($scope.param.calibrationTime, "HH:mm:ss").toDate(); 
 	}
 	
 	$scope.showCalibrationUI = function(){
@@ -28,8 +29,8 @@ angular.module('tapiConfigView', [])
 		var desc = "";
 		desc += "<br/>slave ID:" + $scope.param.slaveID;
 		if ($config.instrumentType != 't700') {
-			if($scope.param.calibrationTime instanceof Date)
-				desc += "<br/>校正時間:" + $scope.param.calibrationTime.toLocaleTimeString();
+			if($scope.param.calibrationTimeDate instanceof Date)
+				desc += "<br/>校正時間:" + $scope.param.calibrationTimeDate.toLocaleTimeString();
 			
 			desc += "<br/>校正上升時間:" + $scope.param.raiseTime;
 			desc += "<br/>校正持續時間:" + $scope.param.holdTime;
@@ -40,7 +41,7 @@ angular.module('tapiConfigView', [])
 	}
 
 	$config.validate=function(){
-		if(!$scope.param.calibrationTime){
+		if(!$scope.param.slaveID){
 			alert("沒有設定slaveID!");
 			return false;
 		}
@@ -48,7 +49,7 @@ angular.module('tapiConfigView', [])
 		if($config.instrumentType == 't700')
 			return true;
 		
-		if(!$scope.param.calibrationTime){
+		if(!$scope.param.calibrationTimeDate){
 			alert("沒有設定校正時間!");
 			return false;
 		}
@@ -68,9 +69,9 @@ angular.module('tapiConfigView', [])
 			return false;
 		}
 		
-		
+		console.log($scope.param);
 		$scope.param.slaveID = parseInt($scope.param.slaveID);
-		$scope.param.calibrationTime = $scope.param.calibrationTime.getTime();
+		$scope.param.calibrationTime = $scope.param.calibrationTimeDate.getTime();
 		$scope.param.raiseTime = parseInt($scope.param.raiseTime);
 		$scope.param.holdTime = parseInt($scope.param.holdTime);
 		$scope.param.raiseTime = parseInt($scope.param.raiseTime);
