@@ -36,6 +36,20 @@
            							}
            						}
 	            			</div>            		
+	                    </div>
+	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">狀態碼</label>						
+	            			<div class="col-lg-11 btn-group" data-toggle="buttons">
+           						@for(msf<-MonitorStatusFilter.values.toList.sorted){ 
+           							@if(msf == MonitorStatusFilter.values.toList.sorted.head){
+           								<label class="btn btn-outline btn-primary dim active">
+											<input type="radio" name="monitorStatusFilter" id="@msf" checked>@MonitorStatusFilter.map(msf)</label>
+           							}else{
+           								<label class="btn btn-outline btn-primary dim">
+											<input type="radio" name="monitorStatusFilter" id="@msf">@MonitorStatusFilter.map(msf)</label>
+           							}            							
+            					}
+	            			</div>            		
 	                    </div>	                    
 	                    <div class="form-group">
 	            			<label class="col-lg-1 control-label">圖表類型</label>						
@@ -190,7 +204,13 @@ $( document ).ready(function() {
 				monitorTypeParam += ':' + monitorTypes[i].id;
 		}	
 
-		var base_url = 	monitorTypeParam + "/" + reportUnit + "/"+reportStart + "/" + reportEnd;
+		var monitorStatusFilter = $("input[name='monitorStatusFilter']:checked").attr('id');
+		if(!monitorStatusFilter) {
+			alert("請選擇狀態碼");
+			return false;
+		}
+		
+		var base_url = 	monitorTypeParam + "/" + reportUnit + "/" + monitorStatusFilter + "/" + reportStart + "/" + reportEnd;
 		var url = "/JSON/HistoryTrend/" + base_url; 
 		function pointFormatter(){
 			var d = new Date(this.x);

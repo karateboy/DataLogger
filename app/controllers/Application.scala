@@ -55,7 +55,7 @@ object Application extends Controller {
   }
 
   import models.User._
-  implicit val userParamRead = Json.reads[User]
+  implicit val userParamRead: Reads[User] = Json.reads[User]
 
   def newUser = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>

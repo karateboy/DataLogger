@@ -98,14 +98,15 @@ object Query extends Controller {
     count
   }
 
-  def getPeriodReportMap(mt: MonitorType.Value, tabType: TableType.Value, period: Period, statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime) = {
+  def getPeriodReportMap(mt: MonitorType.Value, tabType: TableType.Value, period: Period, 
+      statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)(start: DateTime, end: DateTime) = {
     val recordList = Record.getRecordMap(TableType.mapCollection(tabType))(List(mt), start, end)(mt)
     def periodSlice(period_start: DateTime, period_end: DateTime) = {
       recordList.dropWhile { _.time < period_start }.takeWhile { _.time < period_end }
     }
     val pairs =
       if (period.getHours == 1) {
-        recordList.filter { r => statusFilter.contains(r.status) }.map { r => r.time -> r.value }
+        recordList.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }.map { r => r.time -> r.value }
       } else {
         for {
           period_start <- getPeriods(start, end, period)
@@ -189,7 +190,8 @@ object Query extends Controller {
     Map(pairs: _*)
   }
 
-  def trendHelper(monitorTypes: Array[MonitorType.Value], tabType: TableType.Value, reportUnit: ReportUnit.Value, start: DateTime, end: DateTime) = {
+  def trendHelper(monitorTypes: Array[MonitorType.Value], tabType: TableType.Value, 
+      reportUnit: ReportUnit.Value, start: DateTime, end: DateTime)(statusFilter: MonitorStatusFilter.Value) = {
 
     val windMtv = MonitorType.WIN_DIRECTION
     val period: Period =
@@ -218,7 +220,7 @@ object Query extends Controller {
       val mtReportPairs =
         for {
           mt <- monitorTypes
-          reportMap = getPeriodReportMap(mt, tabType, period)(start, end)
+          reportMap = getPeriodReportMap(mt, tabType, period, statusFilter)(start, end)
         } yield {
           mt -> reportMap
         }
@@ -352,13 +354,14 @@ object Query extends Controller {
     chart
   }
 
-  def historyTrendChart(monitorTypeStr: String, reportUnitStr: String,
+  def historyTrendChart(monitorTypeStr: String, reportUnitStr: String, statusFilterStr:String, 
                         startStr: String, endStr: String, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
       import scala.collection.JavaConverters._
       val monitorTypeStrArray = monitorTypeStr.split(':')
       val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
       val reportUnit = ReportUnit.withName(reportUnitStr)
+      val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
       val (tabType, start, end) =
         if (reportUnit == ReportUnit.Hour || reportUnit == ReportUnit.Min || reportUnit == ReportUnit.TenMin) {
           val tab = if (reportUnit == ReportUnit.Hour)
@@ -378,7 +381,7 @@ object Query extends Controller {
 
       val outputType = OutputType.withName(outputTypeStr)
 
-      val chart = trendHelper(monitorTypes, tabType, reportUnit, start, end)
+      val chart = trendHelper(monitorTypes, tabType, reportUnit, start, end)(statusFilter)
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files

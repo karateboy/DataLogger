@@ -21,3 +21,4 @@ server.pid
 /.sbtserver
 /conf/application.conf
 /node_modules
+.idea

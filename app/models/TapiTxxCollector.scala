@@ -393,7 +393,10 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     def getNextTime(period: Int) = {
       val now = DateTime.now()
       val nextMin = (now.getMinuteOfHour / period + 1) * period
-      now.withHourOfDay(now.getHourOfDay + (nextMin / 60)).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0)
+      val hour = (now.getHourOfDay + (nextMin / 60))%24
+      val nextDay = (now.getHourOfDay + (nextMin / 60))/24
+      
+      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day 
     }
     // suppose every 10 min
     val period = 10
