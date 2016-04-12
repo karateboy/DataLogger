@@ -37,6 +37,7 @@ POST	/SaveMonitorTypeConfig		controllers.Application.saveMonitorTypeConfig
 GET		/InstrumentTypes			controllers.Application.getInstrumentTypes
 GET		/InstrumentTypeInfo			controllers.Application.getInstrumentTypes
 GET		/InstrumentTypeInfo/:id		controllers.Application.getInstrumentType(id)
+GET		/MaintainInstrument			controllers.Application.maintainInstrument
 GET		/ManageInstrument			controllers.Application.manageInstrument
 PUT		/Instrument					controllers.Application.newInstrument
 GET		/Instrument					controllers.Application.getInstrumentList
@@ -62,6 +63,7 @@ GET		/RealtimeStatus			controllers.Realtime.realtimeStatus()
 #Report
 GET		/Report					controllers.Report.monitorReport()
 GET		/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="html")
+GET		/PDF/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="pdf")
 GET		/Excel/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="excel")
 
 GET		/MonitorMonthlyHourReport		controllers.Report.monitorMonthlyHourReport

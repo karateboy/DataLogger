@@ -7,15 +7,16 @@ import play.api.libs.functional.syntax._
 import play.api.Play.current
 import com.github.nscala_time.time.Imports._
 import models._
+import PdfUtility._
 
 object PeriodReport extends Enumeration {
   val DailyReport = Value("daily")
   val MonthlyReport = Value("monthly")
   val MinMonthlyReport = Value("MinMonthly")
   val YearlyReport = Value("yearly")
-  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報", 
-      MinMonthlyReport -> "分鐘月報", 
-      YearlyReport -> "年報")
+  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報",
+    MinMonthlyReport -> "分鐘月報",
+    YearlyReport -> "年報")
 
 }
 
@@ -110,13 +111,20 @@ object Report extends Controller {
               val statMap = Query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
               val overallStatMap = getOverallStatMap(statMap)
               ("年報", views.html.yearlyReport(start, MonitorType.activeMtvList, statMap, overallStatMap))
-              
+
             //case PeriodReport.MonthlyReport =>
             //val nDays = monthlyReport.typeArray(0).dataList.length
             //("月報", "")
           }
 
-        Ok(output)
+        outputType match {
+          case OutputType.html =>
+            Ok(output)
+          case OutputType.pdf =>
+            Ok.sendFile(creatPdfWithReportHeader(title, output),
+              fileName = _ =>
+                play.utils.UriEncoding.encodePathSegment(title + start.toString("YYYYMM") + ".pdf", "UTF-8"))
+        }
       } else {
         import java.io.File
         import java.nio.file.Files

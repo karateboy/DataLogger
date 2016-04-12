@@ -217,8 +217,7 @@ angular.module('newInstrumentView',
 			    console.log(newInstrument);
 			    
 				$http.put("/Instrument", newInstrument)
-					.then(function(ret){
-						console.log(ret);
+					.then(function(ret){						
 						
 						if(ret.data.ok){
 							alert("成功");

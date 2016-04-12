@@ -1,0 +1,28 @@
+@* reportTemplate Template File *@
+@(title:String, content: Html)
+<!DOCTYPE html>
+<html lang="zh-tw">
+
+<head>
+
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=1, user-scalable=no"/>
+    <meta name="description" content=""/>
+    <meta name="author" content=""/>
+    <link href='css/bootstrap.min.css' rel="stylesheet"/>
+    <title>@title</title>
+</head>
+
+<body>
+<div class="container-fluid">
+<div class="row">
+<div class="col-lg-12 text-center">
+<div style="font-family: PMingLiU,SimSun;">
+	@content
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

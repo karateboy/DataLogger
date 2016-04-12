@@ -11,7 +11,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[Double],
                        prec: Int, order: Int, std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
-                       span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
+                       span: Option[Double]=None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
                        measuredBy: Option[String] = None, measuringBy: Option[String] = None)
 //MeasuredBy => History...
 //MeasuringBy => Current...

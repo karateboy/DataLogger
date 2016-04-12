@@ -34,6 +34,7 @@
             				<th>小數點位數</th>
             				<th>零點偏移內控值</th>
             				<th>零點偏移法規值</th>
+            				<th>校正全幅值</th>
             				<th>全幅偏移內控值</th>
             				<th>全幅偏移法規值</th>
             			</tr>
@@ -50,6 +51,7 @@
             					<td col="prec">@map(mt).prec</td>
             					<td col="zd_internal">@MonitorType.format(mt, map(mt).zd_internal) </td>
             					<td col="zd_law">@MonitorType.format(mt, map(mt).zd_law) </td>
+            					<td col="span">@MonitorType.format(mt, map(mt).span)</td>
             					<td col="span_dev_internal">@MonitorType.format(mt, map(mt).span_dev_internal)</td>
             					<td col="span_dev_law">@MonitorType.format(mt, map(mt).span_dev_law)</td> 
             				</tr>

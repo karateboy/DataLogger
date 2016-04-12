@@ -79,6 +79,13 @@ app.config([ '$routeProvider', function($routeProvider) {
 			breadcrumb : [ 'BreadcrumbService', function(bs) {
 				return bs.title = "報表查詢>月份時報表";
 			} ]
+		}	
+	}).when('/MaintainInstrument', {
+		templateUrl : "/MaintainInstrument",
+		resolve : {
+			breadcrumb : [ 'BreadcrumbService', function(bs) {
+				return bs.title = "操作維護>";
+			} ]
 		}
 	}).when('/ManageInstrument', {
 		templateUrl : "/ManageInstrument",

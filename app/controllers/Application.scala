@@ -186,8 +186,12 @@ object Application extends Controller {
         })
   }
 
+  def maintainInstrument = Security.Authenticated {
+    Ok(views.html.manageInstrument(maintainOnly = true))
+  }
+
   def manageInstrument = Security.Authenticated {
-    Ok(views.html.manageInstrument(""))
+    Ok(views.html.manageInstrument(maintainOnly = false))
   }
 
   def getInstrumentList = Security.Authenticated {

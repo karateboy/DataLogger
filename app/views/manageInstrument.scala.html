@@ -1,5 +1,5 @@
 @* instrumentList Template File *@
-@(param: Any)
+@(maintainOnly: Boolean = false)
 <div class="row" ng-controller="manageInstrumentCtrl" id="manageCtrl">
   	<div class="modal fade" id="newEquipModal" role="dialog">
     	<div class="modal-dialog modal-lg">
@@ -17,13 +17,15 @@
 <div class="ibox float-e-margins">
   	<div class="ibox-content">
   	<div class="col-lg-6 col-lg-offset-1">
-		<button type="button" class="btn btn-primary" id="newInstrument" ><i class="fa fa-plus-circle"></i> 新增</button>
-		<button type="button" class="btn btn-primary" id="updateInstrument"><i class="fa fa-cog fa-lg"></i> 變更</button>
+  		@if(!maintainOnly){
+			<button type="button" class="btn btn-primary" id="newInstrument" ><i class="fa fa-plus-circle"></i> 新增</button>
+			<button type="button" class="btn btn-primary" id="updateInstrument"><i class="fa fa-cog fa-lg"></i> 變更</button>
+			<button type="button" class="btn btn-danger" id="deleteInstrument"><i class="fa fa-trash"></i> 刪除</button>
+		}
 		<button type="button" class="btn btn-primary" id="activateInstrument"><i class="fa fa-check-circle"></i> 啟用</button>
 		<button type="button" class="btn btn-primary" id="deactivateInstrument"><i class="fa fa-ban"></i> 停用</button>
 		<button type="button" class="btn btn-primary" id="maintainInstrument"><i class="fa fa-exchange"></i> 切換維修模式</button>
-		<button type="button" class="btn btn-primary" id="calibrateInstrument"><i class="fa fa-balance-scale"></i> 校正</button>
-		<button type="button" class="btn btn-danger" id="deleteInstrument"><i class="fa fa-trash"></i> 刪除</button>									
+		<button type="button" class="btn btn-primary" id="calibrateInstrument"><i class="fa fa-balance-scale"></i> 校正</button>											
 	</div>
 	<table id="instrumentTable" class="table table-bordered table-hover" cellspacing="0" width="100%">
 		<thead>
