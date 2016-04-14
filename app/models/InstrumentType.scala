@@ -34,7 +34,7 @@ object InstrumentType extends Enumeration{
 
   val verewa_f701 = Value
   val map = Map(
-      baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(tcp), Baseline9000),
+      baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000),
       adam4017->InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017),
       t100->InstrumentType(t100, "TAPI T100", List(tcp), TapiT100),
       t200->InstrumentType(t200, "TAPI T200", List(tcp), TapiT200),

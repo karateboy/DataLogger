@@ -292,6 +292,21 @@ object Application extends Controller {
 
     Ok(Json.obj("ok" -> true))
   }
+  
+  def resetInstrument(instruments: String) = Security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.map { id =>
+        DataCollectManager.setInstrumentState(id, MonitorStatus.NormalStat)
+      }
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.toString)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
 
   def getExecuteSeq(instruments: String, seq: Int) = Security.Authenticated {
     val ids = instruments.split(",")

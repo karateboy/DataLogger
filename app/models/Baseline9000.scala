@@ -6,8 +6,8 @@ import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
-case class Baseline9000Config(calibrationTime: Option[LocalTime], monitorTypes: Option[List[MonitorType.Value]],
-                              raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int])
+case class Baseline9000Config(calibrationTime: LocalTime, 
+                              raiseTime: Int, downTime: Int, holdTime: Int)
 
 object Baseline9000 extends DriverOps {
   implicit val cfgRead = Json.reads[Baseline9000Config]
@@ -41,7 +41,7 @@ object Baseline9000 extends DriverOps {
 
   override def getCalibrationTime(param: String) = {
     val config = validateParam(param)
-    config.calibrationTime
+    Some(config.calibrationTime)
   }
 
   import Protocol.ProtocolParam

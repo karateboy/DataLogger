@@ -10,6 +10,7 @@ import akka.io.{ IO, Tcp }
 import akka.util.ByteString
 
 object Baseline9000Collector {
+  case object OpenComPort
   case object ReadData
 
   var count = 0
@@ -30,49 +31,221 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
   import scala.concurrent.duration._
   import scala.concurrent.Future
   import scala.concurrent.blocking
-  import java.net.InetSocketAddress
-  import Tcp._
-  import context.system // implicitly used by IO(Tcp)
+  import ModelHelper._
+  import DataCollectManager._
+
+  var collectorState = {
+    val instrument = Instrument.getInstrument(id)
+    instrument(0).state
+  }
+
+  var serialCommOpt: Option[SerialComm] = None
+  var timerOpt: Option[Cancellable] = None
 
   override def preStart() = {
-    Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, Connect)
+    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
   }
 
   // override postRestart so we don't call preStart and schedule a new message
   override def postRestart(reason: Throwable) = {}
 
-  def receive = {
-    case Connect =>
-      if (protocolParam.protocol == Protocol.tcp) {
-        val remote = new InetSocketAddress(protocolParam.host.get, 502)
-        IO(Tcp) ! Connect(remote)
-      }
+  def receive = openComPort
 
-    case c @ CommandFailed(_: Connect) =>
-      Logger.error(s"${self.path.name}: Connected failed")
-      //Try 1 min later
-      Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, Connect)
+  val StartShippingData: Byte = 0x11
+  val StopShippingData: Byte = 0x13
+  val AutoCalibration: Byte = 0x12
+  val BackToNormal: Byte = 0x10
+  val ActivateMethaneZero: Byte = 0x0B
+  val ActivateMethaneSpan: Byte = 0x0C
+  val ActivateNonMethaneZero: Byte = 0xE
+  val ActivateNonMethaneSpan: Byte = 0xF
 
-    case c @ Connected(remote, local) =>
-      val connection = sender()
-      connection ! Register(self)
-      context become connectedHandler(connection)
+  def openComPort: Receive = {
+    case OpenComPort =>
+      Future {
+        blocking {
+          serialCommOpt = Some(SerialComm.open(protocolParam.comPort.get))
+          context become comPortOpened
+          timerOpt = if (collectorState == MonitorStatus.NormalStat) {
+            for (serial <- serialCommOpt) {
+              serial.port.writeByte(StartShippingData)
+            }
+            Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadData))
+          } else {
+            Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, SetState(id, MonitorStatus.NormalStat)))
+          }
+        }
+      } onFailure serialErrorHandler
   }
 
-  def connectedHandler(connection: ActorRef): Receive = {
-    case data: ByteString =>
-      connection ! Write(data)
+  def serialErrorHandler: PartialFunction[Throwable, Unit] = {
+    case ex: Exception =>
+      logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}")
+      for (serial <- serialCommOpt) {
+        SerialComm.close(serial)
+        serialCommOpt = None
+      }
+      context become openComPort
+      timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort))
+  }
 
-    case CommandFailed(w: Write) =>
-      Logger.error(s"${self.path.name}: write failed.")
+  val mtCH4 = MonitorType.withName("CH4")
+  val mtNMHC = MonitorType.withName("NMHC")
 
-    case Received(data) =>
-      Logger.info(data.toString())
+  var calibrateRecordStart = false
 
-    case _: ConnectionClosed =>
-      Logger.error(s"${self.path.name}: Connection closed.")
-      //Try 1 min later
-      Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, Connect)
-      context become receive
+  def readData = {
+    Future {
+      blocking {
+        for (serial <- serialCommOpt) {
+          val line = serial.port.readString()
+          val parts = line.split('\t')
+          Logger.debug(s"parts=${parts.length}=>$line")
+          val ch4 = MonitorTypeData(mtCH4, parts(2).toDouble, collectorState)
+          val nmhc = MonitorTypeData(mtNMHC, parts(4).toDouble, collectorState)
+
+          if (calibrateRecordStart)
+            self ! ReportData(List(ch4, nmhc))
+
+          context.parent ! ReportData(List(ch4, nmhc))
+        }
+        timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+      }
+    } onFailure serialErrorHandler
+  }
+
+  case object RaiseStart
+  case object HoldStart
+  case object DownStart
+  case object CalibrateEnd
+
+  def comPortOpened: Receive = {
+    case ReadData =>
+      readData
+
+    case SetState(id, state) =>
+      Future {
+        blocking {
+          collectorState = state
+          Instrument.setState(id, state)
+          state match {
+            case MonitorStatus.NormalStat =>
+              for (serial <- serialCommOpt) {
+                serial.port.writeByte(BackToNormal)
+                serial.port.writeByte(StartShippingData)
+              }
+              timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+
+            case MonitorStatus.ZeroCalibrationStat =>
+              context become calibrationHandler(state, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], 0)              
+              self ! RaiseStart
+          }
+        }
+      } onFailure serialErrorHandler
+  }
+
+  var calibrateTimerOpt: Option[Cancellable] = None
+
+  def calibrationHandler(state: String, mt: MonitorType.Value, startTime: com.github.nscala_time.time.Imports.DateTime, calibrationDataList: List[MonitorTypeData], zeroValue: Double): Receive = {
+    case ReadData =>
+      readData
+
+    case RaiseStart =>
+      Future {
+        blocking {
+          Logger.debug(s"$state RasieStart: $mt")
+          val cmd =
+            state match {
+              case MonitorStatus.ZeroCalibrationStat =>
+                if (mt == mtCH4)
+                  ActivateMethaneZero
+                else
+                  ActivateNonMethaneZero
+              case MonitorStatus.SpanCalibrationStat =>
+                if (mt == mtCH4)
+                  ActivateMethaneSpan
+                else
+                  ActivateNonMethaneSpan
+            }
+
+          for (serial <- serialCommOpt)
+            serial.port.writeByte(cmd)
+          calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
+        }
+      } onFailure serialErrorHandler
+
+    case ReportData(mtDataList) =>
+      val data = mtDataList.filter { data => data.mt == mt }
+      context become calibrationHandler(state, mt, startTime, data ::: calibrationDataList, zeroValue)
+
+    case HoldStart =>
+      calibrateRecordStart = true
+      calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
+
+    case DownStart =>
+      calibrateRecordStart = false
+
+      Future {
+        blocking {
+          for (serial <- serialCommOpt)
+            serial.port.writeByte(BackToNormal)
+          calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, CalibrateEnd))
+        }
+      } onFailure serialErrorHandler
+
+    case CalibrateEnd =>
+      val values = calibrationDataList.map { _.value }
+      val avg = values.sum / values.length
+      if (state == MonitorStatus.ZeroCalibrationStat) {
+        collectorState = MonitorStatus.SpanCalibrationStat
+        Instrument.setState(id, collectorState)
+        context become calibrationHandler(MonitorStatus.SpanCalibrationStat, mt, startTime, List.empty[MonitorTypeData], avg)
+        self ! RaiseStart
+      } else {
+        Logger.info(s"$mt calibration end.")
+        val spanStd = MonitorType.map(mt).span.getOrElse(0d)
+        val cal = Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, spanStd, avg)
+        Calibration.insert(cal)
+        if (mt == mtCH4) {
+          collectorState = MonitorStatus.ZeroCalibrationStat
+          Instrument.setState(id, collectorState)
+          context become calibrationHandler(MonitorStatus.ZeroCalibrationStat,
+            mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], 0)
+          self ! RaiseStart
+        } else {
+          collectorState = MonitorStatus.NormalStat
+          Instrument.setState(id, collectorState)
+          context become comPortOpened
+        }
+      }
+      
+    case SetState(id, state) =>
+      Future {
+        blocking {
+          collectorState = state
+          Instrument.setState(id, state)
+          state match {
+            case MonitorStatus.NormalStat =>
+              for (serial <- serialCommOpt) {
+                serial.port.writeByte(BackToNormal)
+                serial.port.writeByte(StartShippingData)
+              }              
+              context become comPortOpened
+              
+            case MonitorStatus.ZeroCalibrationStat =>
+              Logger.info("Ignore calibration SetState")
+          }
+        }
+      } onFailure serialErrorHandler
+  }
+
+  override def postStop() = {
+    for (timer <- timerOpt) {
+      timer.cancel()
+    }
+    for (serial <- serialCommOpt) {
+      SerialComm.close(serial)
+      serialCommOpt = None
+    }
   }
 }

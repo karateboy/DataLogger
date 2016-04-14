@@ -7,7 +7,7 @@ import Protocol.ProtocolParam
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object VerewaF701Collector {
-  case object ReopenCom
+  case object OpenComPort
   case object ReadData
 
   var count = 0
@@ -26,7 +26,7 @@ object VerewaF701Collector {
 class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorType.Value) extends Actor {
   import VerewaF701Collector._
   import scala.concurrent.duration._
-  var cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReopenCom)
+  var cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
   var serial_comm: Option[SerialComm] = None
 
   import scala.concurrent.Future
@@ -117,7 +117,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
   }
 
   def receive = {
-    case ReopenCom =>
+    case OpenComPort =>
       try {
         serial_comm = Some(SerialComm.open(protocolParam.comPort.get))
         cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
@@ -125,7 +125,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
         case ex: Exception =>
           Logger.error(ex.getMessage)
           Logger.info("Reopen 1 min latter...")
-          cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ReopenCom)
+          cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
       }
     case ReadData =>
       val cmd = HessenProtocol.dataQuery

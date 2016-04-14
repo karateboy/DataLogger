@@ -1,0 +1,28 @@
+@* tapiConfig Template File *@
+@(obj: String)
+<div ng-controller="baselineConfigCtrl">
+	<div class="form-group">
+		<label class="col-lg-3 control-label">每日校正時間:</label>
+   		<div class="col-lg-4">
+    		<input type="time" ng-model="param.calibrationTimeDate" class="form-control" >
+    	</div>	            		
+	</div>
+	<div class="form-group">
+		<label class="col-lg-3 control-label">校正上升時間(秒):</label>
+   		<div class="col-lg-4">
+    		<input type="number" ng-model="param.raiseTime" class="form-control" >
+    	</div>	            		
+	</div>
+	<div class="form-group">
+		<label class="col-lg-3 control-label">校正持續時間(秒):</label>
+   		<div class="col-lg-4">
+    		<input type="number" ng-model="param.holdTime" class="form-control" >
+    	</div>	            		
+	</div>
+	<div class="form-group">
+		<label class="col-lg-3 control-label">校正下降時間(秒):</label>
+   		<div class="col-lg-4">
+    		<input type="number" ng-model="param.downTime" class="form-control" >
+    	</div>	            		
+	</div>
+</div>
