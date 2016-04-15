@@ -66,6 +66,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
         blocking {
           serialCommOpt = Some(SerialComm.open(protocolParam.comPort.get))
           context become comPortOpened
+          Logger.info(s"${self.path.name}: Open com port.")
           timerOpt = if (collectorState == MonitorStatus.NormalStat) {
             for (serial <- serialCommOpt) {
               serial.port.writeByte(StartShippingData)
@@ -80,7 +81,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
   def serialErrorHandler: PartialFunction[Throwable, Unit] = {
     case ex: Exception =>
-      logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}")
+      logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. Close com port.")
       for (serial <- serialCommOpt) {
         SerialComm.close(serial)
         serialCommOpt = None
