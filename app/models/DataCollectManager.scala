@@ -19,6 +19,7 @@ object DataCollectManager {
   case class ReportData(dataList: List[MonitorTypeData])
   case class ExecuteSeq(id:String, seq:Int)
   case object CalculateData
+  case class CalibratorActorRef(actorRef:ActorRef)
 
   var manager: ActorRef = _
   def startup() = {
@@ -78,6 +79,7 @@ class DataCollectManager extends Actor {
   var collectorMap = Map.empty[String, (ActorRef, List[MonitorType.Value])]
   var latestDataMap = Map.empty[MonitorType.Value, Record]
   var mtDataList = List.empty[(DateTime, List[MonitorTypeData])]
+  var calibratorActorRef:Option[ActorRef] = None 
 
   def receive = {
     case AddInstrument(inst) =>
@@ -86,7 +88,15 @@ class DataCollectManager extends Actor {
       val monitorTypes = instType.driver.getMonitorTypes(inst.param)
       
       collectorMap += (inst._id -> (collector, monitorTypes))
-
+      if(instType == InstrumentType.t700){
+        calibratorActorRef = Some(collector)
+        for{actor_mt <- collectorMap.values
+          actor = actor_mt._1
+          }{
+          actor ! CalibratorActorRef(collector)
+        }
+      }
+            
     case RemoveInstrument(id: String) =>
       val actorOpt = collectorMap.get(id)
       if (actorOpt.isDefined){
@@ -97,7 +107,10 @@ class DataCollectManager extends Actor {
         collectorMap = collectorMap - (id)
         latestDataMap = latestDataMap -- monitorTypes
         Logger.debug(s"${latestDataMap.toString}")
+        if(calibratorActorRef == Some(actor))
+          calibratorActorRef = None
       }
+      
     case ReportData(dataList) =>
       val now = DateTime.now
       mtDataList = (now, dataList) :: mtDataList

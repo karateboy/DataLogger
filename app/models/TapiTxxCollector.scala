@@ -6,6 +6,7 @@ import play.api.libs.concurrent.Akka
 import ModelHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
 
+
 object TapiTxxCollector {
   import TapiTxx._
   case class ConnectHost(host: String)
