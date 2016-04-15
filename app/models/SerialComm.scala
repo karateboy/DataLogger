@@ -20,6 +20,12 @@ case class SerialComm(port:SerialPort, is:SerialInputStream, os:SerialOutputStre
     splitLine(readBuffer) 
   }
   
+  def close={
+    is.close
+    os.close
+    port.closePort()
+    readBuffer = Array.empty[Byte]
+  }
 }
 
 object SerialComm{
@@ -39,9 +45,7 @@ object SerialComm{
   }
   
   def close(sc:SerialComm){
-    sc.is.close
-    sc.os.close
-    sc.port.closePort()
+    sc.close
   }  
 }
 

@@ -98,8 +98,8 @@ object Query extends Controller {
     count
   }
 
-  def getPeriodReportMap(mt: MonitorType.Value, tabType: TableType.Value, period: Period, 
-      statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)(start: DateTime, end: DateTime) = {
+  def getPeriodReportMap(mt: MonitorType.Value, tabType: TableType.Value, period: Period,
+                         statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)(start: DateTime, end: DateTime) = {
     val recordList = Record.getRecordMap(TableType.mapCollection(tabType))(List(mt), start, end)(mt)
     def periodSlice(period_start: DateTime, period_end: DateTime) = {
       recordList.dropWhile { _.time < period_start }.takeWhile { _.time < period_end }
@@ -190,8 +190,8 @@ object Query extends Controller {
     Map(pairs: _*)
   }
 
-  def trendHelper(monitorTypes: Array[MonitorType.Value], tabType: TableType.Value, 
-      reportUnit: ReportUnit.Value, start: DateTime, end: DateTime)(statusFilter: MonitorStatusFilter.Value) = {
+  def trendHelper(monitorTypes: Array[MonitorType.Value], tabType: TableType.Value,
+                  reportUnit: ReportUnit.Value, start: DateTime, end: DateTime)(statusFilter: MonitorStatusFilter.Value) = {
 
     val windMtv = MonitorType.WIN_DIRECTION
     val period: Period =
@@ -354,7 +354,7 @@ object Query extends Controller {
     chart
   }
 
-  def historyTrendChart(monitorTypeStr: String, reportUnitStr: String, statusFilterStr:String, 
+  def historyTrendChart(monitorTypeStr: String, reportUnitStr: String, statusFilterStr: String,
                         startStr: String, endStr: String, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
       import scala.collection.JavaConverters._
@@ -478,7 +478,10 @@ object Query extends Controller {
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
 
     val report = InstrumentStatus.query(id, start, end + 1.day)
-    val keyList = report.map { _.statusList }.maxBy { _.length }.map { _.key }
+    val keyList = if (report.isEmpty)
+      List.empty[String]
+    else
+      report.map { _.statusList }.maxBy { _.length }.map { _.key }
 
     val reportMap = for {
       record <- report
@@ -504,7 +507,7 @@ object Query extends Controller {
     Ok(Json.toJson(recordMap(monitorType)))
   }
 
-  case class ManualAuditParam(reason:String, updateList:Seq[UpdateRecordParam])
+  case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
   case class UpdateRecordParam(time: Long, status: String)
   def updateRecord(monitorTypeStr: String) = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
@@ -520,10 +523,10 @@ object Query extends Controller {
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(err).toString()))
       },
         maParam => {
-          for(param <- maParam.updateList){
+          for (param <- maParam.updateList) {
             Record.updateRecordStatus(param.time, monitorType, param.status)(Record.HourCollection)
-            val log = ManualAuditLog(new DateTime(param.time), mt = monitorType, modifiedTime = DateTime.now(), 
-                operator = user.name, changedStatus = param.status, reason = maParam.reason)
+            val log = ManualAuditLog(new DateTime(param.time), mt = monitorType, modifiedTime = DateTime.now(),
+              operator = user.name, changedStatus = param.status, reason = maParam.reason)
             Logger.debug(log.toString)
             ManualAuditLog.upsertLog(log)
           }
@@ -534,20 +537,20 @@ object Query extends Controller {
   def manualAuditHistory = Security.Authenticated {
     Ok(views.html.manualAuditHistory(""))
   }
-  
+
   import scala.concurrent.ExecutionContext.Implicits.global
-  def manualAuditHistoryReport(start:Long, end:Long) = Security.Authenticated.async {
+  def manualAuditHistoryReport(start: Long, end: Long) = Security.Authenticated.async {
     val startTime = new DateTime(start)
     val endTime = new DateTime(end)
-    
+
     val logFuture = ManualAuditLog.queryLog(startTime, endTime)
     val resultF =
-      for{logList <- logFuture
-        }
-        yield{
+      for {
+        logList <- logFuture
+      } yield {
         Ok(Json.toJson(logList))
       }
-    
+
     resultF
   }
   //

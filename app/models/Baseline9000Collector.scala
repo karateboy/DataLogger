@@ -102,7 +102,6 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           val lines = serial.getLine
           for(line <- lines){
             val parts = line.split('\t')
-            Logger.debug(s"parts=${parts.length}=>$line")
             val ch4 = MonitorTypeData(mtCH4, parts(2).toDouble, collectorState)
             val nmhc = MonitorTypeData(mtNMHC, parts(4).toDouble, collectorState)
 
@@ -156,7 +155,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
     case RaiseStart =>
       Future {
         blocking {
-          Logger.debug(s"$state RasieStart: $mt")
+          Logger.debug(s"${MonitorStatus.map(state)} RasieStart: $mt")
           val cmd =
             state match {
               case MonitorStatus.ZeroCalibrationStat =>
@@ -182,10 +181,12 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       context become calibrationHandler(state, mt, startTime, data ::: calibrationDataList, zeroValue)
 
     case HoldStart =>
+      Logger.debug(s"${MonitorStatus.map(state)} HoldStart: $mt")
       calibrateRecordStart = true
       calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
+      Logger.debug(s"${MonitorStatus.map(state)} DownStart: $mt")
       calibrateRecordStart = false
 
       Future {
@@ -200,6 +201,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       val values = calibrationDataList.map { _.value }
       val avg = values.sum / values.length
       if (state == MonitorStatus.ZeroCalibrationStat) {
+        Logger.info(s"$mt zero calibration end. ($avg)")
         collectorState = MonitorStatus.SpanCalibrationStat
         Instrument.setState(id, collectorState)
         context become calibrationHandler(MonitorStatus.SpanCalibrationStat, mt, startTime, List.empty[MonitorTypeData], avg)
