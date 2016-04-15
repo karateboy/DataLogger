@@ -3,7 +3,24 @@ package models
 import java.io.InputStream
 import java.io.OutputStream
 import jssc.SerialPort
-case class SerialComm(port:SerialPort, is:SerialInputStream, os:SerialOutputStream)
+case class SerialComm(port:SerialPort, is:SerialInputStream, os:SerialOutputStream){
+  var readBuffer = Array.empty[Byte]
+  def getLine = {    
+    readBuffer = readBuffer ++ port.readBytes()
+    def splitLine(buf: Array[Byte]):List[String]={
+      val idx = buf.indexOf('\n'.toByte)
+      if(idx == -1){
+        readBuffer = buf
+        Nil
+      }else{
+        val (a, rest) = buf.splitAt(idx+1)
+        new String(a) :: splitLine(rest) 
+      }
+    }
+    splitLine(readBuffer) 
+  }
+  
+}
 
 object SerialComm{
   def open(n:Int)={
@@ -25,7 +42,7 @@ object SerialComm{
     sc.is.close
     sc.os.close
     sc.port.closePort()
-  }
+  }  
 }
 
 class SerialOutputStream(port:SerialPort) extends OutputStream{

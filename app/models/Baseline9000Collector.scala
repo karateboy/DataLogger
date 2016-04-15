@@ -99,16 +99,18 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
     Future {
       blocking {
         for (serial <- serialCommOpt) {
-          val line = serial.port.readString()
-          val parts = line.split('\t')
-          Logger.debug(s"parts=${parts.length}=>$line")
-          val ch4 = MonitorTypeData(mtCH4, parts(2).toDouble, collectorState)
-          val nmhc = MonitorTypeData(mtNMHC, parts(4).toDouble, collectorState)
+          val lines = serial.getLine
+          for(line <- lines){
+            val parts = line.split('\t')
+            Logger.debug(s"parts=${parts.length}=>$line")
+            val ch4 = MonitorTypeData(mtCH4, parts(2).toDouble, collectorState)
+            val nmhc = MonitorTypeData(mtNMHC, parts(4).toDouble, collectorState)
 
-          if (calibrateRecordStart)
-            self ! ReportData(List(ch4, nmhc))
-
-          context.parent ! ReportData(List(ch4, nmhc))
+            if (calibrateRecordStart)
+              self ! ReportData(List(ch4, nmhc))
+              
+            context.parent ! ReportData(List(ch4, nmhc))
+          }
         }
         timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
       }
