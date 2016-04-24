@@ -78,6 +78,11 @@ PUT		/MonitorType/:id		controllers.Application.upsertMonitorType(id)
 GET		/Record/:monitorType/:start/:end		controllers.Query.recordList(monitorType, start:Long, end:Long)
 PUT		/Record/:monitorType					controllers.Query.updateRecord(monitorType)
 
+GET		/HourRecord/:start/:end			controllers.Query.hourRecordList(start:Long, end:Long)
+GET		/MinRecord/:start/:end			controllers.Query.minRecordList(start:Long, end:Long)
+GET 	/CalibrationRecord/:start/end 	controllers.Query.calibrationRecordList(start:Long, end:Long)
+GET 	/AlertRecord/:start/end 		controllers.Query.alertRecordList(start:Long, end:Long)
+	
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)

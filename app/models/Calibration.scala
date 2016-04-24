@@ -61,6 +61,17 @@ object Calibration {
     docs.map { toCalibration }
   }
 
+  def calibrationReportFuture(start: DateTime, end: DateTime) = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+
+    val f = collection.find(and(gte("startTime", start.toDate()), lt("endTime", end.toDate()))).sort(ascending("monitorType", "startTime")).toFuture()
+    for(docs <- f)
+      yield
+        docs.map { toCalibration }
+  }
+
   def calibrationReport(mt: MonitorType.Value, start: DateTime, end: DateTime) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._

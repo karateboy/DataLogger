@@ -553,6 +553,49 @@ object Query extends Controller {
 
     resultF
   }
+
+  // FIXME Bypass security check
+  def hourRecordList(start: Long, end: Long) = Action.async {
+    implicit request =>
+      val startTime = new DateTime(start)
+      val endTime = new DateTime(end)
+      val recordListF = Record.getRecordListFuture(Record.HourCollection)(startTime, endTime)
+      for (recordList <- recordListF) yield {
+        Ok(Json.toJson(recordList))
+      }
+  }
+
+  // FIXME Bypass security check
+  def minRecordList(start: Long, end: Long) = Action.async {
+    implicit request =>
+      val startTime = new DateTime(start)
+      val endTime = new DateTime(end)
+      val recordListF = Record.getRecordListFuture(Record.MinCollection)(startTime, endTime)
+      for (recordList <- recordListF) yield {
+        Ok(Json.toJson(recordList))
+      }
+  }
+  
+  def calibrationRecordList(start: Long, end: Long) = Action.async {
+    implicit request =>
+      val startTime = new DateTime(start)
+      val endTime = new DateTime(end)
+      val recordListF = Calibration.calibrationReportFuture(startTime, endTime)
+      for (recordList <- recordListF) yield {
+        Ok(Json.toJson(recordList))
+      }
+  }
+  
+  def alertRecordList(start: Long, end: Long) = Action.async {
+    implicit request =>
+      val startTime = new DateTime(start)
+      val endTime = new DateTime(end)
+      val recordListF = Alarm.getAlarmsFuture(startTime, endTime)
+      for (recordList <- recordListF) yield {
+        Ok(Json.toJson(recordList))
+      }
+  }
+  
   //
   //  def windRose() = Security.Authenticated {
   //    implicit request =>

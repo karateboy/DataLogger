@@ -18,40 +18,41 @@ import play.api.libs.json.Reads._
 //                  'S':"System"
 
 object Alarm {
-  object Level extends Enumeration{
+  object Level extends Enumeration {
     val INFO = Value
     val WARN = Value
     val ERR = Value
-    val map = Map(INFO->"通知", WARN->"警告", ERR->"錯誤")
+    val map = Map(INFO -> "通知", WARN -> "警告", ERR -> "錯誤")
   }
-  
+
   def Src(mt: MonitorType.Value) = s"T:${mt.toString}"
   def Src(inst: Instrument) = s"I:${inst._id}"
-  def instStr(id:String)= s"I:$id"
+  def instStr(id: String) = s"I:$id"
   def Src() = "S:System"
-  
-  def getSrcForDisplay(src:String)={
+
+  def getSrcForDisplay(src: String) = {
     val part = src.split(':')
-    val srcType = part(0) match{
-      case "S"=>
+    val srcType = part(0) match {
+      case "S" =>
         "系統"
-      case "I"=>
+      case "I" =>
         "設備:" + part(1)
-      case "T"=>
+      case "T" =>
         "測項:" + MonitorType.map(MonitorType.withName(part(1))).desp
     }
     srcType
   }
-  
+
   case class Alarm(time: DateTime, src: String, level: Level.Value, desc: String)
 
+  implicit val write = Json.writes[Alarm]
   //implicit val format = Json.format[Alarm]
 
   val collectionName = "alarms"
   val collection = MongoDB.database.getCollection(collectionName)
   def toDocument(ar: Alarm) = {
     import org.mongodb.scala.bson._
-    Document("time"->(ar.time:BsonDateTime), "src"->ar.src, "level"->ar.level.toString(), "desc"->ar.desc)
+    Document("time" -> (ar.time: BsonDateTime), "src" -> ar.src, "level" -> ar.level.toString(), "desc" -> ar.desc)
   }
 
   def toAlarm(doc: Document) = {
@@ -80,20 +81,30 @@ object Alarm {
 
   def getAlarms(start: DateTime, end: DateTime) = {
     import org.mongodb.scala.bson.BsonDateTime
-    val startB:BsonDateTime = start
-    val endB:BsonDateTime = end
+    val startB: BsonDateTime = start
+    val endB: BsonDateTime = end
     val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(ascending("time")).toFuture()
 
     val docs = waitReadyResult(f)
     docs.map { toAlarm }
   }
 
-  def log(ar:Alarm){
+  def getAlarmsFuture(start: DateTime, end: DateTime) = {
+    import org.mongodb.scala.bson.BsonDateTime
+    val startB: BsonDateTime = start
+    val endB: BsonDateTime = end
+    val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(ascending("time")).toFuture()
+
+    for (docs <- f)
+      yield docs.map { toAlarm }
+  }
+
+  def log(ar: Alarm) {
     //None blocking...
     collection.insertOne(toDocument(ar)).toFuture()
   }
-  
-  def log(src: String, level: Level.Value, desc: String){
+
+  def log(src: String, level: Level.Value, desc: String) {
     val ar = Alarm(DateTime.now(), src, level, desc)
     log(ar)
   }

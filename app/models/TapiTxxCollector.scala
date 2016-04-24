@@ -283,7 +283,10 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             blocking {
               startCalibration(tapiConfig.monitorTypes.get)
             }
-          }
+          } onFailure({
+            case ex:Throwable=>
+              ModelHelper.logInstrumentError(instId, ex.getMessage)
+          })
         }
       } else {
         collectorState = state
