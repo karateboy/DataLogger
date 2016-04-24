@@ -19,7 +19,7 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   import TapiTxx._
   val O3 = MonitorType.withName("O3")
 
-  var regIdxO3:Option[Int] = None
+  var regIdxO3: Option[Int] = None
 
   override def reportData(regValue: ModelRegValue) = {
     def findIdx = findDataRegIdx(regValue)(_)
@@ -29,7 +29,7 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
       regIdxO3.get
     }))
 
-    context.parent ! ReportData(List(MonitorTypeData(O3, vO3._2.toDouble, collectorState)))
+    ReportData(List(MonitorTypeData(O3, vO3._2.toDouble, collectorState)))
 
   }
 
@@ -81,4 +81,5 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     List(450)
   }
 
+  def resetToNormal = {}
 } 

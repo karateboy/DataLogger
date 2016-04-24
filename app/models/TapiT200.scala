@@ -50,8 +50,8 @@ class T200Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
       regIdxNo2.get
     }))
 
-    context.parent ! ReportData(List(
-        MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
+    ReportData(List(
+      MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
       MonitorTypeData(NO, vNO._2.toDouble, collectorState),
       MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
   }
@@ -105,4 +105,6 @@ class T200Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   def getSpanStandard(): List[Double] = {
     List(450, 450, 450)
   }
+
+  def resetToNormal = {}
 } 

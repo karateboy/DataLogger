@@ -88,7 +88,7 @@ class DataCollectManager extends Actor {
       val monitorTypes = instType.driver.getMonitorTypes(inst.param)
       
       collectorMap += (inst._id -> (collector, monitorTypes))
-      if(instType == InstrumentType.t700){
+      if(inst.instType == InstrumentType.t700){
         calibratorActorRef = Some(collector)
         for{actor_mt <- collectorMap.values
           actor = actor_mt._1

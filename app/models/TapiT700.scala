@@ -19,13 +19,12 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   import TapiTxx._
 
   override def reportData(regValue: ModelRegValue) = {
-
+    ReportData(List.empty[MonitorTypeData])
   }
 
-  
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType
-  override def executeSeq(seq:Int){
+  override def executeSeq(seq: Int) {
     Logger.info(s"execute $seq sequence.")
     try {
       val locator = BaseLocator.coilStatus(config.slaveID, seq)
@@ -41,7 +40,7 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   }
 
   def readCalibratingValue(): List[Double] = {
-      List.empty[Double]
+    List.empty[Double]
   }
 
   def triggerSpanCalibration(v: Boolean) {
@@ -51,4 +50,5 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     List.empty[Double]
   }
 
+  def resetToNormal = {}
 } 

@@ -6,14 +6,15 @@ import play.api.libs.concurrent.Akka
 import ModelHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
 object TapiTxxCollector {
   import TapiTxx._
   case class ConnectHost(host: String)
+  case object RaiseStart
+  case object HoldStart
+  case object DownStart
+  case object CalibrateEnd
+
   case object ReadRegister
-  case object ReadZeroCalibration
-  case object ReadSpanCalibration
-  case object SpanCalibrationEnd
 
   import Protocol.ProtocolParam
 
@@ -35,7 +36,7 @@ object TapiTxxCollector {
 
 import TapiTxx._
 abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: TapiConfig) extends Actor {
-  var cancelable: Cancellable = _
+  var timerOpt: Option[Cancellable] = None
   import DataCollectManager._
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
@@ -207,26 +208,16 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
   def receive = normalReceive
 
-  def startCalibration(monitorTypes: List[MonitorType.Value]) {
-    import scala.concurrent.duration._
-
-    Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
-    triggerZeroCalibration(true)
-    Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, ReadZeroCalibration)
-    import com.github.nscala_time.time.Imports._
-    val endState = collectorState
-    collectorState = MonitorStatus.ZeroCalibrationStat
-    Instrument.setState(instId, collectorState)
-    context become calibration(DateTime.now, List.empty[Double], List.empty[Double], monitorTypes, endState)
-  }
-
   import scala.concurrent.Future
   import scala.concurrent.blocking
-  def readRegHandler = {
+  def readRegFuture(recordCalibration: Boolean) =
     Future {
       blocking {
         try {
-          instrumentStatusTypesOpt.map { readReg }.map { regReadHandler }
+          if (instrumentStatusTypesOpt.isDefined) {
+            val regValues = readReg(instrumentStatusTypesOpt.get)
+            regValueReporter(regValues)(recordCalibration)
+          }
           connected = true
         } catch {
           case ex: Exception =>
@@ -237,12 +228,11 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             connected = false
         } finally {
           import scala.concurrent.duration._
-          cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister)
+          timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
         }
       }
     }
-  }
-  
+
   def normalReceive(): Receive = {
     case ConnectHost(host) =>
       Logger.debug(s"${self.toString()}: connect $host")
@@ -267,7 +257,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
               Instrument.updateStatusType(instId, instrumentStatusTypesOpt.get)
             }
             import scala.concurrent.duration._
-            cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister)
+            timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage)
@@ -280,8 +270,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       }
 
     case ReadRegister =>
-      readRegHandler
-      
+      readRegFuture(false)
+
     case SetState(id, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
         if (tapiConfig.monitorTypes.isEmpty)
@@ -304,100 +294,166 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       executeSeq(seq)
   }
 
-  def executeSeq(seq: Int) {
-    // Do nothing...
+  // Only for T700
+  def executeSeq(seq: Int) {}
+
+  def startCalibration(monitorTypes: List[MonitorType.Value]) {
+    import scala.concurrent.duration._
+
+    Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
+    val timer = Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+    import com.github.nscala_time.time.Imports._
+    val endState = collectorState
+    collectorState = MonitorStatus.ZeroCalibrationStat
+    Instrument.setState(instId, collectorState)
+    context become calibration(MonitorStatus.ZeroCalibrationStat, DateTime.now, false, List.empty[ReportData], 
+        List.empty[(MonitorType.Value, Double)],  endState, timer)
+  }
+
+  def calibrationErrorHandler(id: String, timer: Cancellable, endState: String): PartialFunction[Throwable, Unit] = {
+    case ex: Exception =>
+      timer.cancel()
+      logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ")
+      resetToNormal
+      Instrument.setState(id, endState)
+      collectorState = endState
+      context become normalReceive
   }
 
   import com.github.nscala_time.time.Imports._
-  def calibration(startTime: DateTime, zeroReading: List[Double], spanReading: List[Double],
-                  monitorTypes: List[MonitorType.Value], endState: String): Receive = {
+  def calibration(state: String, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData], 
+      zeroReading: List[(MonitorType.Value, Double)], 
+      endState: String, timer: Cancellable): Receive = {
     case ConnectHost(host) =>
       Logger.error("unexpected ConnectHost msg")
 
     case ReadRegister =>
-      readRegHandler
+      readRegFuture(recordCalibration)
 
-    case SetState(id, state) =>
-      Logger.error("Cannot change state during calibration")
-
-    case ReadZeroCalibration =>
-      Future {
-        blocking {
-          val zeroValue = readCalibratingValue
-          Logger.debug(s"ReadZeroCalibration $zeroValue")
-          triggerZeroCalibration(false)
-          triggerSpanCalibration(true)
-          collectorState = MonitorStatus.SpanCalibrationStat
-          Instrument.setState(instId, collectorState)
-          Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
-
-          import scala.concurrent.duration._
-          Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.raiseTime.get, SECONDS),
-            self, ReadSpanCalibration)
-          context become calibration(startTime, zeroValue, spanReading, monitorTypes, endState)
-
-        }
+    case SetState(id, targetState) =>
+      if (targetState == MonitorStatus.ZeroCalibrationStat) {
+        Logger.info("Already in calibration. Ignore it")
+      } else if (targetState == MonitorStatus.NormalStat) {
+        Logger.info("Cancel calibration.")
+        collectorState = targetState
+        Instrument.setState(instId, targetState)
+        resetToNormal
+        context become normalReceive
       }
+      Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
 
-    case ReadSpanCalibration =>
+    case RaiseStart =>
       Future {
         blocking {
-          val spanValue = readCalibratingValue
-          Logger.debug(s"ReadSpanCalibration $spanValue")
-          triggerSpanCalibration(false)
+          Logger.info(s"${self.path.name} => RaiseStart")
           import scala.concurrent.duration._
-
-          Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(tapiConfig.downTime.get, SECONDS),
-            self, SpanCalibrationEnd)
-
-          context become calibration(startTime, zeroReading, spanValue, monitorTypes, endState)
-
-        }
-      }
-    case SpanCalibrationEnd =>
-      Future {
-        blocking {
-          val endTime = DateTime.now()
-          val duration = new Duration(startTime, endTime)
-          Logger.debug(s"SpanCalibrationEnd duration=${duration.getStandardSeconds} sec")
-
-          val spanStdList = getSpanStandard
-          for {
-            mt_idx <- monitorTypes.zipWithIndex
-            mt = mt_idx._1
-            idx = mt_idx._2
-          } {
-            val zero = zeroReading(idx)
-            val span = spanReading(idx)
-            val spanStd = spanStdList(idx)
-            val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
-            Calibration.insert(cal)
+          if (state == MonitorStatus.ZeroCalibrationStat) {
+            triggerZeroCalibration(true)
+          } else if (state == MonitorStatus.SpanCalibrationStat) {
+            triggerSpanCalibration(true)
+          } else {
+            Logger.error(s"Unexpected state: $state")
           }
-          Logger.info("All monitorTypes are calibrated.")
-          collectorState = endState
-          Instrument.setState(instId, collectorState)
-          context become normalReceive
-          Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+          val calibrationTimer = Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.raiseTime.get, SECONDS), self, HoldStart)
+          context become calibration(state, DateTime.now, false, calibrationReadingList, zeroReading, endState, calibrationTimer)
+        }
+      } onFailure (calibrationErrorHandler(instId, timer, endState))
+
+    case HoldStart => {
+      Logger.info(s"${self.path.name} => HoldStart")
+      import scala.concurrent.duration._
+      val calibrationTimer = Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.holdTime.get, SECONDS), self, DownStart)
+      context become calibration(state, startTime, true, calibrationReadingList, zeroReading, endState, calibrationTimer)
+    }
+
+    case DownStart =>
+      Future {
+        blocking {
+          Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
+          import scala.concurrent.duration._
+          if (state == MonitorStatus.ZeroCalibrationStat) {
+            triggerZeroCalibration(false)
+          } else if (state == MonitorStatus.SpanCalibrationStat) {
+            triggerSpanCalibration(false)
+          } else {
+            Logger.error(s"Unexpected state: $state")
+          }
+          val calibrationTimer = Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, CalibrateEnd)
+          context become calibration(state, startTime, false, calibrationReadingList, zeroReading, endState, calibrationTimer)
+        }
+      } onFailure (calibrationErrorHandler(instId, timer, endState))
+
+    case rd: ReportData =>
+      context become calibration(state, startTime, false, rd :: calibrationReadingList, zeroReading, endState, timer)
+
+    case CalibrateEnd =>
+      Future {
+        blocking {
+          Logger.info(s"$self =>$state CalibrateEnd")
+
+          val values = for { mt <- tapiConfig.monitorTypes.get } yield {
+            val calibrations = calibrationReadingList.flatMap {
+                reading =>
+                  reading.dataList.filter { _.mt == mt }.map { r => r.value }
+              }
+            
+            if(calibrations.length == 0){
+              Logger.warn(s"No calibration data for $mt")
+              (mt, 0d)
+            }else
+              (mt, calibrations.sum/calibrations.length)                          
+          }
+          
+          if (state == MonitorStatus.ZeroCalibrationStat) {
+            for(v <- values)
+              Logger.info(s"${v._1} zero calibration end. (${v._2})")
+              collectorState = MonitorStatus.SpanCalibrationStat
+              Instrument.setState(instId, collectorState)
+              context become calibration(MonitorStatus.SpanCalibrationStat, startTime, false, List.empty[ReportData], 
+                  values, endState, timer)
+              self ! RaiseStart
+          } else if (state == MonitorStatus.SpanCalibrationStat) {            
+            val endTime = DateTime.now()
+            val duration = new Duration(startTime, endTime)
+
+            val zeroMap = zeroReading.toMap
+            val spanMap = values.toMap
+            
+            for(mt <- tapiConfig.monitorTypes.get){
+              val zero = zeroMap(mt)
+              val span = spanMap(mt)
+              val spanStd = MonitorType.map(mt).span
+              val cal = Calibration(mt, startTime, endTime, zero, spanStd.getOrElse(0), span)
+              Calibration.insert(cal)
+            }
+            Logger.info("All monitorTypes are calibrated.")
+            collectorState = endState
+            Instrument.setState(instId, collectorState)
+            context become normalReceive
+            Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+          } else {
+            Logger.error(s"Unexpected state: $state")
+          }
         }
       }
   }
 
+  def resetToNormal: Unit
   def triggerZeroCalibration(v: Boolean)
   def readCalibratingValue(): List[Double]
 
   def triggerSpanCalibration(v: Boolean)
-  def getSpanStandard(): List[Double]
 
-  def reportData(regValue: ModelRegValue)
+  def reportData(regValue: ModelRegValue): ReportData
 
   var nextLoggingStatusTime = {
     def getNextTime(period: Int) = {
       val now = DateTime.now()
       val nextMin = (now.getMinuteOfHour / period + 1) * period
-      val hour = (now.getHourOfDay + (nextMin / 60))%24
-      val nextDay = (now.getHourOfDay + (nextMin / 60))/24
-      
-      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day 
+      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
+      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
+
+      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
     }
     // suppose every 10 min
     val period = 10
@@ -406,8 +462,16 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     nextTime
   }
 
-  def regReadHandler(regValue: ModelRegValue) = {
-    reportData(regValue)
+  def regValueReporter(regValue: ModelRegValue)(recordCalibration: Boolean) = {
+    val report = reportData(regValue)
+    context.parent ! report
+
+    if (recordCalibration)
+      self ! report
+
+    if (recordCalibration)
+      self ! report
+
     for {
       r <- regValue.modeRegs.zipWithIndex
       statusType = r._1._1
@@ -470,8 +534,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   }
 
   override def postStop(): Unit = {
-    if (cancelable != null)
-      cancelable.cancel()
+    if (timerOpt.isDefined)
+      timerOpt.get.cancel()
 
     if (masterOpt.isDefined)
       masterOpt.get.destroy()
