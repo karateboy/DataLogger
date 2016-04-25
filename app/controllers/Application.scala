@@ -312,7 +312,7 @@ object Application extends Controller {
     val ids = instruments.split(",")
     try {
       ids.map { id =>
-        DataCollectManager.executeSeq(id, seq)
+        DataCollectManager.executeSeq(seq)
       }
     } catch {
       case ex: Throwable =>
@@ -327,7 +327,7 @@ object Application extends Controller {
     val ids = instruments.split(",")
     try {
       ids.map { id =>
-        DataCollectManager.executeSeq(id, seq)
+        DataCollectManager.executeSeq(seq)
       }
     } catch {
       case ex: Throwable =>

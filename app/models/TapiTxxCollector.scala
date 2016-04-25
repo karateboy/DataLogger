@@ -293,12 +293,12 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
         Instrument.setState(instId, collectorState)
       }
       Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
-    case ExecuteSeq(id, seq) =>
-      executeSeq(seq)
+    case ExecuteSeq(seq, on) =>
+      executeSeq(seq, on)
   }
 
   // Only for T700
-  def executeSeq(seq: Int) {}
+  def executeSeq(seq: Int, on:Boolean) {}
 
   def startCalibration(monitorTypes: List[MonitorType.Value]) {
     import scala.concurrent.duration._

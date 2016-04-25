@@ -50,8 +50,14 @@ angular.module('tapiConfigView', [])
 			return false;
 		}
 		
-		if($config.instrumentType == 't700')
+		if($config.instrumentType == 't700'){
+			$scope.param.slaveID = parseInt($scope.param.slaveID);
+			//copy back
+			$config.param = $scope.param;
+			
 			return true;
+		}
+			
 		
 		if(!$scope.param.calibrationTimeDate){
 			alert("沒有設定校正時間!");
@@ -83,7 +89,6 @@ angular.module('tapiConfigView', [])
 			return false;
 		}
 
-		console.log($scope.param);
 		$scope.param.slaveID = parseInt($scope.param.slaveID);
 		$scope.param.calibrationTime = $scope.param.calibrationTimeDate.getTime();
 		$scope.param.raiseTime = parseInt($scope.param.raiseTime);
