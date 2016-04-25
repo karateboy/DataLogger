@@ -42,7 +42,7 @@ object MonitorType extends Enumeration {
     MonitorType("TS", "總硫", "ppb", None, 1, 9),
     MonitorType("CH4", "甲烷", "ppm", None, 1, 10),
     MonitorType("NMHC", "非甲烷碳氫化合物", "ppm", None, 1, 11),
-    MonitorType("NH4", "氨", "ppb", None, 1, 12),
+    MonitorType("NH3", "氨", "ppb", None, 1, 12),
     MonitorType("TSP", "TSP", "μg/m3", None, 1, 13),
     MonitorType("PM10", "PM10懸浮微粒", "μg/m3", None, 1, 14),
     MonitorType("PM25", "PM2.5細懸浮微粒", "μg/m3", None, 1, 15),
