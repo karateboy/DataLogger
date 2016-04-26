@@ -358,7 +358,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             Logger.error(s"Unexpected state: $state")
           }
           val calibrationTimer = Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.raiseTime.get, SECONDS), self, HoldStart)
-          context become calibration(state, DateTime.now, false, calibrationReadingList, zeroReading, endState, calibrationTimer)
+          context become calibration(state, DateTime.now, recordCalibration, 
+              calibrationReadingList, zeroReading, endState, calibrationTimer)
         }
       } onFailure (calibrationErrorHandler(instId, timer, endState))
 
@@ -366,7 +367,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       Logger.info(s"${self.path.name} => HoldStart")
       import scala.concurrent.duration._
       val calibrationTimer = Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.holdTime.get, SECONDS), self, DownStart)
-      context become calibration(state, startTime, true, calibrationReadingList, zeroReading, endState, calibrationTimer)
+      context become calibration(state, startTime, true, calibrationReadingList, 
+          zeroReading, endState, calibrationTimer)
     }
 
     case DownStart =>
@@ -382,12 +384,15 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             Logger.error(s"Unexpected state: $state")
           }
           val calibrationTimer = Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, CalibrateEnd)
-          context become calibration(state, startTime, false, calibrationReadingList, zeroReading, endState, calibrationTimer)
+          context become calibration(state, startTime, false, calibrationReadingList, 
+              zeroReading, endState, calibrationTimer)
         }
       } onFailure (calibrationErrorHandler(instId, timer, endState))
 
     case rd: ReportData =>
-      context become calibration(state, startTime, false, rd :: calibrationReadingList, zeroReading, endState, timer)
+      Logger.debug(s"calibrationReadingList #=${calibrationReadingList.length}")
+      context become calibration(state, startTime, recordCalibration, rd :: calibrationReadingList, 
+          zeroReading, endState, timer)
 
     case CalibrateEnd =>
       Future {
@@ -443,7 +448,6 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
   def resetToNormal: Unit
   def triggerZeroCalibration(v: Boolean)
-  def readCalibratingValue(): List[Double]
 
   def triggerSpanCalibration(v: Boolean)
 
@@ -468,9 +472,6 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   def regValueReporter(regValue: ModelRegValue)(recordCalibration: Boolean) = {
     val report = reportData(regValue)
     context.parent ! report
-
-    if (recordCalibration)
-      self ! report
 
     if (recordCalibration)
       self ! report

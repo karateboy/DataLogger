@@ -9,6 +9,7 @@ import Alarm._
 import ModelHelper._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object DataCollectManager {
   val effectivRatio = 0.75
@@ -17,7 +18,7 @@ object DataCollectManager {
   case class SetState(instId: String, state: String)
   case class MonitorTypeData(mt: MonitorType.Value, value: Double, status: String)
   case class ReportData(dataList: List[MonitorTypeData])
-  case class ExecuteSeq(seq:Int, on:Boolean)
+  case class ExecuteSeq(seq: Int, on: Boolean)
   case object CalculateData
 
   var manager: ActorRef = _
@@ -29,15 +30,6 @@ object DataCollectManager {
         if (inst.active)
           manager ! AddInstrument(inst)
     }
-
-    import scala.concurrent.duration._
-    import scala.concurrent.ExecutionContext.Implicits.global
-
-    //Try to trigger at 30 sec
-    val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
-    val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
-    
-    Akka.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), manager, CalculateData)
   }
 
   def startCollect(inst: Instrument) {
@@ -52,22 +44,22 @@ object DataCollectManager {
   def stopCollect(id: String) {
     manager ! RemoveInstrument(id)
   }
-  
-  def setInstrumentState(id: String, state: String){
+
+  def setInstrumentState(id: String, state: String) {
     manager ! SetState(id, state)
   }
-  
-  def executeSeq(seq:Int){
+
+  def executeSeq(seq: Int) {
     manager ! ExecuteSeq(seq, true)
   }
-  
+
   case object GetLatestData
-  def getLatestData()={
+  def getLatestData() = {
     import akka.pattern.ask
     import akka.util.Timeout
     import scala.concurrent.duration._
     implicit val timeout = Timeout(Duration(3, SECONDS))
-    
+
     val f = manager ? GetLatestData
     f.mapTo[Map[MonitorType.Value, Record]]
   }
@@ -75,62 +67,126 @@ object DataCollectManager {
 
 class DataCollectManager extends Actor {
   import DataCollectManager._
-  var collectorMap = Map.empty[String, (ActorRef, List[MonitorType.Value])]
-  var latestDataMap = Map.empty[MonitorType.Value, Record]
-  var mtDataList = List.empty[(DateTime, List[MonitorTypeData])]
-  var calibratorActorRef:Option[ActorRef] = None 
 
-  def receive = {
+  val timer = {
+    import scala.concurrent.duration._
+    //Try to trigger at 30 sec
+    val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
+    val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
+    Akka.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+  }
+
+  var calibratorOpt: Option[ActorRef] = None
+
+  case class InstrumentParam(actor: ActorRef, mtList: List[MonitorType.Value], calibrationTimerOpt: Option[Cancellable])
+
+  def receive = handler(Map.empty[String, InstrumentParam],
+    Map.empty[MonitorType.Value, Record], List.empty[(DateTime, List[MonitorTypeData])])
+
+  def handler(collectorMap: Map[String, InstrumentParam],
+              latestDataMap: Map[MonitorType.Value, Record],
+              mtDataList: List[(DateTime, List[MonitorTypeData])]): Receive = {
     case AddInstrument(inst) =>
       val instType = InstrumentType.map(inst.instType)
       val collector = instType.driver.start(inst._id, inst.protocol, inst.param)
       val monitorTypes = instType.driver.getMonitorTypes(inst.param)
-      
-      collectorMap += (inst._id -> (collector, monitorTypes))
-      if(inst.instType == InstrumentType.t700){
-        calibratorActorRef = Some(collector)
+      val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
+      val timerOpt = calibrateTimeOpt.map{localtime=>
+          val calibrationTime = DateTime.now().toLocalDate().toDateTime(localtime)
+          val duration = new Duration(DateTime.now(), calibrationTime)
+          
+          import scala.concurrent.duration._
+          Akka.system.scheduler.schedule(Duration(duration.getStandardSeconds, SECONDS), 
+              Duration(1, DAYS), self, SetState(inst._id, MonitorStatus.ZeroCalibrationStat))        
       }
-            
+        
+      val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
+      if (inst.instType == InstrumentType.t700) {
+        calibratorOpt = Some(collector)
+      }
+      
+      context become handler(collectorMap + (inst._id -> instrumentParam),
+        latestDataMap, mtDataList)
+
     case RemoveInstrument(id: String) =>
-      val actorOpt = collectorMap.get(id)
-      if (actorOpt.isDefined){
-        val (actor, monitorTypes) = actorOpt.get
+      val paramOpt = collectorMap.get(id)
+      if (paramOpt.isDefined) {
+        val param = paramOpt.get
         Logger.info(s"Stop collecting instrument $id ")
-        Logger.info(s"remove ${monitorTypes.toString()}")
-        actor ! PoisonPill
-        collectorMap = collectorMap - (id)
-        latestDataMap = latestDataMap -- monitorTypes
-        Logger.debug(s"${latestDataMap.toString}")
-        if(calibratorActorRef == Some(actor))
-          calibratorActorRef = None
+        Logger.info(s"remove ${param.mtList.toString()}")
+        param.calibrationTimerOpt.map{ timer=>timer.cancel() }
+        param.actor ! PoisonPill
+
+        context become handler(collectorMap - (id), latestDataMap -- param.mtList, mtDataList)
+        if (calibratorOpt == Some(param.actor))
+          calibratorOpt = None
       }
-      
+
     case ReportData(dataList) =>
       val now = DateTime.now
-      mtDataList = (now, dataList) :: mtDataList
 
-      for (data <- dataList) {
-        latestDataMap = latestDataMap + (data.mt -> Record(now, data.value, data.status))
+      val pairs =
+        for (data <- dataList)
+          yield (data.mt -> Record(now, data.value, data.status))
+
+      context become handler(collectorMap, latestDataMap ++ pairs, (DateTime.now, dataList) :: mtDataList)
+
+    case CalculateData => {
+      def calculateMinData(currentMintues: DateTime) = {
+        import scala.collection.mutable.ListBuffer
+        import scala.collection.mutable.Map
+        val mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
+
+        val currentData = mtDataList.takeWhile(d => d._1 >= currentMintues)
+        val minDataList = mtDataList.drop(currentData.length)
+
+        for {
+          dl <- minDataList
+          data <- dl._2
+        } {
+          val statusMap = mtMap.getOrElse(data.mt, {
+            val map = Map.empty[String, ListBuffer[Double]]
+            mtMap.put(data.mt, map)
+            map
+          })
+
+          val lb = statusMap.getOrElse(data.status, {
+            val l = ListBuffer.empty[Double]
+            statusMap.put(data.status, l)
+            l
+          })
+
+          lb.append(data.value)
+        }
+        val minuteMtAvgList = calculateAvgMap(mtMap)
+
+        context become handler(collectorMap, latestDataMap, currentData)
+        Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
       }
 
-    case CalculateData =>
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
       val f = calculateMinData(current)
+      f onFailure (futureErrorHandler)
 
       if (current.getMinuteOfHour == 0) {
         import scala.concurrent.ExecutionContext.Implicits.global
-        f.map { _ => calculateHourData(current) }
+        f.map { _ => calculateHourData(current)(latestDataMap) }
       }
+    }
+
     case SetState(instId, state) =>
-      collectorMap.get(instId).map { collector_mt =>
-        val collector = collector_mt._1
-        collector ! SetState(instId, state)
+      collectorMap.get(instId).map { param =>
+        param.actor ! SetState(instId, state)
       }
-    case msg: ExecuteSeq=>
-      if(calibratorActorRef.isDefined)
-        calibratorActorRef.get ! msg
-        
-    case GetLatestData=>
+
+    case msg: ExecuteSeq =>
+      if (calibratorOpt.isDefined)
+        calibratorOpt.get ! msg
+      else{
+        Logger.warn("Calibrator is not online! Ignore execute seq message.")
+      }
+
+    case GetLatestData =>
       sender ! latestDataMap
   }
 
@@ -178,40 +234,7 @@ class DataCollectManager extends Actor {
 
   }
 
-  def calculateMinData(currentMintues: DateTime) = {
-    import scala.collection.mutable.ListBuffer
-    import scala.collection.mutable.Map
-    val mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
-
-    val currentData = mtDataList.takeWhile(d => d._1 >= currentMintues)
-    val minDataList = mtDataList.drop(currentData.length)
-
-    for {
-      dl <- minDataList
-      data <- dl._2
-    } {
-      val statusMap = mtMap.getOrElse(data.mt, {
-        val map = Map.empty[String, ListBuffer[Double]]
-        mtMap.put(data.mt, map)
-        map
-      })
-
-      val lb = statusMap.getOrElse(data.status, {
-        val l = ListBuffer.empty[Double]
-        statusMap.put(data.status, l)
-        l
-      })
-
-      lb.append(data.value)
-    }
-
-    val minuteMtAvgList = calculateAvgMap(mtMap)
-
-    mtDataList = currentData
-    Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
-  }
-
-  def calculateHourData(current: DateTime) = {
+  def calculateHourData(current: DateTime)(latestDataMap: Map[MonitorType.Value, Record]) = {
     Logger.debug("calculate hour data " + (current - 1.hour))
     val recordMap = Record.getRecordMap(Record.MinCollection)(latestDataMap.keys.toList, current - 1.hour, current)
 
@@ -242,4 +265,9 @@ class DataCollectManager extends Actor {
     val hourMtAvgList = calculateAvgMap(mtMap)
     Record.insertRecord(Record.toDocument(current.minusHours(1), hourMtAvgList.toList))(Record.HourCollection)
   }
+
+  override def postStop(): Unit = {
+    timer.cancel()    
+  }
+
 }

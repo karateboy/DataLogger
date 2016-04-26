@@ -157,7 +157,6 @@ object MonitorType extends Enumeration {
   
   def stopMeasuring(instrumentId:String)={
     for(mt <- realtimeMtvList.filter { mt => map(mt).measuringBy == Some(instrumentId) }){
-      Logger.debug("stoping $mt")
       updateMonitorType(mt, "measuringBy", "-")
     }
   }

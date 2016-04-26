@@ -37,6 +37,7 @@ class T300Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
 
   def triggerZeroCalibration(v: Boolean) {
     try {
+      context.parent ! ExecuteSeq(config.calibrateZeoSeq.get, v)
       val locator = BaseLocator.coilStatus(config.slaveID, 20)
       masterOpt.get.setValue(locator, v)
     } catch {
@@ -45,24 +46,9 @@ class T300Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     }
   }
 
-  def readCalibratingValue(): List[Double] = {
-    try {
-      val locator = BaseLocator.inputRegister(config.slaveID, 14, DataType.FOUR_BYTE_FLOAT)
-      val v = masterOpt.get.getValue(locator)
-      List(v.floatValue())
-    } catch {
-      case ex: Exception =>
-        ModelHelper.logException(ex)
-        throw ex
-    }
-  }
-
   def triggerSpanCalibration(v: Boolean) {
     try {
-      if (v) {
-        val targetSpanLocator = BaseLocator.holdingRegister(config.slaveID, 0, DataType.FOUR_BYTE_FLOAT)
-        masterOpt.get.setValue(targetSpanLocator, 450f)
-      }
+      context.parent ! ExecuteSeq(config.calibrateSpanSeq.get, v)
       val locator = BaseLocator.coilStatus(config.slaveID, 21)
       masterOpt.get.setValue(locator, v)
     } catch {
@@ -71,9 +57,13 @@ class T300Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     }
   }
 
-  def getSpanStandard(): List[Double] = {
-    List(450)
+  def resetToNormal = {
+    try {
+      masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
+      masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+    } catch {
+      case ex: Exception =>
+        ModelHelper.logException(ex)
+    }
   }
-
-  def resetToNormal = {}
 } 

@@ -7,7 +7,8 @@ import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
 case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[MonitorType.Value]], 
-    raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int], calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int])
+    raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int], 
+    calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int])
 case class ModelConfig(model: String, monitorTypeIDs: List[String])
 
 object TapiTxx {

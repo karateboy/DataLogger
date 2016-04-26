@@ -32,7 +32,8 @@ class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   }
 
   override def triggerZeroCalibration(v: Boolean) {
-    try {
+    try {      
+      context.parent ! ExecuteSeq(config.calibrateZeoSeq.get, v)
       val locator = BaseLocator.coilStatus(config.slaveID, 20)
       masterOpt.get.setValue(locator, v)
     } catch {
@@ -41,24 +42,9 @@ class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     }
   }
 
-  override def readCalibratingValue(): List[Double] = {
-    try {
-      val locator = BaseLocator.inputRegister(config.slaveID, 18, DataType.FOUR_BYTE_FLOAT)
-      val v = masterOpt.get.getValue(locator)
-      List(v.floatValue())
-    } catch {
-      case ex: Exception =>
-        ModelHelper.logException(ex)
-        throw ex
-    }
-  }
-
   override def triggerSpanCalibration(v: Boolean) {
-    try {
-      if (v) {
-        val targetSpanLocator = BaseLocator.holdingRegister(config.slaveID, 0, DataType.FOUR_BYTE_FLOAT)
-        masterOpt.get.setValue(targetSpanLocator, 450f)
-      }
+    try {      
+      context.parent ! ExecuteSeq(config.calibrateSpanSeq.get, v)
       val locator = BaseLocator.coilStatus(config.slaveID, 21)
       masterOpt.get.setValue(locator, v)
     } catch {
@@ -67,5 +53,13 @@ class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     }
   }
 
-  override def resetToNormal = {}
+  override def resetToNormal = {
+    try {      
+      masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
+      masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+    } catch {
+      case ex: Exception =>
+        ModelHelper.logException(ex)
+    }
+  }
 }

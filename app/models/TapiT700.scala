@@ -39,15 +39,7 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
 
   }
 
-  def readCalibratingValue(): List[Double] = {
-    List.empty[Double]
-  }
-
   def triggerSpanCalibration(v: Boolean) {
-  }
-
-  def getSpanStandard(): List[Double] = {
-    List.empty[Double]
   }
 
   def resetToNormal = {}
