@@ -104,7 +104,7 @@ object Record {
   }
 
   case class MtRecord(mtName: String, value: Double, status: String)
-  case class RecordList(time: DateTime, mtDataList: Seq[MtRecord])
+  case class RecordList(time: Long, mtDataList: Seq[MtRecord])
 
   implicit val mtRecordWrite = Json.writes[MtRecord]
   implicit val recordListWrite = Json.writes[RecordList]
@@ -142,7 +142,7 @@ object Record {
           } yield {
             MtRecord(mtBFName, v.asDouble().doubleValue(), s.asString().getValue)
           }
-        RecordList(time, mtDataList)
+        RecordList(time.getMillis, mtDataList)
       }
     }
   }
