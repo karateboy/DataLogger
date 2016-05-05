@@ -221,7 +221,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
           connected = true
         } catch {
           case ex: Exception =>
-            Logger.error(ex.getMessage)
+            ModelHelper.logException(ex)
             if (connected)
               log(instStr(instId), Level.ERR, s"${ex.getMessage}")
 
