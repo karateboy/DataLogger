@@ -42,5 +42,7 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   def triggerSpanCalibration(v: Boolean) {
   }
 
-  def resetToNormal = {}
+  def resetToNormal = {
+    executeSeq(101, true)
+  }
 } 
