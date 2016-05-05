@@ -221,7 +221,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
           connected = true
         } catch {
           case ex: Exception =>
-            ModelHelper.logException(ex)
+            Logger.error(ex.getMessage)
             if (connected)
               log(instStr(instId), Level.ERR, s"${ex.getMessage}")
 
@@ -510,7 +510,12 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     //Log Instrument state
     if (DateTime.now() > nextLoggingStatusTime) {
       Logger.debug("Log instrument state")
-      logInstrumentStatus(regValue)
+      try{
+        logInstrumentStatus(regValue)
+      }catch{
+        case _:Throwable=>
+          Logger.error("Log instrument status failed")
+      }
       nextLoggingStatusTime = nextLoggingStatusTime + 10.minute
       Logger.debug(s"next logging time = $nextLoggingStatusTime")
     }
@@ -527,6 +532,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
         Status(k.key, v)
     }
     val instStatus = InstrumentStatus(DateTime.now(), instId, isList)
+    Logger.debug(instStatus.toString())
     log(instStatus)
   }
 
