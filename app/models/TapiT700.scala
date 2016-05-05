@@ -25,7 +25,7 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType
   override def executeSeq(seq: Int, on:Boolean) {
-    Logger.info(s"execute $seq sequence.")
+    Logger.info(s"T700 execute $seq sequence.")
     try {
       val locator = BaseLocator.coilStatus(config.slaveID, seq)
       masterOpt.get.setValue(locator, on)
