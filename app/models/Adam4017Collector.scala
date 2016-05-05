@@ -94,6 +94,7 @@ class Adam4017Collector extends Actor {
           os.write(readCmd.getBytes)
           val str = comm.port.readString()
           if (str != null) {
+            Logger.debug(str)
             decode(str)
           }
           cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)

@@ -437,6 +437,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             Logger.info("All monitorTypes are calibrated.")
             collectorState = endState
             Instrument.setState(instId, collectorState)
+            resetToNormal
             context become normalReceive
             Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
           } else {
