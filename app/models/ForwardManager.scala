@@ -17,6 +17,7 @@ object ForwardManager {
   implicit val latestRecordTimeRead = Json.reads[LatestRecordTime]
 
   val serverConfig = ConfigFactory.load("server")
+  val disable = serverConfig.getBoolean("disable")
   val server = serverConfig.getString("server")
   val monitor = serverConfig.getString("monitor")
 
@@ -29,7 +30,11 @@ object ForwardManager {
   var manager: ActorRef = _
   def startup() = {
     val props = Props(classOf[ForwardManager], server, monitor)
-    manager = Akka.system.actorOf(props, name = s"forward_$server")
+    if(disable)
+      Logger.info("forwarding is disabled.")
+      
+    if(!disable)
+      manager = Akka.system.actorOf(props, name = s"forward_$server")
   }
 }
 
