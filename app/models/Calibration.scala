@@ -40,7 +40,8 @@ object Calibration {
   }
   implicit val reads = Json.reads[Calibration]
   implicit val writes = Json.writes[Calibration]
-
+  implicit val jsonWrites = Json.writes[CalibrationJSON]
+  
   def toDocument(cal: Calibration) = {
     import org.mongodb.scala.bson._
     Document("monitorType" -> cal.monitorType, "startTime" -> (cal.startTime: BsonDateTime),
