@@ -531,8 +531,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
         val v = kv._2
         Status(k.key, v)
     }
-    val instStatus = InstrumentStatus(DateTime.now(), instId, isList)
-    Logger.debug(instStatus.toString())
+    val instStatus = InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
     log(instStatus)
   }
 

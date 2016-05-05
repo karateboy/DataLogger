@@ -13,7 +13,12 @@ object InstrumentStatus {
   val collection = MongoDB.database.getCollection(collectionName)
 
   case class Status(key: String, value: Double)
-  case class InstrumentStatus(time: DateTime, instID: String, statusList: List[Status])
+  case class InstrumentStatus(time: DateTime, instID: String, statusList: List[Status]){
+    def excludeNaN = {
+      val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite()) }
+      InstrumentStatus(time, instID, validList)
+    }
+  }
 
   implicit val stRead = Json.reads[Status]
   implicit val isRead = Json.reads[InstrumentStatus]
