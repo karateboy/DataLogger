@@ -451,7 +451,7 @@ object Query extends Controller {
   def calibrationReport(startStr: String, endStr: String) = Security.Authenticated {
     val (start, end) =
       (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
-        DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+        DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")) + 1.day)
     val report = Calibration.calibrationReport(start, end)
     Ok(views.html.calibrationReport(report, "校正報表", start, end))
   }
@@ -463,7 +463,7 @@ object Query extends Controller {
   def alarmReport(startStr: String, endStr: String) = Security.Authenticated {
     val (start, end) =
       (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
-        DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+        DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")) + 1.day)
     val report = Alarm.getAlarms(start, end + 1.day)
     Ok(views.html.alarmReport(start, end, report))
   }

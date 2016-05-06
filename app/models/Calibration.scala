@@ -7,7 +7,7 @@ import com.github.nscala_time.time._
 import models.ModelHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class CalibrationJSON(monitorType: MonitorType.Value, startTime: Long, endTime: Long, zero_val: Double,
+case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Double, 
                        span_std: Double, span_val: Double)
                        
 case class Calibration(monitorType: MonitorType.Value, startTime: DateTime, endTime: DateTime, zero_val: Double,
@@ -16,7 +16,7 @@ case class Calibration(monitorType: MonitorType.Value, startTime: DateTime, endT
   def span_dev = Math.abs(span_val - span_std)
   def span_dev_ratio = span_dev / span_std
   def toJSON = {
-    CalibrationJSON(monitorType, startTime.getMillis, endTime.getMillis, zero_val,
+    CalibrationJSON(monitorType.toString, startTime.getMillis, endTime.getMillis, zero_val,  
                        span_std, span_val)
   }
 }
