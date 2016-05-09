@@ -12,17 +12,17 @@
 <thead>
 	<tr>		
 		<th>時間</th>
+		<th>等級</th>		
 		<th>來源</th>
-		<th>層級</th>
-		<th>說明</th>
+		<th>詳細資訊</th>
 	</tr>
 </thead>
 <tbody>
 	@for(ar <- report){
 		<tr>
 			<td>@ar.time.toString("YYYY/MM/dd HH:mm")</td>
-			<td>@getSrcForDisplay(ar.src)</td>
 			<td>@Level.map(ar.level)</td>
+			<td>@getSrcForDisplay(ar.src)</td>			
 			<td>@ar.desc</td>
 		</tr>
 	}
@@ -37,9 +37,7 @@ $( document ).ready(function() {
 		responsive: true,
 		language: {
 			url: localized_url,							
-		},
-		searching: false,
-		paging: false
+		}		
 	} );
 });
 </script>

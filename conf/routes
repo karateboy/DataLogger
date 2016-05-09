@@ -29,7 +29,7 @@ GET		/HistoryReport/:monitorType/:tabType/:start/:end		controllers.Query.history
 GET		/Calibration				controllers.Query.calibration
 GET		/CalibrationReport/:start/:end	controllers.Query.calibrationReport(start, end)
 GET		/Alarm						controllers.Query.alarm
-GET		/AlarmReport/:start/:end	controllers.Query.alarmReport(start, end)
+GET		/AlarmReport/:level/:start/:end	controllers.Query.alarmReport(level:Int, start, end)
 
 GET		/MonitorTypeConfig			controllers.Application.monitorTypeConfig
 POST	/SaveMonitorTypeConfig		controllers.Application.saveMonitorTypeConfig

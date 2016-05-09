@@ -460,11 +460,11 @@ object Query extends Controller {
     Ok(views.html.alarm())
   }
 
-  def alarmReport(startStr: String, endStr: String) = Security.Authenticated {
+  def alarmReport(level:Int, startStr: String, endStr: String) = Security.Authenticated {
     val (start, end) =
       (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")) + 1.day)
-    val report = Alarm.getAlarms(start, end + 1.day)
+    val report = Alarm.getAlarms(level, start, end + 1.day)
     Ok(views.html.alarmReport(start, end, report))
   }
 

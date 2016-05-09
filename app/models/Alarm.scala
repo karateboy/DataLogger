@@ -18,12 +18,13 @@ import play.api.libs.json.Reads._
 //                  'S':"System"
 
 object Alarm {
-  object Level extends Enumeration {
-    val INFO = Value
-    val WARN = Value
-    val ERR = Value
-    val map = Map(INFO -> "通知", WARN -> "警告", ERR -> "錯誤")
+  object Level{
+    val INFO = 1
+    val WARN = 2
+    val ERR = 3
+    val map = Map(INFO -> "資訊", WARN -> "警告", ERR -> "嚴重")
   }
+  val alarmLevelList = Level.INFO to Level.ERR 
 
   def Src(mt: MonitorType.Value) = s"T:${mt.toString}"
   def Src(inst: Instrument) = s"I:${inst._id}"
@@ -43,7 +44,7 @@ object Alarm {
     srcType
   }
 
-  case class Alarm(time: DateTime, src: String, level: Level.Value, desc: String)
+  case class Alarm(time: DateTime, src: String, level: Int, desc: String)
 
   implicit val write = Json.writes[Alarm]
   //implicit val format = Json.format[Alarm]
@@ -52,15 +53,15 @@ object Alarm {
   val collection = MongoDB.database.getCollection(collectionName)
   def toDocument(ar: Alarm) = {
     import org.mongodb.scala.bson._
-    Document("time" -> (ar.time: BsonDateTime), "src" -> ar.src, "level" -> ar.level.toString(), "desc" -> ar.desc)
+    Document("time" -> (ar.time: BsonDateTime), "src" -> ar.src, "level" -> ar.level, "desc" -> ar.desc)
   }
 
   def toAlarm(doc: Document) = {
     val time = new DateTime(doc.get("time").get.asDateTime().getValue)
     val src = doc.get("src").get.asString().getValue
-    val level = doc.get("level").get.asString().getValue
+    val level = doc.get("level").get.asInt32().getValue
     val desc = doc.get("desc").get.asString().getValue
-    Alarm(time, src, Level.withName(level), desc)
+    Alarm(time, src, level, desc)
   }
 
   def init(colNames: Seq[String]) {
@@ -79,11 +80,11 @@ object Alarm {
   import org.mongodb.scala.model.Projections._
   import org.mongodb.scala.model.Sorts._
 
-  def getAlarms(start: DateTime, end: DateTime) = {
+  def getAlarms(level:Int, start: DateTime, end: DateTime) = {
     import org.mongodb.scala.bson.BsonDateTime
     val startB: BsonDateTime = start
     val endB: BsonDateTime = end
-    val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(ascending("time")).toFuture()
+    val f = collection.find(and(gte("time", startB), lt("time", endB), gte("level", level))).sort(ascending("time")).toFuture()
 
     val docs = waitReadyResult(f)
     docs.map { toAlarm }
@@ -104,7 +105,7 @@ object Alarm {
     collection.insertOne(toDocument(ar)).toFuture()
   }
 
-  def log(src: String, level: Level.Value, desc: String) {
+  def log(src: String, level: Int, desc: String) {
     val ar = Alarm(DateTime.now(), src, level, desc)
     log(ar)
   }

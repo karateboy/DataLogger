@@ -8,6 +8,22 @@
                 </div>
             	<div class="panel-body panel-collapse in" id="reportParam">
             		<form class="form-horizontal">
+            			<div class="form-group">
+            				<label class="col-lg-1 control-label">警報等級</label>
+            				<div class="col-lg-11">
+	            				<div class="btn-group" data-toggle="buttons">	            				
+	            				@for(level<-Alarm.alarmLevelList){
+	            					@if(level == Alarm.alarmLevelList.head){
+	            						<label class="btn btn-outline btn-primary dim active">
+										<input type="radio" name="level" id="@level" checked>@Alarm.Level.map(level)</label>	
+	            					}else{
+	            						<label class="btn btn-outline btn-primary dim">
+										<input type="radio" name="level" id="@level">@Alarm.Level.map(level)</label>
+	            					}	            					
+	            				}
+	            				</div>
+	            			</div>
+            			</div>
 	                    <div class="form-group">
 	            			<label class="col-lg-1 control-label">查詢區間</label>	
 	            			<div class="col-lg-5">
@@ -30,7 +46,7 @@
         	<div class="panel panel-success" style="display:none" id="reportPanel">
             	<div class="panel-body panel-collapse" id="monitorReport">
             	
-					<div id="reportDiv" align="center" style="overflow-x:auto">
+					<div id="reportDiv" align="center">
             		</div>
             	</div>
         	</div>
@@ -48,9 +64,12 @@ $( document ).ready(function() {
 	    language: "zh-TW"
 	});
 
-	var reportStart, reportEnd;
+	var reportStart, reportEnd, level;
 	
 	function validate(){
+		level = $("input[name='level']:checked")[0].id;
+		console.log(level);
+		
 		reportStart = $('#reportStart').val();
 		if(reportStart.length === 0){
 			alert('請選擇開始日期');
@@ -76,7 +95,7 @@ $( document ).ready(function() {
 		$('#reportDiv').html('');
 		$("body").css("cursor", "progress");
 		
-		var url = "/AlarmReport/" + reportStart + "/" + reportEnd;
+		var url = "/AlarmReport/" + level + "/" + reportStart + "/" + reportEnd;
 		$.ajax({
 			url: url,
 			data: '',

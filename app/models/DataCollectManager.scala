@@ -93,7 +93,10 @@ class DataCollectManager extends Actor {
       val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
       val timerOpt = calibrateTimeOpt.map{localtime=>
           val calibrationTime = DateTime.now().toLocalDate().toDateTime(localtime)
-          val duration = new Duration(DateTime.now(), calibrationTime)
+          val duration = if(DateTime.now() < calibrationTime)
+            new Duration(DateTime.now(), calibrationTime)
+          else
+            new Duration(DateTime.now(), calibrationTime + 1.day)
           
           import scala.concurrent.duration._
           Akka.system.scheduler.schedule(Duration(duration.getStandardSeconds, SECONDS), 
