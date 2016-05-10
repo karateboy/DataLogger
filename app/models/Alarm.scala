@@ -44,9 +44,14 @@ object Alarm {
     srcType
   }
 
-  case class Alarm(time: DateTime, src: String, level: Int, desc: String)
+  case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
+
+  case class Alarm(time: DateTime, src: String, level: Int, desc: String){
+    def toJson=Alarm2JSON(time.getMillis, src, level, desc)
+  }
 
   implicit val write = Json.writes[Alarm]
+  implicit val jsonWrite = Json.writes[Alarm2JSON]
   //implicit val format = Json.format[Alarm]
 
   val collectionName = "alarms"
