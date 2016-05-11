@@ -5,7 +5,6 @@ import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import com.github.nscala_time.time.Imports._
 import play.api.Play.current
-import Alarm._
 import ModelHelper._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
@@ -52,22 +51,23 @@ class ForwardManager(server: String, monitor: String) extends Actor {
     Akka.system.scheduler.schedule(Duration(0, SECONDS), Duration(1, MINUTES), self, ForwardData)
   }
 
-  def receive = handler(None, None, None, None)
+  val calibrationForwarder = context.actorOf(Props(classOf[CalibrationForwarder], server, monitor), "calibrationForwarder")
+  val alarmForwarder = context.actorOf(Props(classOf[AlarmForwarder], server, monitor), "alarmForwarder")
+  
+  def receive = handler(None, None)
 
   import play.api.libs.ws._
-  def handler(latestHour: Option[Long], latestMin: Option[Long], 
-      latestCalibration: Option[Long], latestAlarm: Option[Long]): Receive = {
+  def handler(latestHour: Option[Long], latestMin: Option[Long]): Receive = {
     case ForwardData =>
       self ! ForwardHour
       self ! ForwardMin
-      self ! ForwardCalibration
-      self ! ForwardAlarm
+      calibrationForwarder ! ForwardCalibration
+      alarmForwarder ! ForwardAlarm
 
     case ForwardHour =>
       try {
         if (latestHour.isEmpty) {
           val url = s"http://$server/HourRecordRange/$monitor"
-          Logger.debug(url)
           val f = WS.url(url).get().map {
             response =>
               val result = response.json.validate[LatestRecordTime]
@@ -77,7 +77,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
                 },
                 latest => {
                   Logger.info(s"server latest hour: ${new DateTime(latest.time).toString}")
-                  context become handler(Some(latest.time), latestMin, latestCalibration, latestAlarm)
+                  context become handler(Some(latest.time), latestMin)
                   self ! ForwardHour
                 })
           }
@@ -89,12 +89,11 @@ class ForwardManager(server: String, monitor: String) extends Actor {
           val recordFuture = Record.getRecordListFuture(Record.HourCollection)(new DateTime(latestHour.get + 1), DateTime.now)
           for (record <- recordFuture) {
             if (!record.isEmpty) {
-              Logger.debug(s"put hour from ${new DateTime(record.head.time)} to ${new DateTime(record.last.time)}")
               val url = s"http://$server/HourRecord/$monitor"
               val f = WS.url(url).put(Json.toJson(record))
               f onSuccess {
                 case response =>
-                  context become handler(Some(record.last.time), latestMin, latestCalibration, latestAlarm)
+                  context become handler(Some(record.last.time), latestMin)
               }
               f onFailure {
                 case ex: Throwable =>
@@ -120,7 +119,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
                 },
                 latest => {
                   Logger.info(s"server latest min: ${new DateTime(latest.time).toString}")
-                  context become handler(latestHour, Some(latest.time), latestCalibration, latestAlarm)
+                  context become handler(latestHour, Some(latest.time))
                   self ! ForwardMin
                 })
           }
@@ -132,12 +131,11 @@ class ForwardManager(server: String, monitor: String) extends Actor {
           val recordFuture = Record.getRecordListFuture(Record.MinCollection)(new DateTime(latestMin.get + 1), DateTime.now)
           for (record <- recordFuture) {
             if (!record.isEmpty) {
-              Logger.debug(s"put min from ${new DateTime(record.head.time)} to ${new DateTime(record.last.time)}")
               val url = s"http://$server/MinRecord/$monitor"
               val f = WS.url(url).put(Json.toJson(record))
               f onSuccess {
                 case response =>
-                  context become handler(latestHour, Some(record.last.time), latestCalibration, latestAlarm)
+                  context become handler(latestHour, Some(record.last.time))
               }
               f onFailure {
                 case ex: Throwable =>
@@ -150,96 +148,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
         case ex: Throwable =>
           ModelHelper.logException(ex)
       }
-
-    case ForwardCalibration =>
-      try {
-        if (latestCalibration.isEmpty) {
-          val url = s"http://$server/CalibrationRecordRange/$monitor"
-          val f = WS.url(url).get().map {
-            response =>
-              val result = response.json.validate[LatestRecordTime]
-              result.fold(
-                error => {
-                  Logger.error(JsError.toJson(error).toString())
-                },
-                latest => {
-                  Logger.info(s"server latest calibration: ${new DateTime(latest.time).toString}")
-                  context become handler(latestHour, latestMin, Some(latest.time), latestAlarm)
-                  self ! ForwardCalibration
-                })
-          }
-          f onFailure {
-            case ex: Throwable =>
-              ModelHelper.logException(ex)
-          }
-        } else {
-          import Calibration._
-          val recordFuture = Calibration.calibrationReportFuture(new DateTime(latestCalibration.get + 1), DateTime.now)
-          for (records <- recordFuture) {
-            if (!records.isEmpty) {
-              val recordJSON = records.map { _.toJSON }
-              val url = s"http://$server/CalibrationRecord/$monitor"
-              val f = WS.url(url).put(Json.toJson(recordJSON))
-              f onSuccess {
-                case response =>
-                  context become handler(latestHour, latestMin, Some(records.last.startTime.getMillis), latestAlarm)
-              }
-              f onFailure {
-                case ex: Throwable =>
-                  ModelHelper.logException(ex)
-              }
-            }
-          }
-        }
-      } catch {
-        case ex: Throwable =>
-          ModelHelper.logException(ex)
-      }
-      
-      case ForwardAlarm =>
-      try {
-        if (latestAlarm.isEmpty) {
-          val url = s"http://$server/AlarmRecordRange/$monitor"
-          val f = WS.url(url).get().map {
-            response =>
-              val result = response.json.validate[LatestRecordTime]
-              result.fold(
-                error => {
-                  Logger.error(JsError.toJson(error).toString())
-                },
-                latest => {
-                  Logger.info(s"server latest alarm: ${new DateTime(latest.time).toString}")
-                  context become handler(latestHour, latestMin, latestCalibration, Some(latest.time))
-                  self ! ForwardAlarm
-                })
-          }
-          f onFailure {
-            case ex: Throwable =>
-              ModelHelper.logException(ex)
-          }
-        } else {
-          val recordFuture = Alarm.getAlarmsFuture(new DateTime(latestAlarm.get + 1), DateTime.now)
-          for (records <- recordFuture) {
-            if (!records.isEmpty) {
-              val recordJSON = records.map { _.toJson }
-              val url = s"http://$server/AlarmRecord/$monitor"
-              val f = WS.url(url).put(Json.toJson(recordJSON))
-              f onSuccess {
-                case response =>
-                  context become handler(latestHour, latestMin, latestCalibration, Some(records.last.time.getMillis))
-              }
-              f onFailure {
-                case ex: Throwable =>
-                  ModelHelper.logException(ex)
-              }
-            }
-          }
-        }
-      } catch {
-        case ex: Throwable =>
-          ModelHelper.logException(ex)
-      }
-  }
+ }
   override def postStop(): Unit = {
     timer.cancel()
   }

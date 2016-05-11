@@ -144,7 +144,7 @@ object MonitorType extends Enumeration {
     import org.mongodb.scala._
     collection.insertOne(doc).subscribe((doOnNext: Completed) => {},
       (ex: Throwable) => {
-        Logger.error(ex.getMessage)
+        Logger.error(ex.getMessage, ex)
         throw ex
       })
     map = map + (Value(mt._id) -> mt)

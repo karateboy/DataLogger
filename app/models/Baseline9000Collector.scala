@@ -81,7 +81,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
   def serialErrorHandler: PartialFunction[Throwable, Unit] = {
     case ex: Exception =>
-      logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. Close com port.")
+      logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. Close com port.", ex)
       for (serial <- serialCommOpt) {
         SerialComm.close(serial)
         serialCommOpt = None

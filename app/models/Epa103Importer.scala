@@ -119,7 +119,7 @@ class Epa103Importer extends Actor {
           
         }catch{
           case ex: Throwable=>
-            Logger.error(ex.getMessage)
+            Logger.error(ex.getMessage, ex)
             throw ex
         }
           

@@ -29,16 +29,12 @@ object ModelHelper {
   }
 
   def logException(ex: Throwable) = {
-    import java.io.StringWriter
-    import java.io.PrintWriter
-    val sw = new StringWriter();
-    ex.printStackTrace(new PrintWriter(sw));
-    Logger.error(sw.toString())
+    Logger.error(ex.getMessage, ex)
   }
   
   import Alarm._
-  def logInstrumentError(id:String, msg:String) ={    
-    Logger.error(msg)
+  def logInstrumentError(id:String, msg:String, ex:Throwable) ={    
+    Logger.error(msg, ex)
     log(instStr(id), Level.ERR, msg)
   }
   
@@ -49,7 +45,7 @@ object ModelHelper {
   
   def futureErrorHandler:PartialFunction[Throwable, Any] = {
       case ex:Throwable=>
-        Logger.error(ex.getMessage)
+        Logger.error(ex.getMessage, ex)
         throw ex
     }
   
@@ -65,7 +61,7 @@ object ModelHelper {
       case Success(t) =>
         t
       case Failure(ex) =>
-        Logger.error(ex.getMessage)
+        Logger.error(ex.getMessage, ex)
         throw ex
     }
   }

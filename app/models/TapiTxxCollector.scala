@@ -71,7 +71,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
         true
       } catch {
         case ex: Throwable =>
-          Logger.error(ex.getMessage)
+          Logger.error(ex.getMessage, ex)
           Logger.info(s"$addr $desc is not supported.")
           false
       }
@@ -221,7 +221,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
           connected = true
         } catch {
           case ex: Exception =>
-            Logger.error(ex.getMessage)
+            Logger.error(ex.getMessage, ex)
             if (connected)
               log(instStr(instId), Level.ERR, s"${ex.getMessage}")
 
@@ -260,7 +260,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage)
+              Logger.error(ex.getMessage, ex)
               log(instStr(instId), Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
@@ -285,7 +285,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             }
           } onFailure({
             case ex:Throwable=>
-              ModelHelper.logInstrumentError(instId, ex.getMessage)
+              ModelHelper.logInstrumentError(instId, s"${self.path.name}: ${ex.getMessage}. ", ex)
           })
         }
       } else {
@@ -316,7 +316,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   def calibrationErrorHandler(id: String, timer: Cancellable, endState: String): PartialFunction[Throwable, Unit] = {
     case ex: Exception =>
       timer.cancel()
-      logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ")
+      logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ", ex)
       resetToNormal
       Instrument.setState(id, endState)
       collectorState = endState

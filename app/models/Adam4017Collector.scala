@@ -76,7 +76,7 @@ class Adam4017Collector extends Actor {
             cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage)
+              Logger.error(ex.getMessage, ex)
               Logger.info("Try again 1 min later...")
               //Try again
               cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, PrepareCollect(id, com, param))

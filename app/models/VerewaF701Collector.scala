@@ -123,7 +123,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
         cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
       } catch {
         case ex: Exception =>
-          Logger.error(ex.getMessage)
+          Logger.error(ex.getMessage, ex)
           Logger.info("Reopen 1 min latter...")
           cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
       }

@@ -47,7 +47,7 @@ object Record {
     val col = MongoDB.database.getCollection(colName)
     val f = col.insertOne(doc).toFuture()
     f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage)
+      case ex: Exception => Logger.error(ex.getMessage, ex)
     })
     f
   }
@@ -63,7 +63,7 @@ object Record {
 
     val f = col.updateOne(equal("_id", bdt), set(fieldName, status)).toFuture()
     f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage)
+      case ex: Exception => Logger.error(ex.getMessage, ex)
     })
     f
   }

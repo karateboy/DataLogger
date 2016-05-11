@@ -125,12 +125,9 @@ object Application extends Controller {
 
         Ok(mtData.data)
       } catch {
-        case e: Exception =>
-          Logger.error(e.toString)
-          BadRequest(e.toString)
-        case e: Throwable =>
-          Logger.error(e.toString)
-          BadRequest(e.toString)
+        case ex: Throwable =>
+          Logger.error(ex.getMessage, ex)
+          BadRequest(ex.toString)
       }
   }
 
@@ -220,7 +217,7 @@ object Application extends Controller {
       ids.map { Instrument.delete }
     } catch {
       case ex: Exception =>
-        Logger.error(ex.toString)
+        Logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -234,7 +231,7 @@ object Application extends Controller {
       ids.map { Instrument.deactivate }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.toString)
+        Logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -248,7 +245,7 @@ object Application extends Controller {
       ids.foreach { DataCollectManager.startCollect(_) }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.toString)
+        Logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -271,7 +268,7 @@ object Application extends Controller {
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.toString)
+        Logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -286,7 +283,7 @@ object Application extends Controller {
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.toString)
+        Logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -301,7 +298,7 @@ object Application extends Controller {
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.toString)
+        Logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -316,7 +313,7 @@ object Application extends Controller {
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.toString)
+        Logger.error(ex.getMessage, ex)
         Ok(ex.getMessage)
     }
 
@@ -331,7 +328,7 @@ object Application extends Controller {
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.toString)
+        Logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
