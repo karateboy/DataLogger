@@ -71,16 +71,14 @@ object Instrument {
     val doc = Document(json.toString())
     val param = doc.get("param").get.asString().getValue
 
-    val paramDoc = Document(param.toString())
-
-    doc ++ Document("param" -> paramDoc)
+    doc
   }
 
   def toInstrument(doc: Document) = {
-    val param = doc.get("param").get.asDocument().toJson()
-    val doc1 = doc ++ Document("param" -> param)
+    //val param = doc.get("param").get.asDocument().toJson()
+    //val doc1 = doc ++ Document("param" -> param)
 
-    val ret = Json.parse(doc1.toJson()).validate[Instrument]
+    val ret = Json.parse(doc.toJson()).validate[Instrument]
     ret.fold(error => {
       throw new Exception(JsError.toJson(error).toString)
     },

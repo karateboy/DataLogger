@@ -14,25 +14,27 @@ object Adam4017 extends DriverOps {
   implicit val reads = Json.reads[Adam4017Param]
 
   override def getMonitorTypes(param: String) = {
-    val p = Adam4017.validateParam(param)
-    p.ch.filter{ _.enable}.flatMap { _.mt }.toList
+    val paramList = Adam4017.validateParam(param)
+    paramList.flatMap { p => p.ch.filter { _.enable }.flatMap { _.mt }.toList }
   }
 
   override def verifyParam(json: String) = {
-    val ret = Json.parse(json).validate[Adam4017Param]
+    val ret = Json.parse(json).validate[List[Adam4017Param]]
     ret.fold(
       error => {
         throw new Exception(JsError.toJson(error).toString())
       },
-      param => {
-        if (param.ch.length != 8) {
-          throw new Exception("ch # shall be 8")
-        }
-        for (cfg <- param.ch) {
-          if (cfg.enable) {
-            assert(cfg.mt.isDefined)
-            assert(cfg.max.get > cfg.min.get)
-            assert(cfg.mtMax.get > cfg.mtMin.get)
+      paramList => {
+        for (param <- paramList) {
+          if (param.ch.length != 8) {
+            throw new Exception("ch # shall be 8")
+          }
+          for (cfg <- param.ch) {
+            if (cfg.enable) {
+              assert(cfg.mt.isDefined)
+              assert(cfg.max.get > cfg.min.get)
+              assert(cfg.mtMax.get > cfg.mtMin.get)
+            }
           }
         }
         json
@@ -41,7 +43,7 @@ object Adam4017 extends DriverOps {
 
   import Protocol.ProtocolParam
 
-  override def start(id:String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
+  override def start(id: String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
     val driverParam = Adam4017.validateParam(param)
     Adam4017Collector.start(id, protocolParam, driverParam)
   }
@@ -50,27 +52,18 @@ object Adam4017 extends DriverOps {
 
   }
 
+  
   def validateParam(json: String) = {
-    val ret = Json.parse(json).validate[Adam4017Param]
+    val ret = Json.parse(json).validate[List[Adam4017Param]]
     ret.fold(
       error => {
         Logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
-      param => {
-        if (param.ch.length != 8) {
-          throw new Exception("ch # shall be 8")
-        }
-        for (cfg <- param.ch) {
-          if (cfg.enable) {
-            assert(cfg.mt.isDefined)
-            assert(cfg.max.get > cfg.min.get)
-            assert(cfg.mtMax.get > cfg.mtMin.get)
-          }
-        }
-        param
+      params => {
+        params
       })
   }
 
-  override def getCalibrationTime(param:String)=None
+  override def getCalibrationTime(param: String) = None
 }

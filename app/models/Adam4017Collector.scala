@@ -11,11 +11,11 @@ object Adam4017Collector {
   import Adam4017._
   import Protocol.ProtocolParam
 
-  case class PrepareCollect(id: String, com: Int, param: Adam4017Param)
+  case class PrepareCollect(id: String, com: Int, param: List[Adam4017Param])
   case object Collect
 
   var count = 0
-  def start(id: String, protocolParam: ProtocolParam, param: Adam4017Param)(implicit context: ActorContext) = {
+  def start(id: String, protocolParam: ProtocolParam, param: List[Adam4017Param])(implicit context: ActorContext) = {
     val collector = context.actorOf(Props[Adam4017Collector], name = "Adam4017Collector" + count)
     count += 1
     assert(protocolParam.protocol == Protocol.serial)
@@ -34,13 +34,13 @@ class Adam4017Collector extends Actor {
   var instId: String = _
   var cancelable: Cancellable = _
   var comm: SerialComm = _
-  var adam4017param: Adam4017Param = _
+  var paramList: List[Adam4017Param] = _
   def readUntilCR = {
     import scala.collection.mutable.StringBuilder
     val builder = StringBuilder.newBuilder
   }
 
-  def decode(str: String) = {
+  def decode(str: String)(param: Adam4017Param) = {
     val ch = str.substring(1).split("(?=[+-])", 8)
     if (ch.length != 8)
       throw new Exception("unexpected format:" + str)
@@ -50,7 +50,7 @@ class Adam4017Collector extends Actor {
     val values = ch.map { Double.valueOf(_) }
     val dataList =
       for {
-        cfg <- adam4017param.ch.zipWithIndex
+        cfg <- param.ch.zipWithIndex
         chCfg = cfg._1 if chCfg.enable
         idx = cfg._2
       } yield {
@@ -71,7 +71,7 @@ class Adam4017Collector extends Actor {
         blocking {
           try {
             instId = id
-            adam4017param = param
+            paramList = param
             comm = SerialComm.open(com)
             cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
@@ -90,11 +90,13 @@ class Adam4017Collector extends Actor {
         blocking {
           val os = comm.os
           val is = comm.is
-          val readCmd = s"#${adam4017param.addr}\r"
-          os.write(readCmd.getBytes)
-          val str = comm.port.readString()
-          if (str != null) {
-            decode(str)
+          for (param <- paramList) {
+            val readCmd = s"#${param.addr}\r"
+            os.write(readCmd.getBytes)
+            val str = comm.port.readString()
+            if (str != null) {
+              decode(str)(param)
+            }
           }
           cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
         }
