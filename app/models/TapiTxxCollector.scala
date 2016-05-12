@@ -107,10 +107,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
     val inputRegStatusType =
       for {
-        r_idx <- inputRegs.zipWithIndex
-        r = r_idx._1
-        idx = r_idx._2
-      } yield InstrumentStatusType(key = s"$InputKey$idx", addr = r.addr, desc = r.desc, unit = r.unit)
+        r <- inputRegs
+      } yield InstrumentStatusType(key = s"$InputKey${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
 
     val holdingRegs =
       for (r <- modelReg.holdingRegs if probeHoldingReg(r.addr, r.desc))
@@ -118,10 +116,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
     val holdingRegStatusType =
       for {
-        r_idx <- holdingRegs.zipWithIndex
-        r = r_idx._1
-        idx = r_idx._2
-      } yield InstrumentStatusType(key = s"$HoldingKey$idx", addr = r.addr, desc = r.desc, unit = r.unit)
+        r <- holdingRegs
+      } yield InstrumentStatusType(key = s"$HoldingKey${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
 
     val modeRegs =
       for (r <- modelReg.modeRegs if probeInputStatus(r.addr, r.desc))
@@ -129,10 +125,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
     val modeRegStatusType =
       for {
-        r_idx <- modeRegs.zipWithIndex
-        r = r_idx._1
-        idx = r_idx._2
-      } yield InstrumentStatusType(key = s"$ModeKey$idx", addr = r.addr, desc = r.desc, unit = "-")
+        r <- modeRegs
+      } yield InstrumentStatusType(key = s"$ModeKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
 
     val warnRegs =
       for (r <- modelReg.warnRegs if probeInputStatus(r.addr, r.desc))
@@ -140,10 +134,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
     val warnRegStatusType =
       for {
-        r_idx <- warnRegs.zipWithIndex
-        r = r_idx._1
-        idx = r_idx._2
-      } yield InstrumentStatusType(key = s"$WarnKey$idx", addr = r.addr, desc = r.desc, unit = "-")
+        r <- warnRegs
+      } yield InstrumentStatusType(key = s"$WarnKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
 
     Logger.info("Finish probing.")
     inputRegStatusType ++ holdingRegStatusType ++ modeRegStatusType ++ warnRegStatusType

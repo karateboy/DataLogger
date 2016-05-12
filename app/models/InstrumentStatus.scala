@@ -13,10 +13,15 @@ object InstrumentStatus {
   val collection = MongoDB.database.getCollection(collectionName)
 
   case class Status(key: String, value: Double)
-  case class InstrumentStatus(time: DateTime, instID: String, statusList: List[Status]){
+  case class InstrumentStatusJSON(time:Long, instID: String, statusList: List[Status])
+  case class InstrumentStatus(time: DateTime, instID: String, statusList: List[Status]) {
     def excludeNaN = {
-      val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite()) }
+      val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
       InstrumentStatus(time, instID, validList)
+    }
+    def toJSON = {
+      val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
+      InstrumentStatusJSON(time.getMillis, instID, validList)
     }
   }
 
@@ -24,6 +29,7 @@ object InstrumentStatus {
   implicit val isRead = Json.reads[InstrumentStatus]
   implicit val stWrite = Json.writes[Status]
   implicit val isWrite = Json.writes[InstrumentStatus]
+  implicit val jsonWrite = Json.writes[InstrumentStatusJSON]
 
   def init(colNames: Seq[String]) {
     import org.mongodb.scala.model.Indexes._
@@ -75,9 +81,20 @@ object InstrumentStatus {
     val f = collection.find(and(equal("instID", id), gte("time", start.toDate()), lt("time", end.toDate()))).sort(ascending("time")).toFuture()
     waitReadyResult(f).map { toInstrumentStatus }
   }
-  
-  def formatValue(v:Double)={
-    if(Math.abs(v) <10)
+
+  def queryFuture(start: DateTime, end: DateTime) = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Sorts._
+    import scala.concurrent._
+    import scala.concurrent.duration._
+
+    val recordFuture = collection.find(and(gte("time", start.toDate()), lt("time", end.toDate()))).sort(ascending("time")).toFuture()
+    for (f <- recordFuture)
+      yield f.map { toInstrumentStatus }
+  }
+
+  def formatValue(v: Double) = {
+    if (Math.abs(v) < 10)
       s"%.2f".format(v)
     else if (Math.abs(v) < 100)
       s"%.1f".format(v)

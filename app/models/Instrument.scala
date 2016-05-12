@@ -114,6 +114,18 @@ object Instrument {
     waitReadyResult(f).map { toInstrument }
   }
 
+  def getAllInstrumentFuture = {
+    import org.mongodb.scala.bson._
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+
+    val docsFuture = Instrument.collection.find().sort(ascending("_id")).toFuture()
+    for(docs <- docsFuture)
+      yield
+        docs.map { toInstrument }
+  }
+
   def delete(id: String) = {
     val f = collection.deleteOne(equal("_id", id)).toFuture()
     waitReadyResult(f)
@@ -161,6 +173,10 @@ object Instrument {
     f.onFailure({
       case ex:Exception=>
         ModelHelper.logException(ex)
+    })
+    f.onSuccess({
+      case _=>
+        ForwardManager.updateInstrumentStatusType
     })
     f
   }
