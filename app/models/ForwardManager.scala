@@ -28,7 +28,7 @@ object ForwardManager {
   case object ForwardInstrumentStatus
   case object UpdateInstrumentStatusType
 
-  var manager: ActorRef = _
+  var managerOpt: Option[ActorRef] = None
   var count = 0
   def startup() = {
     val props = Props(classOf[ForwardManager], server, monitor)
@@ -37,13 +37,13 @@ object ForwardManager {
 
     if (!disable) {
       Logger.info(s"create forwarder $server")
-      manager = Akka.system.actorOf(props, name = s"forward_$count")
+      managerOpt = Some(Akka.system.actorOf(props, name = s"forward_$count"))
       count += 1
     }
   }
   
   def updateInstrumentStatusType = {
-    manager ! UpdateInstrumentStatusType
+    managerOpt map { _ ! UpdateInstrumentStatusType}
   }
 }
 
