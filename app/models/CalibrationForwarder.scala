@@ -10,11 +10,11 @@ import play.api.libs.json.JsError
 import play.api.libs.json.Json
 import play.api.libs.ws.WS
 
-class CalibrationForwarder(server: String, monitor: String) extends Actor  {
+class CalibrationForwarder(server: String, monitor: String) extends Actor {
   import ForwardManager._
   def receive = handler(None)
   def handler(latestCalibration: Option[Long]): Receive = {
-        case ForwardCalibration =>
+    case ForwardCalibration =>
       try {
         if (latestCalibration.isEmpty) {
           val url = s"http://$server/CalibrationRecordRange/$monitor"
@@ -40,7 +40,8 @@ class CalibrationForwarder(server: String, monitor: String) extends Actor  {
           val recordFuture = Calibration.calibrationReportFuture(new DateTime(latestCalibration.get + 1), DateTime.now)
           for (records <- recordFuture) {
             if (!records.isEmpty) {
-              val recordJSON = records.map { _.toJSON }
+              val recordJSON = records.filter { c => c.zero_val.isDefined && c.span_std.isDefined && c.span_val.isDefined }
+                .map { _.toJSON }
               val url = s"http://$server/CalibrationRecord/$monitor"
               val f = WS.url(url).put(Json.toJson(recordJSON))
               f onSuccess {
@@ -57,8 +58,8 @@ class CalibrationForwarder(server: String, monitor: String) extends Actor  {
       } catch {
         case ex: Throwable =>
           ModelHelper.logException(ex)
-      }      
- 
+      }
+
   }
 
 }

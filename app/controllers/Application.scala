@@ -133,7 +133,7 @@ object Application extends Controller {
 
   def getInstrumentTypes = Security.Authenticated {
     import InstrumentType._
-    val iTypes = InstrumentType.values.toList.map{InstrumentType.map}.map { t =>
+    val iTypes = InstrumentType.values.toList.map { InstrumentType.map }.map { t =>
       InstrumentTypeInfo(t.id, t.desp,
         t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
     }
@@ -162,13 +162,13 @@ object Application extends Controller {
           try {
             val instType = InstrumentType.map(rawInstrument.instType)
             val instParam = instType.driver.verifyParam(rawInstrument.param)
-            val newInstrument = rawInstrument.replaceParam(instParam)            
+            val newInstrument = rawInstrument.replaceParam(instParam)
             Instrument.upsertInstrument(newInstrument)
-            
+
             //Stop measuring if any
             DataCollectManager.stopCollect(newInstrument._id)
             MonitorType.stopMeasuring(newInstrument._id)
-            
+
             val mtList = instType.driver.getMonitorTypes(instParam)
             for (mt <- mtList) {
               MonitorType.setMeasuringBy(mt, newInstrument._id)
@@ -198,17 +198,17 @@ object Application extends Controller {
     Ok(Json.toJson(ret2))
   }
 
-  def getInstrument(id:String) = Security.Authenticated {
+  def getInstrument(id: String) = Security.Authenticated {
     import Instrument._
     val ret = Instrument.getInstrument(id)
-    if(ret.isEmpty)
+    if (ret.isEmpty)
       BadRequest(s"No such instrument: $id")
-    else{
+    else {
       val inst = ret(0)
       Ok(Json.toJson(inst))
     }
   }
-  
+
   def removeInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
@@ -275,11 +275,17 @@ object Application extends Controller {
     Ok(Json.obj("ok" -> true))
   }
 
-  def calibrateInstrument(instruments: String) = Security.Authenticated {
+  def calibrateInstrument(instruments: String, zeroCalibrationStr: String) = Security.Authenticated {
     val ids = instruments.split(",")
+    val zeroCalibration = zeroCalibrationStr.toBoolean
+    Logger.debug(s"zeroCalibration=$zeroCalibration")
+
     try {
-      ids.map { id =>
-        DataCollectManager.setInstrumentState(id, MonitorStatus.ZeroCalibrationStat)
+      ids.foreach { id =>
+        if (zeroCalibration)
+          DataCollectManager.zeroCalibration(id)
+        else
+          DataCollectManager.spanCalibration(id)
       }
     } catch {
       case ex: Throwable =>
@@ -289,7 +295,22 @@ object Application extends Controller {
 
     Ok(Json.obj("ok" -> true))
   }
-  
+
+  def calibrateInstrumentFull(instruments: String) = Security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.foreach { id =>
+        DataCollectManager.autoCalibration(id)
+      }
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.getMessage, ex)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
+
   def resetInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
@@ -339,16 +360,16 @@ object Application extends Controller {
     val mtList = MonitorType.mtvList.map { mt => MonitorType.map(mt) }
     Ok(Json.toJson(mtList))
   }
-  
-  def upsertMonitorType(id:String) = Security.Authenticated(BodyParsers.parse.json) {
+
+  def upsertMonitorType(id: String) = Security.Authenticated(BodyParsers.parse.json) {
     Logger.info(s"upsert Mt:$id")
-    implicit request=>
+    implicit request =>
       val mtResult = request.body.validate[MonitorType]
-      
+
       mtResult.fold(error => {
-          Logger.error(JsError.toJson(error).toString())
-          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
-        },
+        Logger.error(JsError.toJson(error).toString())
+        BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+      },
         mt => {
           MonitorType.upsertMonitorType(mt)
           Ok(Json.obj("ok" -> true))

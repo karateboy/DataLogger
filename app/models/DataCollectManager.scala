@@ -20,6 +20,16 @@ object DataCollectManager {
   case class ReportData(dataList: List[MonitorTypeData])
   case class ExecuteSeq(seq: Int, on: Boolean)
   case object CalculateData
+  case class AutoCalibration(instId: String)
+  case class ManualZeroCalibration(instId: String)
+  case class ManualSpanCalibration(instId: String)
+
+  
+  case class CalibrationType(auto: Boolean, zero: Boolean)
+  object AutoZero extends CalibrationType(true, true)
+  object AutoSpan extends CalibrationType(true, false)
+  object ManualZero extends CalibrationType(false, true)
+  object ManualSpan extends CalibrationType(false, false)
 
   var manager: ActorRef = _
   def startup() = {
@@ -49,6 +59,18 @@ object DataCollectManager {
     manager ! SetState(id, state)
   }
 
+  def autoCalibration(id: String) {
+    manager ! AutoCalibration(id)
+  }
+  
+  def zeroCalibration(id: String) {
+    manager ! ManualZeroCalibration(id)
+  }
+  
+  def spanCalibration(id: String) {
+    manager ! ManualSpanCalibration(id)
+  }
+  
   def executeSeq(seq: Int) {
     manager ! ExecuteSeq(seq, true)
   }
@@ -91,23 +113,23 @@ class DataCollectManager extends Actor {
       val collector = instType.driver.start(inst._id, inst.protocol, inst.param)
       val monitorTypes = instType.driver.getMonitorTypes(inst.param)
       val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
-      val timerOpt = calibrateTimeOpt.map{localtime=>
-          val calibrationTime = DateTime.now().toLocalDate().toDateTime(localtime)
-          val duration = if(DateTime.now() < calibrationTime)
-            new Duration(DateTime.now(), calibrationTime)
-          else
-            new Duration(DateTime.now(), calibrationTime + 1.day)
-          
-          import scala.concurrent.duration._
-          Akka.system.scheduler.schedule(Duration(duration.getStandardSeconds, SECONDS), 
-              Duration(1, DAYS), self, SetState(inst._id, MonitorStatus.ZeroCalibrationStat))        
+      val timerOpt = calibrateTimeOpt.map { localtime =>
+        val calibrationTime = DateTime.now().toLocalDate().toDateTime(localtime)
+        val duration = if (DateTime.now() < calibrationTime)
+          new Duration(DateTime.now(), calibrationTime)
+        else
+          new Duration(DateTime.now(), calibrationTime + 1.day)
+
+        import scala.concurrent.duration._
+        Akka.system.scheduler.schedule(Duration(duration.getStandardSeconds, SECONDS),
+          Duration(1, DAYS), self, AutoCalibration(inst._id))
       }
-        
+
       val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
       if (inst.instType == InstrumentType.t700) {
         calibratorOpt = Some(collector)
       }
-      
+
       context become handler(collectorMap + (inst._id -> instrumentParam),
         latestDataMap, mtDataList)
 
@@ -117,7 +139,7 @@ class DataCollectManager extends Actor {
         val param = paramOpt.get
         Logger.info(s"Stop collecting instrument $id ")
         Logger.info(s"remove ${param.mtList.toString()}")
-        param.calibrationTimerOpt.map{ timer=>timer.cancel() }
+        param.calibrationTimerOpt.map { timer => timer.cancel() }
         param.actor ! PoisonPill
 
         context become handler(collectorMap - (id), latestDataMap -- param.mtList, mtDataList)
@@ -182,10 +204,25 @@ class DataCollectManager extends Actor {
         param.actor ! SetState(instId, state)
       }
 
+    case AutoCalibration(instId) =>
+      collectorMap.get(instId).map { param =>
+        param.actor ! AutoCalibration(instId)
+      }
+
+    case ManualZeroCalibration(instId) =>
+      collectorMap.get(instId).map { param =>
+        param.actor ! ManualZeroCalibration(instId)
+      }
+
+    case ManualSpanCalibration(instId) =>
+      collectorMap.get(instId).map { param =>
+        param.actor ! ManualSpanCalibration(instId)
+      }
+
     case msg: ExecuteSeq =>
       if (calibratorOpt.isDefined)
         calibratorOpt.get ! msg
-      else{
+      else {
         Logger.warn("Calibrator is not online! Ignore execute seq message.")
       }
 
@@ -270,7 +307,7 @@ class DataCollectManager extends Actor {
   }
 
   override def postStop(): Unit = {
-    timer.cancel()    
+    timer.cancel()
   }
 
 }

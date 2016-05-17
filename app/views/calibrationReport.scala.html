@@ -40,51 +40,15 @@
 				}else{
 					<td>@item.endTime.toString("hh:mm")</td>
 				}
-				@if(map(item.monitorType).zd_law.isDefined && 
-					(item.zero_dev > map(item.monitorType).zd_law.get)){
-					<td style="color:red">@MonitorType.format(item.monitorType, Some(item.zero_val))</td>
-				}else {
-					@if(map(item.monitorType).zd_internal.isDefined && 
-						(item.zero_dev > MonitorType.map(item.monitorType).zd_internal.get)){
-						<td style="color:blue">@MonitorType.format(item.monitorType, Some(item.zero_val))</td>
-					}else{
-						<td>@MonitorType.format(item.monitorType, Some(item.zero_val))</td>	
-					}
-				}
+				<td style="@Calibration.getZeroCalibrationStyle(item)">@MonitorType.format(item.monitorType, item.zero_val)</td>
 				<td>@MonitorType.format(item.monitorType, map(item.monitorType).zd_internal)</td>
 				<td>@MonitorType.format(item.monitorType, MonitorType.map(item.monitorType).zd_law)</td>
-				<td>@MonitorType.format(item.monitorType, Some(item.span_val))</td>
-				<td>@MonitorType.format(item.monitorType, Some(item.span_std))</td>
-				@if(MonitorType.map(item.monitorType).span_dev_law.isDefined && 
-					(item.span_dev_ratio > MonitorType.map(item.monitorType).span_dev_law.get)){
-					<td style="color:red">@MonitorType.format(item.monitorType, Some(item.span_dev_ratio))</td>
-				}else {
-					@if(MonitorType.map(item.monitorType).span_dev_internal.isDefined && 
-						(item.span_dev_ratio > MonitorType.map(item.monitorType).span_dev_internal.get)){
-						<td style="color:blue">@MonitorType.format(item.monitorType, Some(item.span_dev_ratio))</td>
-					}else{
-						<td>@MonitorType.format(item.monitorType, Some(item.span_dev_ratio))</td>	
-					}
-				} 
-				
+				<td>@MonitorType.format(item.monitorType, item.span_val)</td>
+				<td>@MonitorType.format(item.monitorType, item.span_std)</td>
+				<td style="@Calibration.getSpanCalibrationStyle(item)">@MonitorType.format(item.monitorType, item.span_dev_ratio)</td>				
 				<td>@MonitorType.format(item.monitorType, map(item.monitorType).span_dev_internal)</td>
 				<td>@MonitorType.format(item.monitorType, map(item.monitorType).span_dev_law)</td>
-				@if((MonitorType.map(item.monitorType).zd_law.isDefined && 
-					(item.zero_dev > MonitorType.map(item.monitorType).zd_law.get)) || 
-					(MonitorType.map(item.monitorType).span_dev_law.isDefined && 
-						(item.span_dev_ratio > MonitorType.map(item.monitorType).span_dev_law.get))){
-					<td style="color:red">失敗</td>
-				}else {
-					@if((MonitorType.map(item.monitorType).zd_internal.isDefined && 
-						(item.zero_dev > MonitorType.map(item.monitorType).zd_internal.get)) || 
-						(MonitorType.map(item.monitorType).span_dev_internal.isDefined && 
-						(item.span_dev_ratio > MonitorType.map(item.monitorType).span_dev_internal.get))){
-						<td style="color:blue">成功</td>
-					}else{
-						<td>成功</td>	
-					}
-				} 
-				
+				<td style="@Calibration.getResultStyle(item)">@Calibration.getResult(item)</td>
 			</tr>
 		}
 	</tbody>

@@ -25,7 +25,9 @@
 		<button type="button" class="btn btn-primary" id="activateInstrument"><i class="fa fa-check-circle"></i> 啟用</button>
 		<button type="button" class="btn btn-primary" id="deactivateInstrument"><i class="fa fa-ban"></i> 停用</button>
 		<button type="button" class="btn btn-primary" id="maintainInstrument"><i class="fa fa-exchange"></i> 切換維修模式</button>
-		<button type="button" class="btn btn-primary" id="calibrateInstrument"><i class="fa fa-balance-scale"></i> 校正</button>
+		<button type="button" class="btn btn-primary" id="calibrateInstrumentZero"><i class="fa fa-balance-scale"></i> 零點校正</button>
+		<button type="button" class="btn btn-primary" id="calibrateInstrumentSpan"><i class="fa fa-balance-scale"></i> 全幅校正</button>
+		<button type="button" class="btn btn-primary" id="calibrateInstrument"><i class="fa fa-balance-scale"></i> 完整校正</button>
 		<button type="button" class="btn btn-primary" id="resetInstrument"><i class="fa fa-eject"></i> 中斷校正</button>													
 	</div>
 	<table id="instrumentTable" class="table table-bordered table-hover" cellspacing="0" width="100%">
@@ -136,6 +138,8 @@ $( document ).ready(function() {
 	$("#activateInstrument").click(handler("/ActivateInstrument/", "PUT"));
 	$("#deleteInstrument").click(handler("/Instrument/", "DELETE"));
 	$("#maintainInstrument").click(handler("/ToggleMaintainInstrument/", "PUT"));
+	$("#calibrateInstrumentZero").click(handler("/CalibrateInstrumentZero/", "PUT"));
+	$("#calibrateInstrumentSpan").click(handler("/CalibrateInstrumentSpan/", "PUT"));
 	$("#calibrateInstrument").click(handler("/CalibrateInstrument/", "PUT"));
 	$("#resetInstrument").click(handler("/ResetInstrument/", "PUT"));
 	

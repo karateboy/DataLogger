@@ -51,14 +51,14 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
   def receive = openComPort
 
-  val StartShippingData: Byte = 0x11
-  val StopShippingData: Byte = 0x13
-  val AutoCalibration: Byte = 0x12
-  val BackToNormal: Byte = 0x10
-  val ActivateMethaneZero: Byte = 0x0B
-  val ActivateMethaneSpan: Byte = 0x0C
-  val ActivateNonMethaneZero: Byte = 0xE
-  val ActivateNonMethaneSpan: Byte = 0xF
+  val StartShippingDataByte: Byte = 0x11
+  val StopShippingDataByte: Byte = 0x13
+  val AutoCalibrationByte: Byte = 0x12
+  val BackToNormalByte: Byte = 0x10
+  val ActivateMethaneZeroByte: Byte = 0x0B
+  val ActivateMethaneSpanByte: Byte = 0x0C
+  val ActivateNonMethaneZeroByte: Byte = 0xE
+  val ActivateNonMethaneSpanByte: Byte = 0xF
 
   def openComPort: Receive = {
     case OpenComPort =>
@@ -69,7 +69,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           Logger.info(s"${self.path.name}: Open com port.")
           timerOpt = if (collectorState == MonitorStatus.NormalStat) {
             for (serial <- serialCommOpt) {
-              serial.port.writeByte(StartShippingData)
+              serial.port.writeByte(StartShippingDataByte)
             }
             Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadData))
           } else {
@@ -100,14 +100,14 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       blocking {
         for (serial <- serialCommOpt) {
           val lines = serial.getLine
-          for(line <- lines){
+          for (line <- lines) {
             val parts = line.split('\t')
             val ch4 = MonitorTypeData(mtCH4, parts(2).toDouble, collectorState)
             val nmhc = MonitorTypeData(mtNMHC, parts(4).toDouble, collectorState)
 
             if (calibrateRecordStart)
               self ! ReportData(List(ch4, nmhc))
-              
+
             context.parent ! ReportData(List(ch4, nmhc))
           }
         }
@@ -133,41 +133,52 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           state match {
             case MonitorStatus.NormalStat =>
               for (serial <- serialCommOpt) {
-                serial.port.writeByte(BackToNormal)
-                serial.port.writeByte(StartShippingData)
+                serial.port.writeByte(BackToNormalByte)
+                serial.port.writeByte(StartShippingDataByte)
               }
               timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
-
-            case MonitorStatus.ZeroCalibrationStat =>
-              context become calibrationHandler(state, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], 0)              
-              self ! RaiseStart
           }
         }
       } onFailure serialErrorHandler
+
+    case AutoCalibration(instId) =>
+      assert(instId == id)
+      context become calibrationHandler(AutoZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+      self ! RaiseStart
+
+    case ManualZeroCalibration(instId) =>
+      assert(instId == id)
+      context become calibrationHandler(ManualZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+      self ! RaiseStart
+
+    case ManualSpanCalibration(instId) =>
+      assert(instId == id)
+      context become calibrationHandler(ManualSpan, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+      self ! RaiseStart
   }
 
   var calibrateTimerOpt: Option[Cancellable] = None
 
-  def calibrationHandler(state: String, mt: MonitorType.Value, startTime: com.github.nscala_time.time.Imports.DateTime, calibrationDataList: List[MonitorTypeData], zeroValue: Double): Receive = {
+  def calibrationHandler(calibrationType: CalibrationType, mt: MonitorType.Value, startTime: com.github.nscala_time.time.Imports.DateTime,
+                         calibrationDataList: List[MonitorTypeData], zeroValue: Option[Double]): Receive = {
     case ReadData =>
       readData
 
     case RaiseStart =>
       Future {
         blocking {
-          Logger.debug(s"${MonitorStatus.map(state)} RasieStart: $mt")
+          Logger.info(s"${calibrationType} RasieStart: $mt")
           val cmd =
-            state match {
-              case MonitorStatus.ZeroCalibrationStat =>
-                if (mt == mtCH4)
-                  ActivateMethaneZero
-                else
-                  ActivateNonMethaneZero
-              case MonitorStatus.SpanCalibrationStat =>
-                if (mt == mtCH4)
-                  ActivateMethaneSpan
-                else
-                  ActivateNonMethaneSpan
+            if (calibrationType.zero) {
+              if (mt == mtCH4)
+                ActivateMethaneZeroByte
+              else
+                ActivateNonMethaneZeroByte
+            } else {
+              if (mt == mtCH4)
+                ActivateMethaneSpanByte
+              else
+                ActivateNonMethaneSpanByte
             }
 
           for (serial <- serialCommOpt)
@@ -178,44 +189,75 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
     case ReportData(mtDataList) =>
       val data = mtDataList.filter { data => data.mt == mt }
-      context become calibrationHandler(state, mt, startTime, data ::: calibrationDataList, zeroValue)
+      context become calibrationHandler(calibrationType, mt, startTime, data ::: calibrationDataList, zeroValue)
 
     case HoldStart =>
-      Logger.debug(s"${MonitorStatus.map(state)} HoldStart: $mt")
+      Logger.debug(s"${calibrationType} HoldStart: $mt")
       calibrateRecordStart = true
       calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
-      Logger.debug(s"${MonitorStatus.map(state)} DownStart: $mt")
+      Logger.debug(s"${calibrationType} DownStart: $mt")
       calibrateRecordStart = false
 
       Future {
         blocking {
           for (serial <- serialCommOpt)
-            serial.port.writeByte(BackToNormal)
-          calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, CalibrateEnd))
+            serial.port.writeByte(BackToNormalByte)
+
+          calibrateTimerOpt = if (calibrationType.auto && calibrationType.zero)
+            Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd))
+          else
+            Some(Akka.system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
         }
       } onFailure serialErrorHandler
 
     case CalibrateEnd =>
       val values = calibrationDataList.map { _.value }
-      val avg = values.sum / values.length
-      if (state == MonitorStatus.ZeroCalibrationStat) {
+      val avg = if (values.length == 0)
+        None
+      else
+        Some(values.sum / values.length)
+
+      if (calibrationType.auto && calibrationType.zero) {
         Logger.info(s"$mt zero calibration end. ($avg)")
         collectorState = MonitorStatus.SpanCalibrationStat
         Instrument.setState(id, collectorState)
-        context become calibrationHandler(MonitorStatus.SpanCalibrationStat, mt, startTime, List.empty[MonitorTypeData], avg)
+        context become calibrationHandler(AutoSpan, mt, startTime, List.empty[MonitorTypeData], avg)
         self ! RaiseStart
       } else {
         Logger.info(s"$mt calibration end.")
-        val spanStd = MonitorType.map(mt).span.getOrElse(0d)
-        val cal = Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, spanStd, avg)
+        val cal =
+          if (calibrationType.auto) {
+            Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, MonitorType.map(mt).span, avg)
+          } else {
+            if (calibrationType.zero) {
+              Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
+            } else {
+              Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, MonitorType.map(mt).span, avg)
+            }
+          }
         Calibration.insert(cal)
+
         if (mt == mtCH4) {
-          collectorState = MonitorStatus.ZeroCalibrationStat
-          Instrument.setState(id, collectorState)
-          context become calibrationHandler(MonitorStatus.ZeroCalibrationStat,
-            mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], 0)
+          if (calibrationType.auto) {
+            collectorState = MonitorStatus.ZeroCalibrationStat
+            Instrument.setState(id, collectorState)
+            context become calibrationHandler(AutoZero,
+              mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+          }else{
+            if(calibrationType.zero){
+              collectorState = MonitorStatus.ZeroCalibrationStat
+              Instrument.setState(id, collectorState)
+              context become calibrationHandler(ManualZero,
+                mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+            }else{
+              collectorState = MonitorStatus.SpanCalibrationStat
+              Instrument.setState(id, collectorState)
+              context become calibrationHandler(ManualSpan,
+                mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+            }
+          }
           self ! RaiseStart
         } else {
           collectorState = MonitorStatus.NormalStat
@@ -223,7 +265,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           context become comPortOpened
         }
       }
-      
+
     case SetState(id, state) =>
       Future {
         blocking {
@@ -232,11 +274,14 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           state match {
             case MonitorStatus.NormalStat =>
               for (serial <- serialCommOpt) {
-                serial.port.writeByte(BackToNormal)
-                serial.port.writeByte(StartShippingData)
-              }              
+                serial.port.writeByte(BackToNormalByte)
+                serial.port.writeByte(StartShippingDataByte)
+              }
+              calibrateTimerOpt map {
+                timer => timer.cancel()
+              }
               context become comPortOpened
-              
+
             case MonitorStatus.ZeroCalibrationStat =>
               Logger.info("Ignore calibration SetState")
           }
