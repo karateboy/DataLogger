@@ -18,7 +18,10 @@ angular.module('monitorTypeListView', [])
 	        dataSrc: ''
 	    },
 		columns: [
-		          { data: 'desp' },
+		          { data: {
+		        	  "_":'order',
+		        	  "display":"desp"
+		        		  } },
 		          { data: 'value' },
 		          { data: 'unit' },
 		          { data: 'instrument' },
