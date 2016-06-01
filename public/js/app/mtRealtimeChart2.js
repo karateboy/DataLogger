@@ -1,5 +1,5 @@
-angular.module('mtRealtimeChartView', [])
-.controller('mtRealtimeChartCtrl',
+angular.module('mtRealtimeChartView2', [])
+.controller('mtRealtimeChartCtrl2',
 [ '$timeout',
   '$scope',
   '$http',
@@ -44,16 +44,16 @@ angular.module('mtRealtimeChartView', [])
 				var series = 
 					{
 			            name: result[i].desp,
-			            visible:i==0,
-			            type: 'areaspline',
+			            visible:i==1,
+			            type: 'spline',
 			            data: data
 			        }
 				chartSeries.push(series);			
 			}
 			//Init chart
-		    $('#mtRealtimeChart').highcharts({
+		    $('#mtRealtimeChart2').highcharts({
 		        chart: {
-		            type: 'areaspline',
+		            type: 'spline',
 		            marginRight: 10,
 		            height: 300,		            
 		            events: {
@@ -70,7 +70,7 @@ angular.module('mtRealtimeChartView', [])
 				},
 		        
 		        title: {
-		            text: '測項即時變化#1'
+		            text: '測項即時變化#2'
 		        },
 		        xAxis: {
 		            type: 'datetime',

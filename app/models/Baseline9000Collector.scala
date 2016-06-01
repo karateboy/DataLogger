@@ -92,6 +92,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
   val mtCH4 = MonitorType.withName("CH4")
   val mtNMHC = MonitorType.withName("NMHC")
+  val mtTHC = MonitorType.withName("THC")
 
   var calibrateRecordStart = false
 
@@ -102,13 +103,16 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           val lines = serial.getLine
           for (line <- lines) {
             val parts = line.split('\t')
-            val ch4 = MonitorTypeData(mtCH4, parts(2).toDouble, collectorState)
-            val nmhc = MonitorTypeData(mtNMHC, parts(4).toDouble, collectorState)
+            val ch4Value = parts(2).toDouble
+            val nmhcValue = parts(4).toDouble
+            val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
+            val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
+            val thc = MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
 
             if (calibrateRecordStart)
               self ! ReportData(List(ch4, nmhc))
 
-            context.parent ! ReportData(List(ch4, nmhc))
+            context.parent ! ReportData(List(ch4, nmhc, thc))
           }
         }
         timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
@@ -245,13 +249,13 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
             Instrument.setState(id, collectorState)
             context become calibrationHandler(AutoZero,
               mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
-          }else{
-            if(calibrationType.zero){
+          } else {
+            if (calibrationType.zero) {
               collectorState = MonitorStatus.ZeroCalibrationStat
               Instrument.setState(id, collectorState)
               context become calibrationHandler(ManualZero,
                 mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
-            }else{
+            } else {
               collectorState = MonitorStatus.SpanCalibrationStat
               Instrument.setState(id, collectorState)
               context become calibrationHandler(ManualSpan,

@@ -17,7 +17,7 @@ import models._
 
 object Realtime extends Controller {
   val overTimeLimit = 6
-  case class MonitorTypeStatus(desp: String, value: String, unit: String, instrument: String, status: String, classStr: String)
+  case class MonitorTypeStatus(desp: String, value: String, unit: String, instrument: String, status: String, classStr: String, order: Int)
   def MonitorTypeStatusList() = Security.Authenticated.async {
     implicit request =>
       import MonitorType._
@@ -43,11 +43,11 @@ object Realtime extends Controller {
                   
                 MonitorTypeStatus(mCase.desp, format(mt, Some(record.value)), mCase.unit, mCase.measuringBy.getOrElse("??"),
                   MonitorStatus.map(record.status).desp,
-                  MonitorStatus.getCssClassStr(record.status, overInternal, overLaw))
+                  MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)
               }else{
                 MonitorTypeStatus(mCase.desp, format(mt, None), mCase.unit, mCase.measuringBy.getOrElse("??"),
                   "通訊中斷",
-                  "abnormal_status")
+                  "abnormal_status", mCase.order)
               }
             }
           Ok(Json.toJson(list))

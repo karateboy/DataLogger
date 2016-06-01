@@ -16,7 +16,10 @@ angular.module('miniMonitorTypeListView', [])
 	        dataSrc: ''
 	    },
 		columns: [
-		          { data: 'desp' },
+		          { data: {
+		        	  "_":'order',
+		        	  "display":"desp"
+		        		  } },
 		          { data: 'value' },
 		          { data: 'status'}
 		      ],

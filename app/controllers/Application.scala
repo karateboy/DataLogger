@@ -163,6 +163,9 @@ object Application extends Controller {
             val instType = InstrumentType.map(rawInstrument.instType)
             val instParam = instType.driver.verifyParam(rawInstrument.param)
             val newInstrument = rawInstrument.replaceParam(instParam)
+            if(newInstrument._id.isEmpty())
+              throw new Exception("儀器ID不可是空的!")
+            
             Instrument.upsertInstrument(newInstrument)
 
             //Stop measuring if any
