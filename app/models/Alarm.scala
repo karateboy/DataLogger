@@ -18,13 +18,13 @@ import play.api.libs.json.Reads._
 //                  'S':"System"
 
 object Alarm {
-  object Level{
+  object Level {
     val INFO = 1
     val WARN = 2
     val ERR = 3
     val map = Map(INFO -> "資訊", WARN -> "警告", ERR -> "嚴重")
   }
-  val alarmLevelList = Level.INFO to Level.ERR 
+  val alarmLevelList = Level.INFO to Level.ERR
 
   def Src(mt: MonitorType.Value) = s"T:${mt.toString}"
   def Src(inst: Instrument) = s"I:${inst._id}"
@@ -46,8 +46,8 @@ object Alarm {
 
   case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
 
-  case class Alarm(time: DateTime, src: String, level: Int, desc: String){
-    def toJson=Alarm2JSON(time.getMillis, src, level, desc)
+  case class Alarm(time: DateTime, src: String, level: Int, desc: String) {
+    def toJson = Alarm2JSON(time.getMillis, src, level, desc)
   }
 
   implicit val write = Json.writes[Alarm]
@@ -85,7 +85,7 @@ object Alarm {
   import org.mongodb.scala.model.Projections._
   import org.mongodb.scala.model.Sorts._
 
-  def getAlarms(level:Int, start: DateTime, end: DateTime) = {
+  def getAlarms(level: Int, start: DateTime, end: DateTime) = {
     import org.mongodb.scala.bson.BsonDateTime
     val startB: BsonDateTime = start
     val endB: BsonDateTime = end
@@ -106,8 +106,23 @@ object Alarm {
   }
 
   def log(ar: Alarm) {
+    import org.mongodb.scala.bson.BsonDateTime
     //None blocking...
-    collection.insertOne(toDocument(ar)).toFuture()
+    val start: BsonDateTime = ar.time - 30.minutes
+    val end: BsonDateTime = ar.time
+
+    val countObserver = collection.count(and(gte("time", start), lt("time", end),
+      equal("src", ar.src), equal("level", ar.level), equal("desc", ar.desc)))
+
+    countObserver.subscribe(
+      (count: Long) => {
+        if (count == 0)
+          collection.insertOne(toDocument(ar)).toFuture()
+      }, // onNext
+      (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
+      () =>{} // onComplete
+      )
+
   }
 
   def log(src: String, level: Int, desc: String) {
