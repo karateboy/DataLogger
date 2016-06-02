@@ -35,10 +35,6 @@ class Adam4017Collector extends Actor {
   var cancelable: Cancellable = _
   var comm: SerialComm = _
   var paramList: List[Adam4017Param] = _
-  def readUntilCR = {
-    import scala.collection.mutable.StringBuilder
-    val builder = StringBuilder.newBuilder
-  }
 
   def decode(str: String)(param: Adam4017Param) = {
     val ch = str.substring(1).split("(?=[+-])", 8)
@@ -83,7 +79,7 @@ class Adam4017Collector extends Actor {
           }
 
         }
-      }
+      } onFailure futureErrorHandler
 
     case Collect =>
       Future {
@@ -100,7 +96,7 @@ class Adam4017Collector extends Actor {
           }
           cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
         }
-      }
+      } onFailure futureErrorHandler
 
     case SetState(id, state) =>
       Logger.info(s"$self => $state")
