@@ -33,15 +33,20 @@ object Alarm {
 
   def getSrcForDisplay(src: String) = {
     val part = src.split(':')
-    val srcType = part(0) match {
-      case "S" =>
-        "系統"
-      case "I" =>
-        "設備:" + part(1)
-      case "T" =>
-        "測項:" + MonitorType.map(MonitorType.withName(part(1))).desp
+    if (part.length >= 2) {
+      val srcType = part(0) match {
+        case "S" =>
+          "系統"
+        case "I" =>
+          "設備:" + part(1)
+        case "T" =>
+          "測項:" + MonitorType.map(MonitorType.withName(part(1))).desp
+      }
+      srcType
+    }else{
+      Logger.error(s"Invalid format $src")
+      src
     }
-    srcType
   }
 
   case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
@@ -120,7 +125,7 @@ object Alarm {
           collection.insertOne(toDocument(ar)).toFuture()
       }, // onNext
       (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
-      () =>{} // onComplete
+      () => {} // onComplete
       )
 
   }

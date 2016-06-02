@@ -94,7 +94,7 @@ class Adam4017Collector extends Actor {
               //FIXME busy waiting...
               strList = comm.getLine
             }
-            Logger.debug(s"#=${strList.length}")
+
             for (str <- strList) {
               decode(str)(param)
             }
