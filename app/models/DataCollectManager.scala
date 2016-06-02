@@ -24,7 +24,6 @@ object DataCollectManager {
   case class ManualZeroCalibration(instId: String)
   case class ManualSpanCalibration(instId: String)
 
-  
   case class CalibrationType(auto: Boolean, zero: Boolean)
   object AutoZero extends CalibrationType(true, true)
   object AutoSpan extends CalibrationType(true, false)
@@ -62,15 +61,15 @@ object DataCollectManager {
   def autoCalibration(id: String) {
     manager ! AutoCalibration(id)
   }
-  
+
   def zeroCalibration(id: String) {
     manager ! ManualZeroCalibration(id)
   }
-  
+
   def spanCalibration(id: String) {
     manager ! ManualSpanCalibration(id)
   }
-  
+
   def executeSeq(seq: Int) {
     manager ! ExecuteSeq(seq, true)
   }
@@ -227,7 +226,15 @@ class DataCollectManager extends Actor {
       }
 
     case GetLatestData =>
-      sender ! latestDataMap
+      //Filter out older than 6 second
+      val latestMap = latestDataMap.filter { kv =>
+        val r = kv._2
+        r.time >= DateTime.now() - 6.second
+      }
+      
+      context become handler(collectorMap, latestMap, mtDataList)
+
+      sender ! latestMap
   }
 
   import scala.collection.mutable.ListBuffer
