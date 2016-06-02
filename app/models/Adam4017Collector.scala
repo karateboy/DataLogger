@@ -89,9 +89,13 @@ class Adam4017Collector extends Actor {
           for (param <- paramList) {
             val readCmd = s"#${param.addr}\r"
             os.write(readCmd.getBytes)
-            val strList = comm.getLine
-            Logger.debug(s"strList #=${strList.length}")
-            for(str <-strList) {
+            var strList = comm.getLine
+            while(strList.length == 0){
+              //FIXME busy waiting...
+              strList = comm.getLine
+            }
+            Logger.debug(s"#=${strList.length}")
+            for (str <- strList) {
               decode(str)(param)
             }
           }
