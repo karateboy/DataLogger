@@ -147,16 +147,22 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
     case AutoCalibration(instId) =>
       assert(instId == id)
+      collectorState = MonitorStatus.ZeroCalibrationStat
+      Instrument.setState(id, collectorState)
       context become calibrationHandler(AutoZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
 
     case ManualZeroCalibration(instId) =>
       assert(instId == id)
+      collectorState = MonitorStatus.ZeroCalibrationStat
+      Instrument.setState(id, collectorState)
       context become calibrationHandler(ManualZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
 
     case ManualSpanCalibration(instId) =>
       assert(instId == id)
+      collectorState = MonitorStatus.SpanCalibrationStat
+      Instrument.setState(id, collectorState)
       context become calibrationHandler(ManualSpan, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
   }
