@@ -134,13 +134,12 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
         blocking {
           collectorState = state
           Instrument.setState(id, state)
-          state match {
-            case MonitorStatus.NormalStat =>
-              for (serial <- serialCommOpt) {
-                serial.port.writeByte(BackToNormalByte)
-                serial.port.writeByte(StartShippingDataByte)
-              }
-              timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+          if (state == MonitorStatus.NormalStat) {
+            for (serial <- serialCommOpt) {
+              serial.port.writeByte(BackToNormalByte)
+              serial.port.writeByte(StartShippingDataByte)
+            }
+            timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
           }
         }
       } onFailure serialErrorHandler
@@ -279,21 +278,20 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
     case SetState(id, state) =>
       Future {
         blocking {
-          collectorState = state
-          Instrument.setState(id, state)
-          state match {
-            case MonitorStatus.NormalStat =>
-              for (serial <- serialCommOpt) {
-                serial.port.writeByte(BackToNormalByte)
-                serial.port.writeByte(StartShippingDataByte)
-              }
-              calibrateTimerOpt map {
-                timer => timer.cancel()
-              }
-              context become comPortOpened
+          if (state == MonitorStatus.NormalStat) {
+            collectorState = state
+            Instrument.setState(id, state)
 
-            case MonitorStatus.ZeroCalibrationStat =>
-              Logger.info("Ignore calibration SetState")
+            for (serial <- serialCommOpt) {
+              serial.port.writeByte(BackToNormalByte)
+              serial.port.writeByte(StartShippingDataByte)
+            }
+            calibrateTimerOpt map {
+              timer => timer.cancel()
+            }
+            context become comPortOpened
+          } else {
+            Logger.info(s"Ignore setState $state during calibration")
           }
         }
       } onFailure serialErrorHandler
