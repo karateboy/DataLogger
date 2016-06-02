@@ -9,11 +9,17 @@ case class SerialComm(port:SerialPort, is:SerialInputStream, os:SerialOutputStre
     def splitLine(buf: Array[Byte]):List[String]={
       val idx = buf.indexOf('\n'.toByte)
       if(idx == -1){
-        readBuffer = buf
-        Nil
+        val cr_idx = buf.indexOf('\r'.toByte)
+        if(cr_idx == -1){
+          readBuffer = buf
+          Nil
+        }else{
+          val (a, rest) = buf.splitAt(cr_idx+1)
+          new String(a).trim() :: splitLine(rest)
+        }
       }else{
         val (a, rest) = buf.splitAt(idx+1)
-        new String(a) :: splitLine(rest) 
+        new String(a).trim() :: splitLine(rest) 
       }
     }
 
@@ -23,6 +29,8 @@ case class SerialComm(port:SerialPort, is:SerialInputStream, os:SerialOutputStre
     
     splitLine(readBuffer) 
   }
+  
+  
   
   def close={
     is.close
