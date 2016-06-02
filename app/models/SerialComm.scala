@@ -5,8 +5,7 @@ import java.io.OutputStream
 import jssc.SerialPort
 case class SerialComm(port:SerialPort, is:SerialInputStream, os:SerialOutputStream){
   var readBuffer = Array.empty[Byte]
-  def getLine = {    
-    readBuffer = readBuffer ++ port.readBytes()
+  def getLine = {
     def splitLine(buf: Array[Byte]):List[String]={
       val idx = buf.indexOf('\n'.toByte)
       if(idx == -1){
@@ -17,6 +16,11 @@ case class SerialComm(port:SerialPort, is:SerialInputStream, os:SerialOutputStre
         new String(a) :: splitLine(rest) 
       }
     }
+
+    val ret = port.readBytes()
+    if(ret != null)
+      readBuffer = readBuffer ++ ret 
+    
     splitLine(readBuffer) 
   }
   
