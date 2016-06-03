@@ -88,7 +88,7 @@ object Instrument {
   def init(colNames: Seq[String]) {
     if (!colNames.contains(collectionName)) {
       val f = MongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
     }
   }
 

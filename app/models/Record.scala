@@ -19,12 +19,12 @@ object Record {
   def init(colNames: Seq[String]) {
     if (!colNames.contains(HourCollection)) {
       val f = MongoDB.database.createCollection(HourCollection).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
     }
 
     if (!colNames.contains(MinCollection)) {
       val f = MongoDB.database.createCollection(MinCollection).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
     }
   }
 

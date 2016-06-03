@@ -37,11 +37,11 @@ object Calibration {
   def init(colNames: Seq[String]) {
     if (!colNames.contains(collectionName)) {
       val f = MongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
       f.onSuccess({
         case _: Seq[_] =>
           val cf = collection.createIndex(ascending("monitorType", "startTime", "endTime")).toFuture()
-          cf.onFailure(futureErrorHandler)
+          cf.onFailure(errorHandler)
       })
     }
   }

@@ -26,7 +26,7 @@ object User {
   def init(colNames:Seq[String]){
     if(!colNames.contains(ColName)){
       val f = MongoDB.database.createCollection(ColName).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
     }  
     val f = collection.count().toFuture()
     f.onSuccess({
@@ -37,7 +37,7 @@ object User {
           newUser(defaultUser)
         }
     })
-    f.onFailure(futureErrorHandler)
+    f.onFailure(errorHandler)
   }  
   
   def toUser(doc: Document) = {
@@ -90,7 +90,7 @@ object User {
 
   def getUserByEmail(email: String) = {
     val f = collection.find(equal("_id", email)).first().toFuture()
-    f.onFailure { futureErrorHandler }
+    f.onFailure { errorHandler }
     val ret = waitReadyResult(f)
     if (ret.length == 0)
       None
@@ -100,14 +100,14 @@ object User {
 
   def getAllUsers() = {
     val f = collection.find().toFuture()
-    f.onFailure { futureErrorHandler }
+    f.onFailure { errorHandler }
     val ret = waitReadyResult(f)
     ret.map { toUser }
   }
 
   def getAdminUsers() = {
     val f = collection.find(equal("isAdmin", true)).toFuture()
-    f.onFailure { futureErrorHandler }
+    f.onFailure { errorHandler }
     val ret = waitReadyResult(f)
     ret.map { toUser }
   }

@@ -58,7 +58,7 @@ object MonitorType extends Enumeration {
   def init(colNames: Seq[String])={
     def insertMt={
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
       f.onSuccess({
         case _: Seq[t] =>
           refreshMtv
@@ -68,7 +68,7 @@ object MonitorType extends Enumeration {
 
     if (!colNames.contains(colName)) {
       val f = MongoDB.database.createCollection(colName).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
       f.onSuccess({
         case _: Seq[t] =>
           insertMt

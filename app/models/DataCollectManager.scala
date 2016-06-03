@@ -190,7 +190,7 @@ class DataCollectManager extends Actor {
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
       val f = calculateMinData(current)
-      f onFailure (futureErrorHandler)
+      f onFailure (errorHandler)
 
       if (current.getMinuteOfHour == 0) {
         import scala.concurrent.ExecutionContext.Implicits.global

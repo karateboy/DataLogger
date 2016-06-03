@@ -43,12 +43,18 @@ object ModelHelper {
     log(instStr(id), Level.INFO, msg)
   }  
   
-  def futureErrorHandler:PartialFunction[Throwable, Any] = {
+  def errorHandler:PartialFunction[Throwable, Any] = {
       case ex:Throwable=>
-        Logger.error(ex.getMessage, ex)
+        Logger.error("Error=>", ex)
         throw ex
     }
-  
+
+  def errorHandler(msg:String= "Error=>"):PartialFunction[Throwable, Any] = {
+      case ex:Throwable=>
+        Logger.error(msg, ex)
+        throw ex
+  }
+
   import scala.concurrent._
   
   def waitReadyResult[T](f:Future[T])={

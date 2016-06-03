@@ -63,7 +63,7 @@ object MonitorStatus {
   def init(colNames: Seq[String]) {
     def insertDefaultStatus {
       val f = collection.insertMany(defaultStatus.map { toDocument }).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
       f.onSuccess({
         case _=>
           refreshMap
@@ -72,7 +72,7 @@ object MonitorStatus {
 
     if (!colNames.contains(collectionName)) {
       val f = MongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
       f.onSuccess({
         case _: Seq[_] =>
           insertDefaultStatus
@@ -95,7 +95,7 @@ object MonitorStatus {
 
   def msList = {
     val f = collection.find().toFuture()
-    f.onFailure(futureErrorHandler)
+    f.onFailure(errorHandler)
     waitReadyResult(f).map { toMonitorStatus }
   }
 

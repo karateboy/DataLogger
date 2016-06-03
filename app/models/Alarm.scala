@@ -78,7 +78,7 @@ object Alarm {
     import org.mongodb.scala.model.Indexes._
     if (!colNames.contains(collectionName)) {
       val f = MongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
       f.onSuccess({
         case _: Seq[_] =>
           collection.createIndex(ascending("time", "level", "src"))

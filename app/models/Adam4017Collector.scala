@@ -79,7 +79,7 @@ class Adam4017Collector extends Actor {
           }
 
         }
-      } onFailure futureErrorHandler
+      } onFailure errorHandler
 
     case Collect =>
       Future {
@@ -87,26 +87,31 @@ class Adam4017Collector extends Actor {
           import com.github.nscala_time.time.Imports._
           val os = comm.os
           val is = comm.is
-          for (param <- paramList) {
-            val readCmd = s"#${param.addr}\r"
-            os.write(readCmd.getBytes)
-            var strList = comm.getLine
-            val startTime = DateTime.now
-            while(strList.length == 0){
-              val elapsedTime = new Duration(startTime, DateTime.now)
-              if(elapsedTime.getStandardSeconds > 1)
-                throw new Exception("Read timeout!")
-              
-              strList = comm.getLine
+          try {
+            for (param <- paramList) {
+              val readCmd = s"#${param.addr}\r"
+              os.write(readCmd.getBytes)
+              var strList = comm.getLine
+              val startTime = DateTime.now
+              while (strList.length == 0) {
+                val elapsedTime = new Duration(startTime, DateTime.now)
+                if (elapsedTime.getStandardSeconds > 1) {
+                  throw new Exception("Read timeout!")
+                }
+                strList = comm.getLine
+              }
+
+              for (str <- strList) {
+                decode(str)(param)
+              }
             }
 
-            for (str <- strList) {
-              decode(str)(param)
-            }
+          } catch (errorHandler)
+          finally {
+            cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           }
-          cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
         }
-      } onFailure futureErrorHandler
+      } onFailure errorHandler
 
     case SetState(id, state) =>
       Logger.info(s"$self => $state")

@@ -37,7 +37,7 @@ object ManualAuditLog {
     import org.mongodb.scala.model.Indexes._
     if (!colNames.contains(collectionName)) {
       val f = MongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(futureErrorHandler)
+      f.onFailure(errorHandler)
       f.onSuccess({
         case _: Seq[_] =>
           collection.createIndex(ascending("dataTime", "mt"))
@@ -53,7 +53,7 @@ object ManualAuditLog {
     val f = collection.replaceOne(and(equal("dataTime", log.dataTime:BsonDateTime), equal("mt", MonitorType.BFName(log.mt))),
       toDocument(log), UpdateOptions().upsert(true)).toFuture()
       
-    f.onFailure(futureErrorHandler)
+    f.onFailure(errorHandler)
     f
   }
 
