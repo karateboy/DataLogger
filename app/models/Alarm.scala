@@ -110,7 +110,7 @@ object Alarm {
       yield docs.map { toAlarm }
   }
 
-  def log(ar: Alarm) {
+  private def log(ar: Alarm) {
     import org.mongodb.scala.bson.BsonDateTime
     //None blocking...
     val start: BsonDateTime = ar.time - 30.minutes

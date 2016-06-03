@@ -70,7 +70,7 @@ angular.module('mtRealtimeChartView', [])
 				},
 		        
 		        title: {
-		            text: '測項即時變化#1'
+		            text: '測項即時曲線面積圖'
 		        },
 		        xAxis: {
 		            type: 'datetime',

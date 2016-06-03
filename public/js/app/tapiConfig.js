@@ -93,7 +93,7 @@ angular.module('tapiConfigView', [])
 		$scope.param.calibrationTime = $scope.param.calibrationTimeDate.getTime();
 		$scope.param.raiseTime = parseInt($scope.param.raiseTime);
 		$scope.param.holdTime = parseInt($scope.param.holdTime);
-		$scope.param.raiseTime = parseInt($scope.param.raiseTime);
+		$scope.param.downTime = parseInt($scope.param.downTime);
 		$scope.param.calibrateZeoSeq = parseInt($scope.param.calibrateZeoSeq);
 		$scope.param.calibrateSpanSeq = parseInt($scope.param.calibrateSpanSeq);
 		

@@ -179,11 +179,21 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           Logger.info(s"${calibrationType} RasieStart: $mt")
           val cmd =
             if (calibrationType.zero) {
+              config.calibrateZeoSeq map {
+                seqNo =>
+                  context.parent ! ExecuteSeq(seqNo, true)
+              }
+
               if (mt == mtCH4)
                 ActivateMethaneZeroByte
               else
                 ActivateNonMethaneZeroByte
             } else {
+              config.calibrateSpanSeq map {
+                seqNo =>
+                  context.parent ! ExecuteSeq(seqNo, true)
+              }
+
               if (mt == mtCH4)
                 ActivateMethaneSpanByte
               else
@@ -208,6 +218,18 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
     case DownStart =>
       Logger.debug(s"${calibrationType} DownStart: $mt")
       calibrateRecordStart = false
+
+      if (calibrationType.zero) {
+        config.calibrateZeoSeq map {
+          seqNo =>
+            context.parent ! ExecuteSeq(seqNo, false)
+        }
+      } else {
+        config.calibrateSpanSeq map {
+          seqNo =>
+            context.parent ! ExecuteSeq(seqNo, false)
+        }
+      }
 
       Future {
         blocking {

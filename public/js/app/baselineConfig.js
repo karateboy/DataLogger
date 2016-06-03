@@ -13,7 +13,9 @@ angular.module('baselineConfigView', [])
 				calibrationTimeDate: new Date(1970, 0, 1, 15, 0, 0),
 				raiseTime:300,
 				holdTime:60,
-				downTime:300
+				downTime:300,
+				calibrateZeoSeq:1,
+				calibrateSpanSeq:2
 			};
 	}else{
 		//angular require calibrationTime to be Date		
@@ -29,6 +31,8 @@ angular.module('baselineConfigView', [])
 			desc += "<br/>校正上升時間:" + $scope.param.raiseTime;
 			desc += "<br/>校正持續時間:" + $scope.param.holdTime;
 			desc += "<br/>校正下降時間:" + $scope.param.downTime;
+			desc += "<br/>零點校正執行程序:" + $scope.param.calibrateZeoSeq;
+			desc += "<br/>全幅校正執行程序:" + $scope.param.calibrateSpanSeq;
 		}
 		
 		return desc;
@@ -55,12 +59,23 @@ angular.module('baselineConfigView', [])
 			alert("沒有設定校正下降時間!");
 			return false;
 		}
-		
+		if(!$scope.param.calibrateZeoSeq){
+			alert("沒有設定零點校正程序!");
+			return false;
+		}
+
+		if(!$scope.param.calibrateSpanSeq){
+			alert("沒有設定全幅校正程序!");
+			return false;
+		}
+
 		$scope.param.calibrationTime = $scope.param.calibrationTimeDate.getTime();
 		$scope.param.raiseTime = parseInt($scope.param.raiseTime);
 		$scope.param.holdTime = parseInt($scope.param.holdTime);
-		$scope.param.raiseTime = parseInt($scope.param.raiseTime);
-		
+		$scope.param.downTime = parseInt($scope.param.downTime);
+		$scope.param.calibrateZeoSeq = parseInt($scope.param.calibrateZeoSeq);
+		$scope.param.calibrateSpanSeq = parseInt($scope.param.calibrateSpanSeq);
+
 		//copy back
 		$config.param = $scope.param;
 		

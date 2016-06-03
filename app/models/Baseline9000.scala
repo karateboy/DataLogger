@@ -7,7 +7,7 @@ import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
 case class Baseline9000Config(calibrationTime: LocalTime, 
-                              raiseTime: Int, downTime: Int, holdTime: Int)
+                              raiseTime: Int, downTime: Int, holdTime: Int, calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int])
 
 object Baseline9000 extends DriverOps {
   implicit val cfgRead = Json.reads[Baseline9000Config]

@@ -84,14 +84,19 @@ class Adam4017Collector extends Actor {
     case Collect =>
       Future {
         blocking {
+          import com.github.nscala_time.time.Imports._
           val os = comm.os
           val is = comm.is
           for (param <- paramList) {
             val readCmd = s"#${param.addr}\r"
             os.write(readCmd.getBytes)
             var strList = comm.getLine
+            val startTime = DateTime.now
             while(strList.length == 0){
-              //FIXME busy waiting...
+              val elapsedTime = new Duration(startTime, DateTime.now)
+              if(elapsedTime.getStandardSeconds > 1)
+                throw new Exception("Read timeout!")
+              
               strList = comm.getLine
             }
 
@@ -99,7 +104,7 @@ class Adam4017Collector extends Actor {
               decode(str)(param)
             }
           }
-          cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+          cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
         }
       } onFailure futureErrorHandler
 
