@@ -312,6 +312,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
             calibrateTimerOpt map {
               timer => timer.cancel()
             }
+            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
             context become comPortOpened
           } else {
             Logger.info(s"Ignore setState $state during calibration")

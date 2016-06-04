@@ -62,7 +62,8 @@ class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   }
 
   override def resetToNormal = {
-    try {      
+    try { 
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
       masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
       masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
     } catch {

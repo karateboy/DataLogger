@@ -68,8 +68,9 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
 
   def resetToNormal = {
     try {
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
       masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
-      masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+      masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)      
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)
