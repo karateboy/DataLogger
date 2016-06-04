@@ -45,6 +45,26 @@ object ForwardManager {
   def updateInstrumentStatusType = {
     managerOpt map { _ ! UpdateInstrumentStatusType}
   }
+  
+  def forwardHourData = {
+    managerOpt map { _ ! ForwardHour}
+  }
+  
+  def forwardMinData = {
+    managerOpt map { _ ! ForwardMin}
+  }
+  
+  def forwardCalibration = {
+    managerOpt map { _ ! ForwardCalibration}
+  }
+  
+  def forwardAlarm = {
+    managerOpt map { _ ! ForwardAlarm}
+  }
+  
+  def forwardInstrumentStatus = {
+    managerOpt map { _ ! ForwardInstrumentStatus}
+  }
 }
 
 class ForwardManager(server: String, monitor: String) extends Actor {
@@ -87,9 +107,25 @@ class ForwardManager(server: String, monitor: String) extends Actor {
       instrumentStatusForwarder ! ForwardInstrumentStatus
       statusTypeForwarder ! UpdateInstrumentStatusType
       
+    case ForwardHour =>
+      hourRecordForwarder ! ForwardHour
+    
+    case ForwardMin =>
+      minRecordForwarder ! ForwardMin
+      
+    case ForwardCalibration =>
+      calibrationForwarder ! ForwardCalibration
+      
+    case ForwardAlarm =>
+      alarmForwarder ! ForwardAlarm
+      
+    case ForwardInstrumentStatus=>
+      instrumentStatusForwarder ! ForwardInstrumentStatus
+      
     case UpdateInstrumentStatusType=>
       statusTypeForwarder ! UpdateInstrumentStatusType
   }
+  
   override def postStop(): Unit = {
     timer.cancel()
   }

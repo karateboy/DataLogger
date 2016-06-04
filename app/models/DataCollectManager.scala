@@ -101,10 +101,11 @@ class DataCollectManager extends Actor {
 
   case class InstrumentParam(actor: ActorRef, mtList: List[MonitorType.Value], calibrationTimerOpt: Option[Cancellable])
 
-  def receive = handler(Map.empty[String, InstrumentParam],
+  def receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
     Map.empty[MonitorType.Value, Record], List.empty[(DateTime, List[MonitorTypeData])])
 
-  def handler(collectorMap: Map[String, InstrumentParam],
+  def handler(instrumentMap: Map[String, InstrumentParam],
+              collectorInstrumentMap: Map[ActorRef, String],
               latestDataMap: Map[MonitorType.Value, Record],
               mtDataList: List[(DateTime, List[MonitorTypeData])]): Receive = {
     case AddInstrument(inst) =>
@@ -129,11 +130,12 @@ class DataCollectManager extends Actor {
         calibratorOpt = Some(collector)
       }
 
-      context become handler(collectorMap + (inst._id -> instrumentParam),
+      context become handler(instrumentMap + (inst._id -> instrumentParam), 
+          collectorInstrumentMap + (collector -> inst._id),
         latestDataMap, mtDataList)
 
     case RemoveInstrument(id: String) =>
-      val paramOpt = collectorMap.get(id)
+      val paramOpt = instrumentMap.get(id)
       if (paramOpt.isDefined) {
         val param = paramOpt.get
         Logger.info(s"Stop collecting instrument $id ")
@@ -141,7 +143,9 @@ class DataCollectManager extends Actor {
         param.calibrationTimerOpt.map { timer => timer.cancel() }
         param.actor ! PoisonPill
 
-        context become handler(collectorMap - (id), latestDataMap -- param.mtList, mtDataList)
+        context become handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
+            latestDataMap -- param.mtList, mtDataList)
+        
         if (calibratorOpt == Some(param.actor))
           calibratorOpt = None
       }
@@ -153,7 +157,8 @@ class DataCollectManager extends Actor {
         for (data <- dataList)
           yield (data.mt -> Record(now, data.value, data.status))
 
-      context become handler(collectorMap, latestDataMap ++ pairs, (DateTime.now, dataList) :: mtDataList)
+      context become handler(instrumentMap, collectorInstrumentMap, 
+          latestDataMap ++ pairs, (DateTime.now, dataList) :: mtDataList)
 
     case CalculateData => {
       def calculateMinData(currentMintues: DateTime) = {
@@ -184,7 +189,7 @@ class DataCollectManager extends Actor {
         }
         val minuteMtAvgList = calculateAvgMap(mtMap)
 
-        context become handler(collectorMap, latestDataMap, currentData)
+        context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
         Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
       }
 
@@ -199,22 +204,22 @@ class DataCollectManager extends Actor {
     }
 
     case SetState(instId, state) =>
-      collectorMap.get(instId).map { param =>
+      instrumentMap.get(instId).map { param =>
         param.actor ! SetState(instId, state)
       }
 
     case AutoCalibration(instId) =>
-      collectorMap.get(instId).map { param =>
+      instrumentMap.get(instId).map { param =>
         param.actor ! AutoCalibration(instId)
       }
 
     case ManualZeroCalibration(instId) =>
-      collectorMap.get(instId).map { param =>
+      instrumentMap.get(instId).map { param =>
         param.actor ! ManualZeroCalibration(instId)
       }
 
     case ManualSpanCalibration(instId) =>
-      collectorMap.get(instId).map { param =>
+      instrumentMap.get(instId).map { param =>
         param.actor ! ManualSpanCalibration(instId)
       }
 
@@ -232,7 +237,7 @@ class DataCollectManager extends Actor {
         r.time >= DateTime.now() - 6.second
       }
       
-      context become handler(collectorMap, latestMap, mtDataList)
+      context become handler(instrumentMap, collectorInstrumentMap, latestMap, mtDataList)
 
       sender ! latestMap
   }

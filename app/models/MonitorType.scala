@@ -7,15 +7,61 @@ import play.api.libs.functional.syntax._
 import models.ModelHelper._
 import com.github.nscala_time.time.Imports._
 import scala.concurrent.ExecutionContext.Implicits.global
+case class MonitorTypeV1(_id: String, desp: String, unit: String, std_law: Option[Double],
+                         prec: Int, order: Int, std_internal: Option[Double] = None,
+                         zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
+                         span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
+                         measuredBy: Option[String] = None, measuringBy: Option[String] = None) {
+  def toMonitorType = {
+    val newMeasuringBy = measuringBy map { List(_) }
+
+    MonitorType(_id, desp, unit, std_law,
+      prec, order, std_internal,
+      zd_internal, zd_law,
+      span, span_dev_internal, span_dev_law,
+      newMeasuringBy)
+  }
+}
 
 case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[Double],
                        prec: Int, order: Int, std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
-                       span: Option[Double]=None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
-                       measuredBy: Option[String] = None, measuringBy: Option[String] = None)
+                       span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
+                       measuringBy: Option[List[String]] = None) {
+  def addMeasuring(instrumentId: String, append: Boolean) = {
+    val newMeasuringBy =
+      if (measuringBy.isEmpty)
+        List(instrumentId)
+      else {
+        if (append)
+          measuringBy.get ++ List(instrumentId)
+        else
+          instrumentId :: measuringBy.get
+      }
+    MonitorType(_id, desp, unit, std_law,
+      prec, order, std_internal,
+      zd_internal, zd_law,
+      span, span_dev_internal, span_dev_law,
+      Some(newMeasuringBy))
+  }
+
+  def stopMeasuring(instrumentId: String) = {
+    val newMeasuringBy =
+      if (measuringBy.isEmpty)
+        None
+      else
+        Some(measuringBy.get.filter { id => id != instrumentId })
+
+    MonitorType(_id, desp, unit, std_law,
+      prec, order, std_internal,
+      zd_internal, zd_law,
+      span, span_dev_internal, span_dev_law,
+      newMeasuringBy)
+  }
+}
 //MeasuredBy => History...
 //MeasuringBy => Current...
-                       
+
 object MonitorType extends Enumeration {
   import org.mongodb.scala.bson._
   import scala.concurrent._
@@ -55,8 +101,8 @@ object MonitorType extends Enumeration {
 
   lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
-  def init(colNames: Seq[String])={
-    def insertMt={
+  def init(colNames: Seq[String]) = {
+    def insertMt = {
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
       f.onFailure(errorHandler)
       f.onSuccess({
@@ -74,7 +120,7 @@ object MonitorType extends Enumeration {
           insertMt
       })
       Some(f.mapTo[Unit])
-    }else
+    } else
       None
   }
 
@@ -90,28 +136,27 @@ object MonitorType extends Enumeration {
 
   def toMonitorType(d: Document) = {
     val ret = Json.parse(d.toJson()).validate[MonitorType]
-
+    implicit val v1Reader = Json.reads[MonitorTypeV1]
     ret.fold(error => {
-      Logger.error(JsError.toJson(error).toString())
-      throw new Exception(JsError.toJson(error).toString)
+      val ret2 = Json.parse(d.toJson()).validate[MonitorTypeV1]
+      ret2.fold(err => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString)
+      }, mt => {
+        Logger.info("Upgrade MonitorTypeV1")
+        if (mt.measuredBy.isDefined) {
+          val measuringList = if (mt.measuringBy.isDefined)
+            List(mt.measuringBy.get)
+          else
+            List.empty[String]
+          setMeasuringBy(mt._id, measuringList)
+        }
+        mt.toMonitorType
+      })
+
     },
       mt =>
         mt)
-    /*
-    val std_lawOpt = if (d("std_law").isDouble())
-      Some(d("std_law").asDouble().doubleValue())
-    else
-      None
-
-    MonitorType(
-      id = d("_id").asString().getValue,
-      desp = d("desp").asString().getValue,
-      unit = d("unit").asString().getValue,
-      std_law = std_lawOpt,
-      prec = d("prec").asInt32().intValue(),
-      order = d("order").asInt32().intValue())
-      * 
-      */
   }
 
   private def mtList: List[MonitorType] =
@@ -136,8 +181,11 @@ object MonitorType extends Enumeration {
 
   var map: Map[Value, MonitorType] = Map(mtList.map { e => Value(e._id) -> e }: _*)
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
-  def activeMtvList = mtvList.filter { mt => map(mt).measuredBy.isDefined }
-  def realtimeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
+  def activeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
+  def realtimeMtvList = mtvList.filter { mt =>
+    val measuringBy = map(mt).measuringBy
+    measuringBy.isDefined && (!measuringBy.get.isEmpty)
+  }
 
   def newMonitorType(mt: MonitorType) = {
     val doc = toDocument(mt)
@@ -150,26 +198,52 @@ object MonitorType extends Enumeration {
     map = map + (Value(mt._id) -> mt)
   }
 
-  def setMeasuringBy(mt:MonitorType.Value, id:String)={
-    updateMonitorType(mt, "measuringBy", id)
-    updateMonitorType(mt, "measuredBy", id)
+  def setMeasuringBy(mt: MonitorType.Value, instrumentIds: List[String]) {
+    setMeasuringBy(map(mt)._id, instrumentIds)
   }
-  
-  def stopMeasuring(instrumentId:String)={
-    for(mt <- realtimeMtvList.filter { mt => map(mt).measuringBy == Some(instrumentId) }){
-      updateMonitorType(mt, "measuringBy", "-")
+
+  def setMeasuringBy(mt_id: String, instrumentIds: List[String]) {
+    import org.mongodb.scala._
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Updates._
+    import org.mongodb.scala.model.FindOneAndUpdateOptions
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val idFilter = equal("_id", mt_id)
+    val idArray = new BsonArray()
+    instrumentIds.foreach { id => idArray.add(new BsonString(id)) }
+
+    val opt = FindOneAndUpdateOptions().returnDocument(com.mongodb.client.model.ReturnDocument.AFTER)
+    val f1 = collection.findOneAndUpdate(idFilter, set("measuringBy", idArray), opt).toFuture()
+    f1 onFailure (errorHandler)
+  }
+
+  def addMeasuring(mt: MonitorType.Value, instrumentId: String, append: Boolean) {
+    val newMt = map(mt).addMeasuring(instrumentId, append)
+    map = map + (mt -> newMt)
+    setMeasuringBy(newMt._id, newMt.measuringBy.get)
+  }
+
+  def stopMeasuring(instrumentId: String) = {
+    for {
+      mt <- realtimeMtvList
+      instrumentList = map(mt).measuringBy.get if instrumentList.contains(instrumentId)
+    } {
+      val newMt = map(mt).stopMeasuring(instrumentId)
+      map = map + (mt -> newMt)
+      setMeasuringBy(mt, newMt.measuringBy.get)
     }
   }
-   
+
   import org.mongodb.scala.model.Filters._
-  def upsertMonitorType(mt:MonitorType) = {
-      import org.mongodb.scala.model.UpdateOptions
-      import org.mongodb.scala.bson.BsonString
-      val f = collection.replaceOne(equal("_id", mt._id), toDocument(mt), UpdateOptions().upsert(true)).toFuture()
-      waitReadyResult(f)
-      true
+  def upsertMonitorType(mt: MonitorType) = {
+    import org.mongodb.scala.model.UpdateOptions
+    import org.mongodb.scala.bson.BsonString
+    val f = collection.replaceOne(equal("_id", mt._id), toDocument(mt), UpdateOptions().upsert(true)).toFuture()
+    waitReadyResult(f)
+    true
   }
-  
+
   def updateMonitorType(mt: MonitorType.Value, colname: String, newValue: String) = {
     import org.mongodb.scala._
     import org.mongodb.scala.model.Filters._
@@ -181,7 +255,7 @@ object MonitorType extends Enumeration {
     val opt = FindOneAndUpdateOptions().returnDocument(com.mongodb.client.model.ReturnDocument.AFTER)
     val f =
       if (colname == "desp" || colname == "unit" || colname == "measuringBy" || colname == "measuredBy") {
-        if( newValue == "-")
+        if (newValue == "-")
           collection.findOneAndUpdate(idFilter, set(colname, null), opt).toFuture()
         else
           collection.findOneAndUpdate(idFilter, set(colname, newValue), opt).toFuture()
@@ -251,7 +325,7 @@ object MonitorType extends Enumeration {
       val (overInternal, overLaw) = overStd(mt, r.get.value)
       val prec = map(mt).prec
       val value = s"%.${prec}f".format(r.get.value)
-      if(overInternal || overLaw)
+      if (overInternal || overLaw)
         s"<i class='fa fa-exclamation-triangle'></i>$value"
       else
         s"$value"
@@ -268,17 +342,15 @@ object MonitorType extends Enumeration {
     }
   }
 
-  def displayMeasuredBy(mt: MonitorType.Value) = {
+  def displayMeasuringBy(mt: MonitorType.Value) = {
     val mtCase = map(mt)
-    if (mtCase.measuringBy.isDefined){
-      val id = mtCase.measuringBy.get
-      s"$id"
-    }else {
-      if(mtCase.measuredBy.isDefined){
-        val id = mtCase.measuredBy.get
-        s"$id (停用)"
-      }else
-        "未曾使用"
-    }
+    if (mtCase.measuringBy.isDefined) {
+      val instrumentList = mtCase.measuringBy.get
+      if (instrumentList.isEmpty)
+        "停用"
+      else
+        instrumentList.mkString(",")
+    } else
+      "-"
   }
 }

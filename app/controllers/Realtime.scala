@@ -32,20 +32,25 @@ object Realtime extends Controller {
               recordOpt = dataMap.get(mt)
             } yield {
               val mCase = map(mt)
+              val measuringByStr = mCase.measuringBy.map {
+                instmentList =>
+                  instmentList.mkString(",")
+              }.getOrElse("??")
+
               if (recordOpt.isDefined) {
                 val record = recordOpt.get
                 val duration = new Duration(record.time, DateTime.now())
                 val (overInternal, overLaw) = overStd(mt, record.value)
-                val status = if(duration.getStandardSeconds <= overTimeLimit)
+                val status = if (duration.getStandardSeconds <= overTimeLimit)
                   MonitorStatus.map(record.status).desp
                 else
                   "通訊中斷"
-                  
-                MonitorTypeStatus(mCase.desp, format(mt, Some(record.value)), mCase.unit, mCase.measuringBy.getOrElse("??"),
+
+                MonitorTypeStatus(mCase.desp, format(mt, Some(record.value)), mCase.unit, measuringByStr,
                   MonitorStatus.map(record.status).desp,
                   MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)
-              }else{
-                MonitorTypeStatus(mCase.desp, format(mt, None), mCase.unit, mCase.measuringBy.getOrElse("??"),
+              } else {
+                MonitorTypeStatus(mCase.desp, format(mt, None), mCase.unit, measuringByStr,
                   "通訊中斷",
                   "abnormal_status", mCase.order)
               }

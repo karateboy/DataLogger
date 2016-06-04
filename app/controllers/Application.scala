@@ -174,7 +174,7 @@ object Application extends Controller {
 
             val mtList = instType.driver.getMonitorTypes(instParam)
             for (mt <- mtList) {
-              MonitorType.setMeasuringBy(mt, newInstrument._id)
+              MonitorType.addMeasuring(mt, newInstrument._id, instType.analog)
             }
             DataCollectManager.startCollect(newInstrument)
             Ok(Json.obj("ok" -> true))

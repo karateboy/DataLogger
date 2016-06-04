@@ -33,7 +33,8 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
   import scala.concurrent.blocking
   import ModelHelper._
   import DataCollectManager._
-
+  import TapiTxx._
+  
   var collectorState = {
     val instrument = Instrument.getInstrument(id)
     instrument(0).state
@@ -222,12 +223,12 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       if (calibrationType.zero) {
         config.calibrateZeoSeq map {
           seqNo =>
-            context.parent ! ExecuteSeq(seqNo, false)
+            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
         }
       } else {
         config.calibrateSpanSeq map {
           seqNo =>
-            context.parent ! ExecuteSeq(seqNo, false)
+            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
         }
       }
 

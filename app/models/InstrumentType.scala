@@ -3,7 +3,8 @@ import play.api.libs.json._
 import com.github.nscala_time.time.Imports._
 case class ProtocolInfo(id:Protocol.Value, desp:String)
 case class InstrumentTypeInfo(id:InstrumentType.Value ,desp:String, protocolInfo:List[ProtocolInfo])
-case class InstrumentType(id:InstrumentType.Value ,desp:String, protocol:List[Protocol.Value], driver:DriverOps)
+case class InstrumentType(id:InstrumentType.Value ,desp:String, protocol:List[Protocol.Value], 
+    driver:DriverOps, analog:Boolean = false)
 
 trait DriverOps {
   import Protocol.ProtocolParam
@@ -37,7 +38,7 @@ object InstrumentType extends Enumeration{
   val verewa_f701 = Value
   val map = Map(
       baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000),
-      adam4017->InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017),
+      adam4017->InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017, true),
       t100->InstrumentType(t100, "TAPI T100", List(tcp), TapiT100),
       t200->InstrumentType(t200, "TAPI T200", List(tcp), TapiT200),
       t300->InstrumentType(t300, "TAPI T300", List(tcp), TapiT300),

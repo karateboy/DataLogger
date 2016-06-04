@@ -22,7 +22,9 @@ object TapiTxx {
       modeRegs:List[DiscreteInputReg], warnRegs:List[DiscreteInputReg], coilRegs:List[CoilReg])
   case class ModelRegValue(inputRegs:List[(InstrumentStatusType, Float)], holdingRegs:List[(InstrumentStatusType, Float)], 
       modeRegs:List[(InstrumentStatusType, Boolean)], warnRegs:List[(InstrumentStatusType, Boolean)])
-  
+
+  val T700_PURGE_SEQ = 100      
+  val T700_STANDBY_SEQ = 101
 }
 
 abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
