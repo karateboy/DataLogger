@@ -40,8 +40,7 @@ class CalibrationForwarder(server: String, monitor: String) extends Actor {
           val recordFuture = Calibration.calibrationReportFuture(new DateTime(latestCalibration.get + 1), DateTime.now)
           for (records <- recordFuture) {
             if (!records.isEmpty) {
-              val recordJSON = records.filter { c => c.zero_val.isDefined && c.span_std.isDefined && c.span_val.isDefined }
-                .map { _.toJSON }
+              val recordJSON = records.map { _.toJSON }
               val url = s"http://$server/CalibrationRecord/$monitor"
               val f = WS.url(url).put(Json.toJson(recordJSON))
               f onSuccess {

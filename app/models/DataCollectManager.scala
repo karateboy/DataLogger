@@ -190,7 +190,9 @@ class DataCollectManager extends Actor {
         val minuteMtAvgList = calculateAvgMap(mtMap)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
-        Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
+        val f = Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
+        f map{ _ => ForwardManager.forwardMinData}
+        f
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
@@ -315,7 +317,9 @@ class DataCollectManager extends Actor {
     }
 
     val hourMtAvgList = calculateAvgMap(mtMap)
-    Record.insertRecord(Record.toDocument(current.minusHours(1), hourMtAvgList.toList))(Record.HourCollection)
+    val f = Record.insertRecord(Record.toDocument(current.minusHours(1), hourMtAvgList.toList))(Record.HourCollection)
+    f map{ _ => ForwardManager.forwardHourData}
+    f
   }
 
   override def postStop(): Unit = {

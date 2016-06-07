@@ -7,8 +7,8 @@ import com.github.nscala_time.time._
 import models.ModelHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Double,
-                           span_std: Double, span_val: Double)
+case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
+                           span_std: Option[Double], span_val: Option[Double])
 
 case class Calibration(monitorType: MonitorType.Value, startTime: DateTime, endTime: DateTime, zero_val: Option[Double],
                        span_std: Option[Double], span_val: Option[Double]) {
@@ -23,8 +23,8 @@ case class Calibration(monitorType: MonitorType.Value, startTime: DateTime, endT
   def toJSON = {
     assert(zero_val.isDefined && span_std.isDefined && span_val.isDefined)
 
-    CalibrationJSON(monitorType.toString, startTime.getMillis, endTime.getMillis, zero_val.get,
-      span_std.get, span_val.get)
+    CalibrationJSON(monitorType.toString, startTime.getMillis, endTime.getMillis, zero_val,
+      span_std, span_val)
   }
 }
 

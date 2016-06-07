@@ -74,7 +74,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
     //Try to trigger at 30 sec
     val next40 = DateTime.now().withSecondOfMinute(40).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next40).getStandardSeconds
-    Akka.system.scheduler.schedule(Duration(0, SECONDS), Duration(1, MINUTES), self, ForwardData)
+    Akka.system.scheduler.schedule(Duration(0, SECONDS), Duration(5, MINUTES), self, ForwardData)
   }
 
   val hourRecordForwarder = context.actorOf(Props(classOf[HourRecordForwarder], server, monitor),
@@ -100,13 +100,11 @@ class ForwardManager(server: String, monitor: String) extends Actor {
   import play.api.libs.ws._
   def handler(latestHour: Option[Long], latestMin: Option[Long]): Receive = {
     case ForwardData =>
-      hourRecordForwarder ! ForwardHour
-      minRecordForwarder ! ForwardMin
       calibrationForwarder ! ForwardCalibration
       alarmForwarder ! ForwardAlarm
       instrumentStatusForwarder ! ForwardInstrumentStatus
       statusTypeForwarder ! UpdateInstrumentStatusType
-      
+
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
     
