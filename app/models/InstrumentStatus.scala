@@ -67,9 +67,10 @@ object InstrumentStatus {
     InstrumentStatus(time, instID, lb.toList)
   }
 
-  def log(is: InstrumentStatus) {
+  def log(is: InstrumentStatus) = {
     //None blocking...
-    collection.insertOne(toDocument(is)).toFuture()
+    val f = collection.insertOne(toDocument(is)).toFuture()
+    f map {_=> ForwardManager.forwardInstrumentStatus}
   }
 
   def query(id: String, start: DateTime, end: DateTime) = {

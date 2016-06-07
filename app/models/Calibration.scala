@@ -120,6 +120,7 @@ object Calibration {
       case ex: Exception =>
         logException(ex)
     })
+    f map {_=> ForwardManager.forwardCalibration}
   }
 
   def getZeroCalibrationStyle(cal: Calibration) = {

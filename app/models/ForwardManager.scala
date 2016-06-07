@@ -20,7 +20,6 @@ object ForwardManager {
   val server = serverConfig.getString("server")
   val monitor = serverConfig.getString("monitor")
 
-  case object ForwardData
   case object ForwardHour
   case object ForwardMin
   case object ForwardCalibration
@@ -69,13 +68,6 @@ object ForwardManager {
 
 class ForwardManager(server: String, monitor: String) extends Actor {
   import ForwardManager._
-  val timer = {
-    import scala.concurrent.duration._
-    //Try to trigger at 30 sec
-    val next40 = DateTime.now().withSecondOfMinute(40).plusMinutes(1)
-    val postSeconds = new org.joda.time.Duration(DateTime.now, next40).getStandardSeconds
-    Akka.system.scheduler.schedule(Duration(0, SECONDS), Duration(5, MINUTES), self, ForwardData)
-  }
 
   val hourRecordForwarder = context.actorOf(Props(classOf[HourRecordForwarder], server, monitor),
     "hourForwarder")
@@ -94,17 +86,19 @@ class ForwardManager(server: String, monitor: String) extends Actor {
 
   val statusTypeForwarder = context.actorOf(Props(classOf[InstrumentStatusTypeForwarder], server, monitor),
       "statusTypeForwarder")
-      
+
+  {
+    import scala.concurrent.duration._
+    
+    Akka.system.scheduler.scheduleOnce(Duration(10, SECONDS), calibrationForwarder, ForwardCalibration)
+    Akka.system.scheduler.scheduleOnce(Duration(20, SECONDS), alarmForwarder, ForwardAlarm)
+    Akka.system.scheduler.scheduleOnce(Duration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
+  }
+    
   def receive = handler(None, None)
 
   import play.api.libs.ws._
   def handler(latestHour: Option[Long], latestMin: Option[Long]): Receive = {
-    case ForwardData =>
-      calibrationForwarder ! ForwardCalibration
-      alarmForwarder ! ForwardAlarm
-      instrumentStatusForwarder ! ForwardInstrumentStatus
-      statusTypeForwarder ! UpdateInstrumentStatusType
-
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
     
@@ -125,6 +119,6 @@ class ForwardManager(server: String, monitor: String) extends Actor {
   }
   
   override def postStop(): Unit = {
-    timer.cancel()
+    
   }
 }
