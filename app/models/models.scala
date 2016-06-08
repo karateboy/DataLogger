@@ -22,7 +22,7 @@ object ModelHelper {
   import org.mongodb.scala.bson.BsonDateTime
   implicit def toDateTime(time: BsonDateTime) = new DateTime(time.getValue)
   implicit def toBsonDateTime(jdtime: DateTime) = new BsonDateTime(jdtime.getMillis)
-  
+
   def main(args: Array[String]) {
     val timestamp = DateTime.parse("2015-04-01")
     println(timestamp.toString())
@@ -31,36 +31,36 @@ object ModelHelper {
   def logException(ex: Throwable) = {
     Logger.error(ex.getMessage, ex)
   }
-  
+
   import Alarm._
-  def logInstrumentError(id:String, msg:String, ex:Throwable) ={    
+  def logInstrumentError(id: String, msg: String, ex: Throwable) = {
     Logger.error(msg, ex)
     log(instStr(id), Level.ERR, msg)
   }
-  
-  def logInstrumentInfo(id:String, msg:String) ={    
+
+  def logInstrumentInfo(id: String, msg: String) = {
     Logger.info(msg)
     log(instStr(id), Level.INFO, msg)
-  }  
-  
-  def errorHandler:PartialFunction[Throwable, Any] = {
-      case ex:Throwable=>
-        Logger.error("Error=>", ex)
-        throw ex
-    }
+  }
 
-  def errorHandler(msg:String= "Error=>"):PartialFunction[Throwable, Any] = {
-      case ex:Throwable=>
-        Logger.error(msg, ex)
-        throw ex
+  def errorHandler: PartialFunction[Throwable, Any] = {
+    case ex: Throwable =>
+      Logger.error("Error=>", ex)
+      throw ex
+  }
+
+  def errorHandler(prompt: String = "Error=>"): PartialFunction[Throwable, Any] = {
+    case ex: Throwable =>
+      Logger.error(prompt, ex)
+      throw ex
   }
 
   import scala.concurrent._
-  
-  def waitReadyResult[T](f:Future[T])={
+
+  def waitReadyResult[T](f: Future[T]) = {
     import scala.concurrent.duration._
     import scala.util._
-    
+
     val ret = Await.ready(f, Duration.Inf).value.get
 
     ret match {

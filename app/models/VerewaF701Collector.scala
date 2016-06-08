@@ -5,6 +5,7 @@ import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import Protocol.ProtocolParam
 import scala.concurrent.ExecutionContext.Implicits.global
+import ModelHelper._
 
 object VerewaF701Collector {
   case object OpenComPort
@@ -27,7 +28,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
   import VerewaF701Collector._
   import scala.concurrent.duration._
   var cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
-  var serial_comm: Option[SerialComm] = None
+  var serialOpt: Option[SerialComm] = None
 
   import scala.concurrent.Future
   import scala.concurrent.blocking
@@ -119,7 +120,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
   def receive = {
     case OpenComPort =>
       try {
-        serial_comm = Some(SerialComm.open(protocolParam.comPort.get))
+        serialOpt = Some(SerialComm.open(protocolParam.comPort.get))
         cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
       } catch {
         case ex: Exception =>
@@ -127,30 +128,33 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
           Logger.info("Reopen 1 min latter...")
           cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
       }
+
     case ReadData =>
-      val cmd = HessenProtocol.dataQuery
-      serial_comm.get.port.writeBytes(cmd)
-      val reply = serial_comm.get.port.readString
-      if (reply != null) {
-        val measureList = HessenProtocol.decode(reply)
-        Logger.debug("measure=" + measureList);
-        for {
-          ma_ch <- measureList.zipWithIndex
-          measure = ma_ch._1
-          channel = ma_ch._2
-        } {
-          Logger.debug(s"ch=$channel")
-          if (channel == 0) {
-            checkStatus(measure.status)
-            Logger.debug(s"$mt, $measure.value, $collectorStatus")
-            context.parent ! ReportData(List(MonitorTypeData(mt, measure.value, collectorStatus)))
+      Future {
+        blocking {
+          val cmd = HessenProtocol.dataQuery
+          serialOpt.get.port.writeBytes(cmd)
+          val replies = serialOpt.get.getLine2(timeout = 3)
+          for (reply <- replies) {
+            val measureList = HessenProtocol.decode(reply)
+            for {
+              ma_ch <- measureList.zipWithIndex
+              measure = ma_ch._1
+              channel = ma_ch._2
+            } {
+              if (channel == 0) {
+                checkStatus(measure.status)
+                Logger.debug(s"$mt, $measure.value, $collectorStatus")
+                context.parent ! ReportData(List(MonitorTypeData(mt, measure.value, collectorStatus)))
+              }
+
+              checkErrorStatus(channel, measure.error)
+            }
+            //Log instrument status...
+
           }
-
-          checkErrorStatus(channel, measure.error)
         }
-        //Log instrument status...
-
-      }
+      } onFailure errorHandler
 
     case SetState(id, state) =>
       Logger.debug(s"SetState(${MonitorStatus.map(state).desp})")
@@ -158,8 +162,11 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
 
   override def postStop(): Unit = {
     cancelable.cancel()
-    if (serial_comm.isDefined)
-      SerialComm.close(serial_comm.get)
+    serialOpt map {
+      serial =>
+        SerialComm.close(serial)
+    }
+
   }
 
 }

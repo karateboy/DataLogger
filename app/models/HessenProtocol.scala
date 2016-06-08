@@ -29,11 +29,9 @@ object HessenProtocol {
   case class Measure(channel: Int, value: Double, status: Byte, error: Byte, serial: String, free: String)
   def decode(reply: String) = {
     val params = reply.split(" ")
-      
-    val nMeasure = params(0).substring(3).toInt
-    
+    val nMeasure = params(0).substring(2).toInt
     for {
-      idx <- 0 to nMeasure-1
+      idx <- 0 to nMeasure-1 if (idx*6+1) < params.length
       measureOffset = idx * 6
     } yield {
       def getValue(str: String): Double = {
