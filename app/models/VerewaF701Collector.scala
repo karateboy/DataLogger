@@ -144,7 +144,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
             } {
               if (channel == 0) {
                 checkStatus(measure.status)
-                Logger.debug(s"$mt, $measure.value, $collectorStatus")
+                //Logger.debug(s"$mt, $measure.value, $collectorStatus")
                 context.parent ! ReportData(List(MonitorTypeData(mt, measure.value, collectorStatus)))
               }
 
@@ -157,7 +157,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
       } onFailure errorHandler
 
     case SetState(id, state) =>
-      Logger.debug(s"SetState(${MonitorStatus.map(state).desp})")
+      Logger.info(s"SetState(${MonitorStatus.map(state).desp})")
   }
 
   override def postStop(): Unit = {

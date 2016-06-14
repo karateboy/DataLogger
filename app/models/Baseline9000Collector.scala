@@ -34,7 +34,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
   import ModelHelper._
   import DataCollectManager._
   import TapiTxx._
-  
+
   var collectorState = {
     val instrument = Instrument.getInstrument(id)
     instrument(0).state
@@ -101,19 +101,21 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
     Future {
       blocking {
         for (serial <- serialCommOpt) {
-          val lines = serial.getLine
+          val lines = serial.getLine2(timeout=3)
           for (line <- lines) {
             val parts = line.split('\t')
-            val ch4Value = parts(2).toDouble
-            val nmhcValue = parts(4).toDouble
-            val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
-            val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
-            val thc = MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
+            if (parts.length >= 4) {
+              val ch4Value = parts(2).toDouble
+              val nmhcValue = parts(4).toDouble
+              val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
+              val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
+              val thc = MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
 
-            if (calibrateRecordStart)
-              self ! ReportData(List(ch4, nmhc))
+              if (calibrateRecordStart)
+                self ! ReportData(List(ch4, nmhc))
 
-            context.parent ! ReportData(List(ch4, nmhc, thc))
+              context.parent ! ReportData(List(ch4, nmhc, thc))
+            }
           }
         }
         timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
