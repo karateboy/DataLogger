@@ -21,8 +21,6 @@ case class Calibration(monitorType: MonitorType.Value, startTime: DateTime, endT
     yield s_dev / std
 
   def toJSON = {
-    assert(zero_val.isDefined && span_std.isDefined && span_val.isDefined)
-
     CalibrationJSON(monitorType.toString, startTime.getMillis, endTime.getMillis, zero_val,
       span_std, span_val)
   }
