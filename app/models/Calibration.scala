@@ -76,7 +76,7 @@ object Calibration {
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(gte("startTime", start.toDate()), lt("endTime", end.toDate()))).sort(ascending("monitorType", "startTime")).toFuture()
+    val f = collection.find(and(gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("monitorType", "startTime")).toFuture()
     val docs = waitReadyResult(f)
     docs.map { toCalibration }
   }
@@ -86,7 +86,7 @@ object Calibration {
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(gte("startTime", start.toDate()), lt("endTime", end.toDate()))).sort(ascending("monitorType", "startTime")).toFuture()
+    val f = collection.find(and(gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("monitorType", "startTime")).toFuture()
     for (docs <- f)
       yield docs.map { toCalibration }
   }
@@ -96,7 +96,7 @@ object Calibration {
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(equal("monitorType", mt.toString), gte("startTime", start.toDate()), lt("endTime", end.toDate()))).sort(ascending("monitorType", "startTime")).toFuture()
+    val f = collection.find(and(equal("monitorType", mt.toString), gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("monitorType", "startTime")).toFuture()
     val docs = waitReadyResult(f)
     docs.map { toCalibration }
   }

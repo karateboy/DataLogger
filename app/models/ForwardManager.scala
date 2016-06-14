@@ -106,6 +106,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
       minRecordForwarder ! ForwardMin
       
     case ForwardCalibration =>
+      Logger.info("Forward Calibration")
       calibrationForwarder ! ForwardCalibration
       
     case ForwardAlarm =>
