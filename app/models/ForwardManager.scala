@@ -59,11 +59,7 @@ object ForwardManager {
   
   def forwardAlarm = {
     managerOpt map { _ ! ForwardAlarm}
-  }
-  
-  def forwardInstrumentStatus = {
-    managerOpt map { _ ! ForwardInstrumentStatus}
-  }
+  }  
 }
 
 class ForwardManager(server: String, monitor: String) extends Actor {
@@ -94,11 +90,16 @@ class ForwardManager(server: String, monitor: String) extends Actor {
     Akka.system.scheduler.scheduleOnce(Duration(20, SECONDS), alarmForwarder, ForwardAlarm)
     Akka.system.scheduler.scheduleOnce(Duration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
   }
+  
+  val timer = {
+    import scala.concurrent.duration._
+    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
+  }
     
-  def receive = handler(None, None)
+  def receive = handler
 
   import play.api.libs.ws._
-  def handler(latestHour: Option[Long], latestMin: Option[Long]): Receive = {
+  def handler: Receive = {
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
     
@@ -120,6 +121,6 @@ class ForwardManager(server: String, monitor: String) extends Actor {
   }
   
   override def postStop(): Unit = {
-    
+    timer.cancel()
   }
 }
