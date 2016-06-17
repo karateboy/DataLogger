@@ -32,7 +32,7 @@ object MonitorStatusFilter extends Enumeration {
         MonitorStatus.isCalbration(stat)
         
       case MonitorStatusFilter.Maintance =>
-        MonitorStatus.isMaintanceOrRepairing(stat)
+        MonitorStatus.isMaintenance(stat)
 
       case MonitorStatusFilter.InvalidData =>
         MonitorStatus.isError(stat)

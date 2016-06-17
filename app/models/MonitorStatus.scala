@@ -38,6 +38,8 @@ object MonitorStatus {
   val BelowNormalStat = "012"
   val ZeroCalibrationStat = "020"
   val SpanCalibrationStat = "021"
+  val CalibrationDeviation = "022"
+  val CalibrationResume = "026"
   val InvalidDataStat = "030"
   val MaintainStat = "031"
   val ExceedRangeStat = "032"
@@ -46,8 +48,10 @@ object MonitorStatus {
     MonitorStatus(NormalStat, "正常"),
     MonitorStatus(OverNormalStat, "超過預設高值"),
     MonitorStatus(BelowNormalStat, "低於預設低值"),
-    MonitorStatus(ZeroCalibrationStat, "零點偏移測試"),
-    MonitorStatus(SpanCalibrationStat, "全幅偏移測試"),
+    MonitorStatus(ZeroCalibrationStat, "零點偏移校正"),
+    MonitorStatus(SpanCalibrationStat, "全幅偏移校正"),
+    MonitorStatus(CalibrationDeviation, "校正偏移"),
+    MonitorStatus(CalibrationResume, "校正恢復"),
     MonitorStatus(InvalidDataStat, "無效數據"),
     MonitorStatus(MaintainStat, "維修、保養"),
     MonitorStatus(ExceedRangeStat, "超過量測範圍"))
@@ -136,16 +140,18 @@ object MonitorStatus {
   }
 
   def isCalbration(s: String) = {
-    val CALBRATION_STATS = List(ZeroCalibrationStat, SpanCalibrationStat).map(getTagInfo)
+    val CALBRATION_STATS = List(ZeroCalibrationStat, SpanCalibrationStat, 
+        CalibrationDeviation,CalibrationResume).map(getTagInfo)
+        
     CALBRATION_STATS.contains(getTagInfo(s))
   }
 
-  def isMaintanceOrRepairing(s: String) = {
+  def isMaintenance(s: String) = {
     getTagInfo(MaintainStat) == getTagInfo(s)
   }
 
   def isError(s: String) = {
-    !(isValid(s) || isCalbration(s) || isMaintanceOrRepairing(s))
+    !(isValid(s) || isCalbration(s) || isMaintenance(s))
   }
 
   def getCssClassStr(tag: String, overInternal: Boolean = false, overLaw: Boolean = false) = {
@@ -158,7 +164,7 @@ object MonitorStatus {
               ""
             else if (isCalbration(tag))
               "calibration_status"
-            else if (isMaintanceOrRepairing(tag))
+            else if (isMaintenance(tag))
               "maintain_status"
             else
               "abnormal_status"

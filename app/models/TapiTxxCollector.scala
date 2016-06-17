@@ -392,19 +392,21 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
           }
 
           val calibrationTimer =
-            if (calibrationType.auto) {
-              // Auto calibration will jump to end immediately
+            if (calibrationType.auto && calibrationType.zero) {
+              // Auto zero calibration will jump to end immediately
               Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd)
-            } else
+            } else {
+              collectorState = MonitorStatus.CalibrationResume
+              Instrument.setState(instId, collectorState)
               Akka.system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, CalibrateEnd)
-
+            }
           context become calibration(calibrationType, startTime, false, calibrationReadingList,
             zeroReading, endState, calibrationTimer)
         }
       } onFailure (calibrationErrorHandler(instId, timer, endState))
 
     case rd: ReportData =>
-      Logger.debug(s"calibrationReadingList #=${calibrationReadingList.length}")
+      //Logger.debug(s"calibrationReadingList #=${calibrationReadingList.length}")
       context become calibration(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
         zeroReading, endState, timer)
 
