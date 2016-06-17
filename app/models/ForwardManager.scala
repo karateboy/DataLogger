@@ -52,14 +52,7 @@ object ForwardManager {
   def forwardMinData = {
     managerOpt map { _ ! ForwardMin}
   }
-  
-  def forwardCalibration = {
-    managerOpt map { _ ! ForwardCalibration}
-  }
-  
-  def forwardAlarm = {
-    managerOpt map { _ ! ForwardAlarm}
-  }  
+    
 }
 
 class ForwardManager(server: String, monitor: String) extends Actor {
@@ -86,8 +79,6 @@ class ForwardManager(server: String, monitor: String) extends Actor {
   {
     import scala.concurrent.duration._
     
-    Akka.system.scheduler.scheduleOnce(Duration(10, SECONDS), calibrationForwarder, ForwardCalibration)
-    Akka.system.scheduler.scheduleOnce(Duration(20, SECONDS), alarmForwarder, ForwardAlarm)
     Akka.system.scheduler.scheduleOnce(Duration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
   }
   
@@ -95,7 +86,18 @@ class ForwardManager(server: String, monitor: String) extends Actor {
     import scala.concurrent.duration._
     Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
   }
-    
+
+  val timer2 = {
+    import scala.concurrent.duration._
+    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(2, MINUTES), calibrationForwarder, ForwardCalibration)
+  }
+  
+  val timer3 = {
+    import scala.concurrent.duration._
+    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(2, MINUTES), alarmForwarder, ForwardAlarm)
+  }
+  
+  
   def receive = handler
 
   import play.api.libs.ws._
@@ -121,6 +123,8 @@ class ForwardManager(server: String, monitor: String) extends Actor {
   }
   
   override def postStop(): Unit = {
-    timer.cancel()
+    timer.cancel
+    timer2.cancel
+    timer3.cancel
   }
 }

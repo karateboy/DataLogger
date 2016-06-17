@@ -123,7 +123,6 @@ object Alarm {
       (count: Long) => {
         if (count == 0){
           val f = collection.insertOne(toDocument(ar)).toFuture()
-          f map {_ => ForwardManager.forwardAlarm }
         }
       }, // onNext
       (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
