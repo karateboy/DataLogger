@@ -72,6 +72,9 @@ GET		/Excel/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorR
 GET		/MonitorMonthlyHourReport		controllers.Report.monitorMonthlyHourReport
 GET		/MonthlyHourReport/:monitorType/:reportDate	controllers.Report.monthlyHourReport(monitorType, reportDate, outputTypeStr="html")
 
+#Data Management
+GET		/DataManagement		controllers.Application.dataManagement
+
 #JSON
 GET		/MonitorType			controllers.Application.monitorTypeList
 POST	/MonitorType/:id		controllers.Application.upsertMonitorType(id)

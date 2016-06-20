@@ -12,48 +12,50 @@ import play.api.libs.ws.WS
 class HourRecordForwarder(server: String, monitor: String) extends Actor {
   import ForwardManager._
   def receive = handler(None)
+  def checkLatest = {
+    val url = s"http://$server/HourRecordRange/$monitor"
+    val f = WS.url(url).get().map {
+      response =>
+        val result = response.json.validate[LatestRecordTime]
+        result.fold(
+          error => {
+            Logger.error(JsError.toJson(error).toString())
+          },
+          latest => {
+            Logger.info(s"server latest hour: ${new DateTime(latest.time).toString}")
+            context become handler(Some(latest.time))
+            uploadRecord(latest.time)
+          })
+    }
+    f onFailure {
+      case ex: Throwable =>
+        ModelHelper.logException(ex)
+    }
+  }
+  def uploadRecord(latestRecordTime: Long) = {
+    val recordFuture = Record.getRecordListFuture(Record.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now)
+    for (record <- recordFuture) {
+      if (!record.isEmpty) {
+        val url = s"http://$server/HourRecord/$monitor"
+        val f = WS.url(url).put(Json.toJson(record))
+        f onSuccess {
+          case response =>
+            context become handler(Some(record.last.time))
+        }
+        f onFailure {
+          case ex: Throwable =>
+            context become handler(None)            
+            ModelHelper.logException(ex)
+        }
+      }
+    }
+  }
+
   def handler(latestRecordTimeOpt: Option[Long]): Receive = {
     case ForwardHour =>
-      try {
-        if (latestRecordTimeOpt.isEmpty) {
-          val url = s"http://$server/HourRecordRange/$monitor"
-          val f = WS.url(url).get().map {
-            response =>
-              val result = response.json.validate[LatestRecordTime]
-              result.fold(
-                error => {
-                  Logger.error(JsError.toJson(error).toString())
-                },
-                latest => {
-                  Logger.info(s"server latest hour: ${new DateTime(latest.time).toString}")
-                  context become handler(Some(latest.time))
-                  self ! ForwardHour
-                })
-          }
-          f onFailure {
-            case ex: Throwable =>
-              ModelHelper.logException(ex)
-          }
-        } else {
-          val recordFuture = Record.getRecordListFuture(Record.HourCollection)(new DateTime(latestRecordTimeOpt.get + 1), DateTime.now)
-          for (record <- recordFuture) {
-            if (!record.isEmpty) {
-              val url = s"http://$server/HourRecord/$monitor"
-              val f = WS.url(url).put(Json.toJson(record))
-              f onSuccess {
-                case response =>
-                  context become handler(Some(record.last.time))
-              }
-              f onFailure {
-                case ex: Throwable =>
-                  ModelHelper.logException(ex)
-              }
-            }
-          }
-        }
-      } catch {
-        case ex: Throwable =>
-          ModelHelper.logException(ex)
-      }
+      if (latestRecordTimeOpt.isEmpty)
+        checkLatest
+      else
+        uploadRecord(latestRecordTimeOpt.get)
   }
 }

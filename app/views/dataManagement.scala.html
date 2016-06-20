@@ -1,0 +1,62 @@
+@* dataManagement Template File *@
+@()
+<div class="row">
+   	<div class="col-lg-12">
+   			<div class="panel panel-primary">
+            	<div class="panel-heading panel-title" >
+            		查詢參數	
+                </div>
+            	<div class="panel-body panel-collapse in" id="reportParam">
+            		<form class="form-horizontal">
+	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">資料集</label>						
+	            			<div class="col-lg-11 btn-group" data-toggle="buttons">
+           						@for(tt<-TableType.values.toList.sorted){
+           							@if(tt == TableType.values.toList.sorted.last){
+           								<label class="btn btn-outline btn-primary dim active">
+										<input type="radio" name="tableType" id="@tt" checked>@TableType.map(tt)</label>
+           							}else{
+           								<label class="btn btn-outline btn-primary dim">
+										<input type="radio" name="tableType" id="@tt">@TableType.map(tt)</label>
+           							}            								
+            					}
+	            			</div>            		
+	                    </div>	                    
+	                    <div class="form-group">
+	            			<label class="col-lg-1 control-label">資料區間</label>	
+	            			<div class="col-lg-5">
+	            				<div class="input-daterange input-group" id="datepicker">
+                    			<span class="input-group-addon"><i class="fa fa-calendar"></i></span><input type="text" class="input-sm form-control" name="start" id="reportStart" required/>
+                       			<span class="input-group-addon">至</span>
+                        		<input type="text" class="input-sm form-control" name="end" id="reportEnd" required/>                        
+                    		</div>
+	            			</div>												
+	                    </div>
+	                    
+						<div class="form-group">
+							<div class="col-lg-1 col-lg-offset-1">
+								<button type="button" class="btn btn-primary" id="uploadData">重新上傳</button>
+							</div>
+							<div class="col-lg-1 col-lg-offset-1">
+								<button type="button" class="btn btn-primary" id="recalculateData">重新計算</button>
+							</div>							
+						</div>	                    	                    	                    
+            		</form>
+            	</div>
+        	</div>
+	</div>
+</div>>
+<script>
+$( document ).ready(function() {
+	$('#reportStart').datetimepicker({
+		format: 'YYYY-M-D HH:mm',
+		defaultDate: moment().subtract(1, 'days'),
+    	locale: "zh-TW"
+	});
+	$('#reportEnd').datetimepicker({
+		format: 'YYYY-M-D HH:mm',
+		defaultDate: moment(),
+    	locale: "zh-TW"
+	});
+});
+</script>

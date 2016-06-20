@@ -89,12 +89,12 @@ class ForwardManager(server: String, monitor: String) extends Actor {
 
   val timer2 = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(2, MINUTES), calibrationForwarder, ForwardCalibration)
+    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(5, MINUTES), calibrationForwarder, ForwardCalibration)
   }
   
   val timer3 = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(2, MINUTES), alarmForwarder, ForwardAlarm)
+    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
   
   

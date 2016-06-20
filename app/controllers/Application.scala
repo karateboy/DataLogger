@@ -378,4 +378,8 @@ object Application extends Controller {
           Ok(Json.obj("ok" -> true))
         })
   }
+  
+  def dataManagement = Security.Authenticated {
+    Ok(views.html.dataManagement())
+  }
 }

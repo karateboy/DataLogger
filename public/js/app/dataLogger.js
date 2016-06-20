@@ -131,6 +131,13 @@ app.config([ '$routeProvider', function($routeProvider) {
 				return bs.title = "系統管理>使用者管理";
 			} ]
 		}
+	}).when('/DataManagement', {
+		templateUrl : "/DataManagement",
+		resolve : {
+			breadcrumb : [ 'BreadcrumbService', function(bs) {
+				return bs.title = "系統管理>資料管理";
+			} ]
+		}
 	}).when('/EventLog', {
 		templateUrl : "/EventLog",
 		resolve : {

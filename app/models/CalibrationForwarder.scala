@@ -13,50 +13,60 @@ import play.api.libs.ws.WS
 class CalibrationForwarder(server: String, monitor: String) extends Actor {
   import ForwardManager._
   def receive = handler(None)
-  def handler(latestCalibration: Option[Long]): Receive = {
+
+  def checkLatest = {
+    val url = s"http://$server/CalibrationRecordRange/$monitor"
+    val f = WS.url(url).get().map {
+      response =>
+        val result = response.json.validate[LatestRecordTime]
+        result.fold(
+          error => {
+            Logger.error(JsError.toJson(error).toString())
+          },
+          latest => {
+            Logger.info(s"server latest calibration: ${new DateTime(latest.time).toString}")
+            context become handler(Some(latest.time))
+            uploadCalibration(latest.time)
+          })
+    }
+    f onFailure {
+      case ex: Throwable =>        
+        ModelHelper.logException(ex)
+    }
+  }
+
+  def uploadCalibration(latestCalibration: Long) = {
+    import Calibration._
+    val recordFuture = Calibration.calibrationReportFuture(new DateTime(latestCalibration + 1))
+    for (records <- recordFuture) {
+      if (!records.isEmpty) {
+        val recordJSON = records.map { _.toJSON }
+        val url = s"http://$server/CalibrationRecord/$monitor"
+        val f = WS.url(url).put(Json.toJson(recordJSON))
+        f onSuccess {
+          case response =>
+            context become handler(Some(records.last.startTime.getMillis))
+        }
+        f onFailure {
+          case ex: Throwable =>
+            context become handler(None)
+            ModelHelper.logException(ex)
+        }
+      }
+    }
+  }
+
+  def handler(latestCalibrationOpt: Option[Long]): Receive = {
     case ForwardCalibration =>
       try {
-        if (latestCalibration.isEmpty) {
-          val url = s"http://$server/CalibrationRecordRange/$monitor"
-          val f = WS.url(url).get().map {
-            response =>
-              val result = response.json.validate[LatestRecordTime]
-              result.fold(
-                error => {
-                  Logger.error(JsError.toJson(error).toString())
-                },
-                latest => {
-                  Logger.info(s"server latest calibration: ${new DateTime(latest.time).toString}")
-                  context become handler(Some(latest.time))
-                  self ! ForwardCalibration
-                })
-          }
-          f onFailure {
-            case ex: Throwable =>
-              ModelHelper.logException(ex)
-          }
-        } else {
-          import Calibration._
-          val recordFuture = Calibration.calibrationReportFuture(new DateTime(latestCalibration.get + 1), DateTime.now)
-          for (records <- recordFuture) {
-            if (!records.isEmpty) {
-              val recordJSON = records.map { _.toJSON }
-              val url = s"http://$server/CalibrationRecord/$monitor"
-              val f = WS.url(url).put(Json.toJson(recordJSON))
-              f onSuccess {
-                case response =>
-                  context become handler(Some(records.last.startTime.getMillis))
-              }
-              f onFailure {
-                case ex: Throwable =>
-                  ModelHelper.logException(ex)
-              }
-            }
-          }
-        }
+        if (latestCalibrationOpt.isEmpty)
+          checkLatest
+        else
+          uploadCalibration(latestCalibrationOpt.get)
       } catch {
         case ex: Throwable =>
           ModelHelper.logException(ex)
+          context become handler(None)
       }
 
   }
