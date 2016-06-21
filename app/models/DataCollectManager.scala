@@ -102,12 +102,12 @@ class DataCollectManager extends Actor {
   case class InstrumentParam(actor: ActorRef, mtList: List[MonitorType.Value], calibrationTimerOpt: Option[Cancellable])
 
   def receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
-    Map.empty[MonitorType.Value, Record], List.empty[(DateTime, List[MonitorTypeData])])
+    Map.empty[MonitorType.Value, Map[String, Record]], List.empty[(DateTime, String, List[MonitorTypeData])])
 
   def handler(instrumentMap: Map[String, InstrumentParam],
               collectorInstrumentMap: Map[ActorRef, String],
-              latestDataMap: Map[MonitorType.Value, Record],
-              mtDataList: List[(DateTime, List[MonitorTypeData])]): Receive = {
+              latestDataMap: Map[MonitorType.Value, Map[String, Record]],
+              mtDataList: List[(DateTime, String, List[MonitorTypeData])]): Receive = {
     case AddInstrument(inst) =>
       val instType = InstrumentType.map(inst.instType)
       val collector = instType.driver.start(inst._id, inst.protocol, inst.param)
@@ -130,8 +130,8 @@ class DataCollectManager extends Actor {
         calibratorOpt = Some(collector)
       }
 
-      context become handler(instrumentMap + (inst._id -> instrumentParam), 
-          collectorInstrumentMap + (collector -> inst._id),
+      context become handler(instrumentMap + (inst._id -> instrumentParam),
+        collectorInstrumentMap + (collector -> inst._id),
         latestDataMap, mtDataList)
 
     case RemoveInstrument(id: String) =>
@@ -144,8 +144,8 @@ class DataCollectManager extends Actor {
         param.actor ! PoisonPill
 
         context become handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
-            latestDataMap -- param.mtList, mtDataList)
-        
+          latestDataMap -- param.mtList, mtDataList)
+
         if (calibratorOpt == Some(param.actor))
           calibratorOpt = None
       }
@@ -153,45 +153,84 @@ class DataCollectManager extends Actor {
     case ReportData(dataList) =>
       val now = DateTime.now
 
-      val pairs =
-        for (data <- dataList)
-          yield (data.mt -> Record(now, data.value, data.status))
+      val instIdOpt = collectorInstrumentMap.get(sender)
+      instIdOpt map {
+        instId =>
+          val pairs =
+            for (data <- dataList) yield {
+              val currentMap = latestDataMap.getOrElse(data.mt, Map.empty[String, Record])
+              val filteredMap = currentMap.filter { kv =>
+                val r = kv._2
+                r.time >= DateTime.now() - 6.second
+              }
 
-      context become handler(instrumentMap, collectorInstrumentMap, 
-          latestDataMap ++ pairs, (DateTime.now, dataList) :: mtDataList)
+              (data.mt -> (filteredMap ++ Map(instId -> Record(now, data.value, data.status))))
+            }
+
+          context become handler(instrumentMap, collectorInstrumentMap,
+            latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList)
+      }
 
     case CalculateData => {
       def calculateMinData(currentMintues: DateTime) = {
         import scala.collection.mutable.ListBuffer
         import scala.collection.mutable.Map
-        val mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
+        val mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[(String, Double)]]]
 
         val currentData = mtDataList.takeWhile(d => d._1 >= currentMintues)
         val minDataList = mtDataList.drop(currentData.length)
 
         for {
           dl <- minDataList
-          data <- dl._2
+          instrumentId = dl._2
+          data <- dl._3
         } {
           val statusMap = mtMap.getOrElse(data.mt, {
-            val map = Map.empty[String, ListBuffer[Double]]
+            val map = Map.empty[String, ListBuffer[(String, Double)]]
             mtMap.put(data.mt, map)
             map
           })
 
           val lb = statusMap.getOrElse(data.status, {
-            val l = ListBuffer.empty[Double]
+            val l = ListBuffer.empty[(String, Double)]
             statusMap.put(data.status, l)
             l
           })
 
-          lb.append(data.value)
+          lb.append((instrumentId, data.value))
         }
-        val minuteMtAvgList = calculateAvgMap(mtMap)
+
+        val priorityMtPair =
+          for {
+            mt_statusMap <- mtMap
+            mt = mt_statusMap._1
+            statusMap = mt_statusMap._2
+          } yield {
+            val winOutStatusPair =
+              for {
+                status_lb <- statusMap
+                status = status_lb._1
+                lb = status_lb._2
+                measuringInstrumentList = MonitorType.map(mt).measuringBy.get
+              } yield {
+                val winOutInstrumentOpt = measuringInstrumentList.find { instrumentId =>
+                  lb.exists { id_value =>
+                    val id = id_value._1
+                    instrumentId == id
+                  }
+                }
+                val winOutLb = lb.filter(_._1 == winOutInstrumentOpt.get).map(_._2)
+                status->winOutLb  
+              }
+            val winOutStatusMap = winOutStatusPair.toMap
+            mt -> winOutStatusMap
+          }
+        val priorityMtMap = priorityMtPair.toMap  
+        val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
         val f = Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
-        f map{ _ => ForwardManager.forwardMinData}
+        f map { _ => ForwardManager.forwardMinData }
         f
       }
 
@@ -201,7 +240,7 @@ class DataCollectManager extends Actor {
 
       if (current.getMinuteOfHour == 0) {
         import scala.concurrent.ExecutionContext.Implicits.global
-        f.map { _ => calculateHourData(current)(latestDataMap) }
+        f.map { _ => calculateHourData(current)(latestDataMap.keys.toList) }
       }
     }
 
@@ -234,18 +273,29 @@ class DataCollectManager extends Actor {
 
     case GetLatestData =>
       //Filter out older than 6 second
-      val latestMap = latestDataMap.filter { kv =>
-        val r = kv._2
-        r.time >= DateTime.now() - 6.second
+      val latestMap = latestDataMap.flatMap { kv =>
+        val mt = kv._1
+        val instRecordMap = kv._2
+        val filteredRecordMap = instRecordMap.filter {
+          kv =>
+            val r = kv._2
+            r.time >= DateTime.now() - 6.second
+        }
+
+        val measuringList = MonitorType.map(mt).measuringBy.get
+        val instrumentIdOpt = measuringList.find { instrumentId => filteredRecordMap.contains(instrumentId) }
+        instrumentIdOpt map {
+          mt -> filteredRecordMap(_)
+        }
       }
-      
-      context become handler(instrumentMap, collectorInstrumentMap, latestMap, mtDataList)
+
+      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList)
 
       sender ! latestMap
   }
 
   import scala.collection.mutable.ListBuffer
-  def calculateAvgMap(mtMap: scala.collection.mutable.Map[MonitorType.Value, scala.collection.mutable.Map[String, ListBuffer[Double]]]) = {
+  def calculateAvgMap(mtMap: Map[MonitorType.Value, Map[String, ListBuffer[Double]]]) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -288,28 +338,27 @@ class DataCollectManager extends Actor {
 
   }
 
-  def calculateHourData(current: DateTime)(latestDataMap: Map[MonitorType.Value, Record]) = {
+  def calculateHourData(current: DateTime)(mtList: List[MonitorType.Value]) = {
     Logger.debug("calculate hour data " + (current - 1.hour))
-    val recordMap = Record.getRecordMap(Record.MinCollection)(latestDataMap.keys.toList, current - 1.hour, current)
+    val recordMap = Record.getRecordMap(Record.MinCollection)(mtList, current - 1.hour, current)
 
     import scala.collection.mutable.ListBuffer
-    import scala.collection.mutable.Map
-    val mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
+    var mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
 
     for {
       mtRecords <- recordMap
       mt = mtRecords._1
       r <- mtRecords._2
     } {
-      val statusMap = mtMap.getOrElse(mt, {
+      var statusMap = mtMap.getOrElse(mt, {
         val map = Map.empty[String, ListBuffer[Double]]
-        mtMap.put(mt, map)
+        mtMap = mtMap ++ Map(mt-> map)
         map
       })
 
       val lb = statusMap.getOrElse(r.status, {
         val l = ListBuffer.empty[Double]
-        statusMap.put(r.status, l)
+        statusMap = statusMap ++ Map(r.status-> l)
         l
       })
 
@@ -318,7 +367,7 @@ class DataCollectManager extends Actor {
 
     val hourMtAvgList = calculateAvgMap(mtMap)
     val f = Record.insertRecord(Record.toDocument(current.minusHours(1), hourMtAvgList.toList))(Record.HourCollection)
-    f map{ _ => ForwardManager.forwardHourData}
+    f map { _ => ForwardManager.forwardHourData }
     f
   }
 
