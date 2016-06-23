@@ -359,6 +359,7 @@ class DataCollectManager extends Actor {
       val lb = statusMap.getOrElse(r.status, {
         val l = ListBuffer.empty[Double]
         statusMap = statusMap ++ Map(r.status-> l)
+        mtMap = mtMap ++ Map(mt-> statusMap)
         l
       })
 
