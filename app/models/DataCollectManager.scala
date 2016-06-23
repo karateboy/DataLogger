@@ -132,7 +132,7 @@ object DataCollectManager {
   def recalculateHourData(current: DateTime, forward:Boolean = true)(mtList: List[MonitorType.Value]) = {
     Logger.debug("calculate hour data " + (current - 1.hour))
     val recordMap = Record.getRecordMap(Record.MinCollection)(mtList, current - 1.hour, current)
-
+    
     import scala.collection.mutable.ListBuffer
     var mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
 
