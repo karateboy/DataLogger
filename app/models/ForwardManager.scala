@@ -21,6 +21,7 @@ object ForwardManager {
   val monitor = serverConfig.getString("monitor")
 
   case object ForwardHour
+  case class ForwardHourRecord(start:DateTime, end:DateTime)
   case object ForwardMin
   case object ForwardCalibration
   case object ForwardAlarm
@@ -47,6 +48,10 @@ object ForwardManager {
   
   def forwardHourData = {
     managerOpt map { _ ! ForwardHour}
+  }
+  
+  def forwardHourRecordPeriod(start:DateTime, end:DateTime) = {
+    managerOpt map { _ ! ForwardHourRecord(start, end)}
   }
   
   def forwardMinData = {
@@ -105,6 +110,9 @@ class ForwardManager(server: String, monitor: String) extends Actor {
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
     
+    case fhr:ForwardHourRecord=>
+      hourRecordForwarder ! fhr
+      
     case ForwardMin =>
       minRecordForwarder ! ForwardMin
       

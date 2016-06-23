@@ -84,6 +84,87 @@ object DataCollectManager {
     val f = manager ? GetLatestData
     f.mapTo[Map[MonitorType.Value, Record]]
   }
+
+  import scala.collection.mutable.ListBuffer
+  def calculateAvgMap(mtMap: Map[MonitorType.Value, Map[String, ListBuffer[Double]]]) = {
+    for {
+      mt <- mtMap.keys
+      statusMap = mtMap(mt)
+      total = statusMap.map { _._2.size }.sum if total != 0
+    } yield {
+      val minuteAvg =
+        {
+          val statusKV = {
+            val kv = statusMap.maxBy(kv => kv._2.length)
+            if (kv._1 == MonitorStatus.NormalStat &&
+              statusMap(kv._1).size < statusMap.size * effectivRatio) {
+              //return most status except normal
+              val noNormalStatusMap = statusMap - kv._1
+              noNormalStatusMap.maxBy(kv => kv._2.length)
+            } else
+              kv
+          }
+          val values = statusKV._2
+          val avg = if (mt == MonitorType.WIN_DIRECTION) {
+            val windDir = values
+            val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
+            import controllers.Query._
+            if (windSpeedStatusMap.isDefined) {
+              val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
+              val windSpeed = windSpeedMostStatus._2
+              windAvg(windSpeed.toList, windDir.toList)
+            } else { //assume wind speed is all equal
+              val windSpeed =
+                for (r <- 1 to windDir.length)
+                  yield 1.0
+              windAvg(windSpeed.toList, windDir.toList)
+            }
+          } else {
+            values.sum / values.length
+          }
+          (avg, statusKV._1)
+        }
+      mt -> minuteAvg
+    }
+
+  }
+
+  def recalculateHourData(current: DateTime, forward:Boolean = true)(mtList: List[MonitorType.Value]) = {
+    Logger.debug("calculate hour data " + (current - 1.hour))
+    val recordMap = Record.getRecordMap(Record.MinCollection)(mtList, current - 1.hour, current)
+
+    import scala.collection.mutable.ListBuffer
+    var mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
+
+    for {
+      mtRecords <- recordMap
+      mt = mtRecords._1
+      r <- mtRecords._2
+    } {
+      var statusMap = mtMap.getOrElse(mt, {
+        val map = Map.empty[String, ListBuffer[Double]]
+        mtMap = mtMap ++ Map(mt -> map)
+        map
+      })
+
+      val lb = statusMap.getOrElse(r.status, {
+        val l = ListBuffer.empty[Double]
+        statusMap = statusMap ++ Map(r.status -> l)
+        mtMap = mtMap ++ Map(mt -> statusMap)
+        l
+      })
+
+      lb.append(r.value)
+    }
+
+    val hourMtAvgList = calculateAvgMap(mtMap)
+    val f = Record.upsertRecord(Record.toDocument(current.minusHours(1), hourMtAvgList.toList))(Record.HourCollection)
+    if(forward)
+      f map { _ => ForwardManager.forwardHourData }
+    
+    f
+  }
+
 }
 
 class DataCollectManager extends Actor {
@@ -220,12 +301,12 @@ class DataCollectManager extends Actor {
                   }
                 }
                 val winOutLb = lb.filter(_._1 == winOutInstrumentOpt.get).map(_._2)
-                status->winOutLb  
+                status -> winOutLb
               }
             val winOutStatusMap = winOutStatusPair.toMap
             mt -> winOutStatusMap
           }
-        val priorityMtMap = priorityMtPair.toMap  
+        val priorityMtMap = priorityMtPair.toMap
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
@@ -240,7 +321,7 @@ class DataCollectManager extends Actor {
 
       if (current.getMinuteOfHour == 0) {
         import scala.concurrent.ExecutionContext.Implicits.global
-        f.map { _ => calculateHourData(current)(latestDataMap.keys.toList) }
+        f.map { _ => recalculateHourData(current)(latestDataMap.keys.toList) }
       }
     }
 
@@ -292,84 +373,6 @@ class DataCollectManager extends Actor {
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList)
 
       sender ! latestMap
-  }
-
-  import scala.collection.mutable.ListBuffer
-  def calculateAvgMap(mtMap: Map[MonitorType.Value, Map[String, ListBuffer[Double]]]) = {
-    for {
-      mt <- mtMap.keys
-      statusMap = mtMap(mt)
-      total = statusMap.map { _._2.size }.sum if total != 0
-    } yield {
-      val minuteAvg =
-        {
-          val statusKV = {
-            val kv = statusMap.maxBy(kv => kv._2.length)
-            if (kv._1 == MonitorStatus.NormalStat &&
-              statusMap(kv._1).size < statusMap.size * effectivRatio) {
-              //return most status except normal
-              val noNormalStatusMap = statusMap - kv._1
-              noNormalStatusMap.maxBy(kv => kv._2.length)
-            } else
-              kv
-          }
-          val values = statusKV._2
-          val avg = if (mt == MonitorType.WIN_DIRECTION) {
-            val windDir = values
-            val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
-            import controllers.Query._
-            if (windSpeedStatusMap.isDefined) {
-              val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
-              val windSpeed = windSpeedMostStatus._2
-              windAvg(windSpeed.toList, windDir.toList)
-            } else { //assume wind speed is all equal
-              val windSpeed =
-                for (r <- 1 to windDir.length)
-                  yield 1.0
-              windAvg(windSpeed.toList, windDir.toList)
-            }
-          } else {
-            values.sum / values.length
-          }
-          (avg, statusKV._1)
-        }
-      mt -> minuteAvg
-    }
-
-  }
-
-  def calculateHourData(current: DateTime)(mtList: List[MonitorType.Value]) = {
-    Logger.debug("calculate hour data " + (current - 1.hour))
-    val recordMap = Record.getRecordMap(Record.MinCollection)(mtList, current - 1.hour, current)
-
-    import scala.collection.mutable.ListBuffer
-    var mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
-
-    for {
-      mtRecords <- recordMap
-      mt = mtRecords._1
-      r <- mtRecords._2
-    } {
-      var statusMap = mtMap.getOrElse(mt, {
-        val map = Map.empty[String, ListBuffer[Double]]
-        mtMap = mtMap ++ Map(mt-> map)
-        map
-      })
-
-      val lb = statusMap.getOrElse(r.status, {
-        val l = ListBuffer.empty[Double]
-        statusMap = statusMap ++ Map(r.status-> l)
-        mtMap = mtMap ++ Map(mt-> statusMap)
-        l
-      })
-
-      lb.append(r.value)
-    }
-
-    val hourMtAvgList = calculateAvgMap(mtMap)
-    val f = Record.insertRecord(Record.toDocument(current.minusHours(1), hourMtAvgList.toList))(Record.HourCollection)
-    f map { _ => ForwardManager.forwardHourData }
-    f
   }
 
   override def postStop(): Unit = {

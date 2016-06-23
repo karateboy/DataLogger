@@ -59,6 +59,10 @@ GET		/ManualAudit			controllers.Query.manualAudit()
 GET		/ManualAuditHistory		controllers.Query.manualAuditHistory()
 GET		/ManualAuditHistory/:start/:end		controllers.Query.manualAuditHistoryReport(start:Long, end:Long)
 
+#Data Management
+GET		/DataManagement				controllers.Application.dataManagement
+GET		/Recalculate/:start/:end	controllers.Application.recalculateHour(start, end)
+
 #Realtime
 GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()
 GET		/RealtimeStatus			controllers.Realtime.realtimeStatus()
@@ -72,8 +76,6 @@ GET		/Excel/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorR
 GET		/MonitorMonthlyHourReport		controllers.Report.monitorMonthlyHourReport
 GET		/MonthlyHourReport/:monitorType/:reportDate	controllers.Report.monthlyHourReport(monitorType, reportDate, outputTypeStr="html")
 
-#Data Management
-GET		/DataManagement		controllers.Application.dataManagement
 
 #JSON
 GET		/MonitorType			controllers.Application.monitorTypeList
