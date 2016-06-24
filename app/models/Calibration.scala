@@ -181,9 +181,9 @@ object Calibration {
         span_dev_ratio <- cal.span_dev_ratio
         span_dev_internal <- MonitorType.map(cal.monitorType).span_dev_internal
         span_dev_law <- MonitorType.map(cal.monitorType).span_dev_law
-      } yield if (span_dev_ratio > span_dev_law)
+      } yield if (span_dev_ratio * 100 > span_dev_law)
         "red"
-      else if (span_dev_ratio > span_dev_internal)
+      else if (span_dev_ratio * 100 > span_dev_internal)
         "blue"
       else
         ""
@@ -216,7 +216,7 @@ object Calibration {
         span_dev_ratio <- cal.span_dev_ratio
         span_dev_internal <- MonitorType.map(cal.monitorType).span_dev_internal
         span_dev_law <- MonitorType.map(cal.monitorType).span_dev_law
-      } yield if (span_dev_ratio > span_dev_law)
+      } yield if (span_dev_ratio * 100 > span_dev_law)
         false
       else
         true
