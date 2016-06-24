@@ -51,11 +51,28 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
     }
   }
 
+  def uploadRecord(start:DateTime, end:DateTime) = {
+    val recordFuture = Record.getRecordListFuture(Record.HourCollection)(start, end)
+    for (record <- recordFuture) {
+      if (!record.isEmpty) {
+        val url = s"http://$server/HourRecord/$monitor"
+        val f = WS.url(url).put(Json.toJson(record))
+        f onFailure {
+          case ex: Throwable =>
+            ModelHelper.logException(ex)
+        }
+      }
+    }
+  }
   def handler(latestRecordTimeOpt: Option[Long]): Receive = {
     case ForwardHour =>
       if (latestRecordTimeOpt.isEmpty)
         checkLatest
       else
         uploadRecord(latestRecordTimeOpt.get)
+        
+    case ForwardHourRecord(start, end)=>
+      uploadRecord(start, end)
+
   }
 }
