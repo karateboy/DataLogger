@@ -182,18 +182,18 @@ object Calibration {
         span_dev_internal <- MonitorType.map(cal.monitorType).span_dev_internal
         span_dev_law <- MonitorType.map(cal.monitorType).span_dev_law
       } yield if (span_dev_ratio * 100 > span_dev_law)
-        "red"
+        "danger"
       else if (span_dev_ratio * 100 > span_dev_internal)
-        "blue"
+        "info"
       else
         ""
 
     val styleOpt =
       for (zeroStyle <- zeroStyleOpt; spanStyle <- spanStyleOpt)
-        yield if (zeroStyle == "red" || spanStyle == "red")
-        "red"
-      else if (zeroStyle == "blue" || spanStyle == "blue")
-        "blue"
+        yield if (zeroStyle == "danger" || spanStyle == "danger")
+        "danger"
+      else if (zeroStyle == "info" || spanStyle == "info")
+        "info"
       else
         ""
 
