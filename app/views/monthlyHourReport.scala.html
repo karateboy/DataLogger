@@ -58,7 +58,7 @@
 				<th>@day.toString("dd")</th>
 				@for(h<-0 to 23){
 					<td class="@MonitorType.getCssClassStr(mt, timeMap.get(day + h.hour))">
-					@MonitorType.formatRecord(mt, timeMap.get(day + h.hour))</td>
+					@Html(MonitorType.formatRecord(mt, timeMap.get(day + h.hour)))</td>
 				}
 				<td>@MonitorType.format(mt, dayStatMap(day).avg)</td>
 				<td>@MonitorType.format(mt, dayStatMap(day).max)</td>
