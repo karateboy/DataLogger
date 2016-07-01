@@ -242,7 +242,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
   def normalReceive(): Receive = {
     case ConnectHost(host) =>
-      Logger.debug(s"${self.toString()}: connect $host")
+      Logger.info(s"${self.toString()}: connect $host")
       Future {
         blocking {
           try {
@@ -495,9 +495,9 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
     }
     // suppose every 10 min
-    val period = 10
+    val period = 30
     val nextTime = getNextTime(period)
-    Logger.debug(s"$instId next logging time= $nextTime")
+    //Logger.debug(s"$instId next logging time= $nextTime")
     nextTime
   }
 
@@ -540,7 +540,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
     //Log Instrument state
     if (DateTime.now() > nextLoggingStatusTime) {
-      Logger.debug("Log instrument state")
+      //Logger.debug("Log instrument state")
       try {
         logInstrumentStatus(regValue)
       } catch {
@@ -548,7 +548,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
           Logger.error("Log instrument status failed")
       }
       nextLoggingStatusTime = nextLoggingStatusTime + 10.minute
-      Logger.debug(s"next logging time = $nextLoggingStatusTime")
+      //Logger.debug(s"next logging time = $nextLoggingStatusTime")
     }
 
     oldModelReg = Some(regValue)

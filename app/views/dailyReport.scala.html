@@ -46,7 +46,7 @@
 			<th>@("%02d:00".format(i))</th>
 			@for(mt<-mTypes){
 				<td class="@MonitorType.getCssClassStr(mt, mtTimeMap(mt).get(reportDate + i.hour))"
-				>@MonitorType.formatRecord(mt, mtTimeMap(mt).get(reportDate + i.hour))</td>
+				>@Html(MonitorType.formatRecord(mt, mtTimeMap(mt).get(reportDate + i.hour)))</td>
 			}
 			</tr>
 		}
