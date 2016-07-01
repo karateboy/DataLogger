@@ -129,10 +129,10 @@ object DataCollectManager {
 
   }
 
-  def recalculateHourData(current: DateTime, forward:Boolean = true)(mtList: List[MonitorType.Value]) = {
+  def recalculateHourData(current: DateTime, forward: Boolean = true)(mtList: List[MonitorType.Value]) = {
     Logger.debug("calculate hour data " + (current - 1.hour))
     val recordMap = Record.getRecordMap(Record.MinCollection)(mtList, current - 1.hour, current)
-    
+
     import scala.collection.mutable.ListBuffer
     var mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
 
@@ -159,9 +159,9 @@ object DataCollectManager {
 
     val hourMtAvgList = calculateAvgMap(mtMap)
     val f = Record.upsertRecord(Record.toDocument(current.minusHours(1), hourMtAvgList.toList))(Record.HourCollection)
-    if(forward)
+    if (forward)
       f map { _ => ForwardManager.forwardHourData }
-    
+
     f
   }
 
@@ -300,8 +300,12 @@ class DataCollectManager extends Actor {
                     instrumentId == id
                   }
                 }
-                val winOutLb = lb.filter(_._1 == winOutInstrumentOpt.get).map(_._2)
-                status -> winOutLb
+                val winOutLbOpt = winOutInstrumentOpt.map {
+                  winOutInstrument =>
+                    lb.filter(_._1 == winOutInstrument).map(_._2)
+                }
+
+                status -> winOutLbOpt.getOrElse(ListBuffer.empty[Double])
               }
             val winOutStatusMap = winOutStatusPair.toMap
             mt -> winOutStatusMap
