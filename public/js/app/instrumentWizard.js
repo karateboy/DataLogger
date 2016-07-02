@@ -177,6 +177,7 @@ angular.module('newInstrumentView',
 						$scope.param.tcpHost = inst.protocol.host;
 						$scope.param.comPort = inst.protocol.comPort;
 						$instConfigService.param = JSON.parse(inst.param);
+						$instConfigService.notifyConfigChanged($instConfigService);						
 					}, function(errResponse) {
 						console.error('Error while fetching instrument...');
 					});
@@ -189,6 +190,7 @@ angular.module('newInstrumentView',
 					$scope.param.tcpHost = "localhost";
 					$scope.param.comPort = 1;
 					$instConfigService.param= {};
+					$instConfigService.notifyConfigChanged($instConfigService);
 					$scope.editMode = false;
 					WizardHandler.wizard().reset();
 				}
@@ -232,12 +234,19 @@ angular.module('newInstrumentView',
 			}
 		} ])
 		
-.factory('InstConfigService', [function() {
+.factory('InstConfigService', ['$rootScope', function($rootScope) {
 	var service = {
 		instrumentType:"",
 		summary:function(){ return "";},
 		param:{},
-		validate:function() {return true;}	
+		validate:function() {return true;},
+		subscribeConfigChanged: function(scope, callback) {
+            var handler = $rootScope.$on('InstConfigChanged', callback);
+            scope.$on('$destroy', handler);
+        },
+        notifyConfigChanged: function(config) {        	
+            $rootScope.$emit('InstConfigChanged', config);
+        }
 	};
 	
 	return service;
