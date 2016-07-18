@@ -111,8 +111,10 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
         10 -> "M rate: GM tube or amplifier defective")
 
       if ((error & 0x1) != 0) {
-        if (msgMap.contains(channel))
-          log(instStr(id), Level.ERR, msgMap(channel))
+        if (msgMap.contains(channel)){
+          //FIXME disable error alarm 
+          //log(instStr(id), Level.ERR, msgMap(channel))
+        }
       }
     }
   }
