@@ -52,6 +52,8 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
   }
 
   def uploadRecord(start:DateTime, end:DateTime) = {
+    Logger.info(s"upload hour ${start.toString()} => ${end.toString}")
+
     val recordFuture = Record.getRecordListFuture(Record.HourCollection)(start, end)
     for (record <- recordFuture) {
       if (!record.isEmpty) {

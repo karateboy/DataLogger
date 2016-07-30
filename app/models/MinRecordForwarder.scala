@@ -53,6 +53,8 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
   }
 
   def uploadRecord(start:DateTime, end:DateTime) = {
+    Logger.info(s"upload min ${start.toString()} => ${end.toString}")
+    
     val recordFuture = Record.getRecordListFuture(Record.MinCollection)(start, end)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
