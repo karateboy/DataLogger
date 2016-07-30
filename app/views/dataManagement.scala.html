@@ -59,7 +59,7 @@ $( document ).ready(function() {
     	locale: "zh-TW"
 	});
 
-	var monitorTypes, reportStart, reportEnd;
+	var reportStart, reportEnd;
 	
 	function validate(){
 		reportStart = $('#reportStart').val();
@@ -97,6 +97,37 @@ $( document ).ready(function() {
 			success : function(result) {
 				if(result.ok)
 					alert("重新計算成功!");
+			},
+			error : function(xhr, status, errorThrown) {
+				console.log("錯誤訊息:" + status + "-" + errorThrown);
+			},
+
+			complete : function(xhr, status) {
+				$("body").css("cursor", "default");
+			}
+		});
+	});
+
+	$('#uploadData').click(function(){
+		if(!validate())
+			return;
+			
+		$('#reportDiv').html('');
+		$("body").css("cursor", "progress");
+		
+		var tabType = $("input[name='tableType']:checked").attr('id');
+		var url = "/Upload/" + tabType + "/" + reportStart + "/" + reportEnd; 
+		console.log(url);
+		
+		$.ajax({
+			url : url,
+			data : "",
+			contentType : "application/json; charset=utf-8",
+			type : "GET",
+			dataType : "json",
+			success : function(result) {
+				if(result.ok)
+					alert("重新上傳!");
 			},
 			error : function(xhr, status, errorThrown) {
 				console.log("錯誤訊息:" + status + "-" + errorThrown);

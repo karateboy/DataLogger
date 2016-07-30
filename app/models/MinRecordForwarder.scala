@@ -52,12 +52,35 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
     }
   }
 
+  def uploadRecord(start:DateTime, end:DateTime) = {
+    val recordFuture = Record.getRecordListFuture(Record.MinCollection)(start, end)
+    for (record <- recordFuture) {
+      if (!record.isEmpty) {
+        val url = s"http://$server/MinRecord/$monitor"
+        val f = WS.url(url).put(Json.toJson(record))
+        f onSuccess {
+          case response =>
+            context become handler(Some(record.last.time))
+        }
+        f onFailure {
+          case ex: Throwable =>
+            context become handler(None)
+            ModelHelper.logException(ex)            
+        }
+      }
+    }
+  }
+
   def handler(latestRecordTimeOpt: Option[Long]): Receive = {
     case ForwardMin =>
       if (latestRecordTimeOpt.isEmpty)
         checkLatest
       else
         uploadRecord(latestRecordTimeOpt.get)
+        
+    case ForwardMinRecord(start, end)=>
+      uploadRecord(start, end)
+    
   }
 
 }

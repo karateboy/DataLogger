@@ -392,4 +392,19 @@ object Application extends Controller {
     }
     Ok(Json.obj("ok" -> true))
   }
+  
+  def uploadData(tabStr:String, startStr:String, endStr:String) = Security.Authenticated {
+    val tab = TableType.withName(tabStr)
+    val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+    val end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+    
+    tab match{
+      case TableType.min =>
+        ForwardManager.forwardMinRecord(start, end)
+      case TableType.hour =>
+        ForwardManager.forwardHourRecord(start, end)
+    }
+    
+    Ok(Json.obj("ok" -> true))
+  }
 }

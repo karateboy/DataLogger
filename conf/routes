@@ -62,6 +62,7 @@ GET		/ManualAuditHistory/:start/:end		controllers.Query.manualAuditHistoryReport
 #Data Management
 GET		/DataManagement				controllers.Application.dataManagement
 GET		/Recalculate/:start/:end	controllers.Application.recalculateHour(start, end)
+GET		/Upload/:tab/:start/:end	controllers.Application.uploadData(tab, start, end)
 
 #Realtime
 GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()

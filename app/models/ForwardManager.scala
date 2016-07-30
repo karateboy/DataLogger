@@ -21,8 +21,9 @@ object ForwardManager {
   val monitor = serverConfig.getString("monitor")
 
   case object ForwardHour
-  case class ForwardHourRecord(start:DateTime, end:DateTime)
+  case class ForwardHourRecord(start: DateTime, end: DateTime)
   case object ForwardMin
+  case class ForwardMinRecord(start: DateTime, end: DateTime)
   case object ForwardCalibration
   case object ForwardAlarm
   case object ForwardInstrumentStatus
@@ -41,23 +42,27 @@ object ForwardManager {
       count += 1
     }
   }
-  
+
   def updateInstrumentStatusType = {
-    managerOpt map { _ ! UpdateInstrumentStatusType}
+    managerOpt map { _ ! UpdateInstrumentStatusType }
   }
-  
+
   def forwardHourData = {
-    managerOpt map { _ ! ForwardHour}
+    managerOpt map { _ ! ForwardHour }
   }
-  
-  def forwardHourRecordPeriod(start:DateTime, end:DateTime) = {
-    managerOpt map { _ ! ForwardHourRecord(start, end)}
+
+  def forwardHourRecord(start: DateTime, end: DateTime) = {
+    managerOpt map { _ ! ForwardHourRecord(start, end) }
   }
-  
+
   def forwardMinData = {
-    managerOpt map { _ ! ForwardMin}
+    managerOpt map { _ ! ForwardMin }
   }
-    
+  
+  def forwardMinRecord(start: DateTime, end:DateTime) = {
+    managerOpt map { _ ! ForwardMinRecord(start, end) }
+  }
+
 }
 
 class ForwardManager(server: String, monitor: String) extends Actor {
@@ -79,14 +84,14 @@ class ForwardManager(server: String, monitor: String) extends Actor {
     "instrumentStatusForwarder")
 
   val statusTypeForwarder = context.actorOf(Props(classOf[InstrumentStatusTypeForwarder], server, monitor),
-      "statusTypeForwarder")
+    "statusTypeForwarder")
 
   {
     import scala.concurrent.duration._
-    
+
     Akka.system.scheduler.scheduleOnce(Duration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
   }
-  
+
   val timer = {
     import scala.concurrent.duration._
     Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
@@ -96,40 +101,42 @@ class ForwardManager(server: String, monitor: String) extends Actor {
     import scala.concurrent.duration._
     Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(5, MINUTES), calibrationForwarder, ForwardCalibration)
   }
-  
+
   val timer3 = {
     import scala.concurrent.duration._
     Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
-  
-  
+
   def receive = handler
 
   import play.api.libs.ws._
   def handler: Receive = {
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
-    
-    case fhr:ForwardHourRecord=>
+
+    case fhr: ForwardHourRecord =>
       hourRecordForwarder ! fhr
-      
+
     case ForwardMin =>
       minRecordForwarder ! ForwardMin
+      
+    case fmr: ForwardMinRecord =>
+      minRecordForwarder ! fmr
       
     case ForwardCalibration =>
       Logger.info("Forward Calibration")
       calibrationForwarder ! ForwardCalibration
-      
+
     case ForwardAlarm =>
       alarmForwarder ! ForwardAlarm
-      
-    case ForwardInstrumentStatus=>
+
+    case ForwardInstrumentStatus =>
       instrumentStatusForwarder ! ForwardInstrumentStatus
-      
-    case UpdateInstrumentStatusType=>
+
+    case UpdateInstrumentStatusType =>
       statusTypeForwarder ! UpdateInstrumentStatusType
   }
-  
+
   override def postStop(): Unit = {
     timer.cancel
     timer2.cancel
