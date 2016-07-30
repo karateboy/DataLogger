@@ -59,10 +59,16 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
       if (!record.isEmpty) {
         val url = s"http://$server/HourRecord/$monitor"
         val f = WS.url(url).put(Json.toJson(record))
+        f onSuccess{
+          case response =>
+            Logger.info("Success upload!")
+        }
         f onFailure {
           case ex: Throwable =>
             ModelHelper.logException(ex)
         }
+      }else{
+        Logger.error("No hour record!")
       }
     }
   }

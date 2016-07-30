@@ -54,7 +54,7 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
 
   def uploadRecord(start:DateTime, end:DateTime) = {
     Logger.info(s"upload min ${start.toString()} => ${end.toString}")
-    
+
     val recordFuture = Record.getRecordListFuture(Record.MinCollection)(start, end)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
@@ -62,14 +62,16 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
         val f = WS.url(url).put(Json.toJson(record))
         f onSuccess {
           case response =>
-            context become handler(Some(record.last.time))
+            Logger.info("Success upload")
         }
         f onFailure {
           case ex: Throwable =>
-            context become handler(None)
             ModelHelper.logException(ex)            
         }
+      }else{
+        Logger.error("No min record!")
       }
+      
     }
   }
 
