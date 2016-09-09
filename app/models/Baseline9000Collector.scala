@@ -112,7 +112,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
               val thc = MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
 
               if (calibrateRecordStart)
-                self ! ReportData(List(ch4, nmhc))
+                self ! ReportData(List(ch4, nmhc, thc))
 
               context.parent ! ReportData(List(ch4, nmhc, thc))
             }
