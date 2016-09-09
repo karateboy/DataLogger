@@ -282,18 +282,18 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
             collectorState = MonitorStatus.ZeroCalibrationStat
             Instrument.setState(id, collectorState)
             context become calibrationHandler(AutoZero,
-              mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+              mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
           } else {
             if (calibrationType.zero) {
               collectorState = MonitorStatus.ZeroCalibrationStat
               Instrument.setState(id, collectorState)
               context become calibrationHandler(ManualZero,
-                mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+                mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
             } else {
               collectorState = MonitorStatus.SpanCalibrationStat
               Instrument.setState(id, collectorState)
               context become calibrationHandler(ManualSpan,
-                mtNMHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+                mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
             }
           }
           self ! RaiseStart
