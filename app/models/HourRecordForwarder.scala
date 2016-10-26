@@ -40,7 +40,12 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
         val f = WS.url(url).put(Json.toJson(record))
         f onSuccess {
           case response =>
-            context become handler(Some(record.last.time))
+            if(response.status == 200)
+              context become handler(Some(record.last.time))
+            else{
+              Logger.error(s"${response.status}:${response.statusText}")
+              context become handler(None)
+            }
         }
         f onFailure {
           case ex: Throwable =>
@@ -61,7 +66,10 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
         val f = WS.url(url).put(Json.toJson(record))
         f onSuccess{
           case response =>
-            Logger.info("Success upload!")
+            if(response.status == 200)
+              Logger.info("Success upload!")
+            else
+              Logger.error(s"${response.status}:${response.statusText}")
         }
         f onFailure {
           case ex: Throwable =>

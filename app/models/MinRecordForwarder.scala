@@ -41,40 +41,53 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
         val f = WS.url(url).put(Json.toJson(record))
         f onSuccess {
           case response =>
-            context become handler(Some(record.last.time))
+            if (response.status == 200)
+              context become handler(Some(record.last.time))
+            else {
+              Logger.error(s"${response.status}:${response.statusText}")
+              context become handler(None)
+            }
         }
         f onFailure {
           case ex: Throwable =>
             context become handler(None)
-            ModelHelper.logException(ex)            
+            ModelHelper.logException(ex)
         }
       }
     }
   }
 
-  def uploadRecord(start:DateTime, end:DateTime) = {
+  def uploadRecord(start: DateTime, end: DateTime) = {
     Logger.info(s"upload min ${start.toString()} => ${end.toString}")
 
     val recordFuture = Record.getRecordListFuture(Record.MinCollection)(start, end)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         Logger.info(s"Total ${record.length} records")
-        val url = s"http://$server/MinRecord/$monitor"
-        val f = WS.url(url).put(Json.toJson(record))
+        uploadSmallRecord(record)
         
-        f onSuccess {
-          case response =>
-            Logger.info(s"${response.status} : ${response.statusText}")
-            Logger.info("Success upload")
+        def uploadSmallRecord(recs: Seq[Record.RecordList]) {
+          val (chunk, remain) =  (recs.take(60), recs.drop(60))
+          if(!remain.isEmpty)
+            uploadSmallRecord(remain)
+            
+          val url = s"http://$server/MinRecord/$monitor"
+          val f = WS.url(url).put(Json.toJson(chunk))
+
+          f onSuccess {
+            case response =>
+              Logger.info(s"${response.status} : ${response.statusText}")
+              Logger.info("Success upload")
+          }
+          f onFailure {
+            case ex: Throwable =>
+              ModelHelper.logException(ex)
+          }
         }
-        f onFailure {
-          case ex: Throwable =>
-            ModelHelper.logException(ex)            
-        }
-      }else{
+      } else {
         Logger.error("No min record!")
       }
-      
+
     }
   }
 
@@ -84,10 +97,10 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
         checkLatest
       else
         uploadRecord(latestRecordTimeOpt.get)
-        
-    case ForwardMinRecord(start, end)=>
+
+    case ForwardMinRecord(start, end) =>
       uploadRecord(start, end)
-    
+
   }
 
 }
