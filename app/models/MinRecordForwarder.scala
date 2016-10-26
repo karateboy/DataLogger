@@ -37,12 +37,10 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
     val recordFuture = Record.getRecordListFuture(Record.MinCollection)(new DateTime(latestRecordTime + 1), DateTime.now)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
-        Logger.info(s"Total ${record.length} records")
         val url = s"http://$server/MinRecord/$monitor"
         val f = WS.url(url).put(Json.toJson(record))
         f onSuccess {
           case response =>
-            Logger.info(s"${response.status} : ${response.statusText}")
             context become handler(Some(record.last.time))
         }
         f onFailure {
@@ -60,11 +58,13 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
     val recordFuture = Record.getRecordListFuture(Record.MinCollection)(start, end)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
+        Logger.info(s"Total ${record.length} records")
         val url = s"http://$server/MinRecord/$monitor"
         val f = WS.url(url).put(Json.toJson(record))
         
         f onSuccess {
           case response =>
+            Logger.info(s"${response.status} : ${response.statusText}")
             Logger.info("Success upload")
         }
         f onFailure {
