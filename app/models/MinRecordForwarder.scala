@@ -1,6 +1,6 @@
 package models
 import scala.concurrent.ExecutionContext.Implicits.global
-import com.github.nscala_time.time.Imports.DateTime
+import com.github.nscala_time.time.Imports._
 import akka.actor.Actor
 import akka.actor.actorRef2Scala
 import play.api.Logger
@@ -33,17 +33,29 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
     }
   }
 
-  def uploadRecord(latestRecordTime: Long) = {
-    val recordFuture = Record.getRecordListFuture(Record.MinCollection)(new DateTime(latestRecordTime + 1), DateTime.now)
+  def uploadRecord(latestRecordTime: Long) {
+    val serverRecordStart = new DateTime(latestRecordTime + 1)
+    val recordFuture =
+      if (serverRecordStart + 1.hour < DateTime.now)
+        Record.getRecordListFuture(Record.MinCollection)(serverRecordStart, serverRecordStart + 1.hour)
+      else
+        Record.getRecordListFuture(Record.MinCollection)(serverRecordStart, DateTime.now)
+
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         val url = s"http://$server/MinRecord/$monitor"
         val f = WS.url(url).put(Json.toJson(record))
+
         f onSuccess {
           case response =>
-            if (response.status == 200)
-              context become handler(Some(record.last.time))
-            else {
+            if (response.status == 200) {
+              if (record.last.time > latestRecordTime) {
+                context become handler(Some(record.last.time))
+                if (new DateTime(record.last.time) + 1.minute < DateTime.now) {
+                  self ! ForwardMin
+                }
+              }
+            } else {
               Logger.error(s"${response.status}:${response.statusText}")
               context become handler(None)
             }
@@ -65,12 +77,12 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
       if (!record.isEmpty) {
         Logger.info(s"Total ${record.length} records")
         uploadSmallRecord(record)
-        
+
         def uploadSmallRecord(recs: Seq[Record.RecordList]) {
-          val (chunk, remain) =  (recs.take(60), recs.drop(60))
-          if(!remain.isEmpty)
+          val (chunk, remain) = (recs.take(60), recs.drop(60))
+          if (!remain.isEmpty)
             uploadSmallRecord(remain)
-            
+
           val url = s"http://$server/MinRecord/$monitor"
           val f = WS.url(url).put(Json.toJson(chunk))
 
