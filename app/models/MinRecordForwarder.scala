@@ -51,9 +51,6 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
             if (response.status == 200) {
               if (record.last.time > latestRecordTime) {
                 context become handler(Some(record.last.time))
-                if (new DateTime(record.last.time) + 1.minute < DateTime.now) {
-                  self ! ForwardMin
-                }
               }
             } else {
               Logger.error(s"${response.status}:${response.statusText}")
