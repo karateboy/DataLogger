@@ -135,6 +135,9 @@ angular.module('newInstrumentView',
 					return "adam4017Cfg";
 				}else if($scope.param.selectedInstTypeId === "verewa_f701"){
 					return "verewaCfg";
+				}else if($scope.param.selectedInstTypeId === "moxaE1240" ||
+						$scope.param.selectedInstTypeId === "moxaE1212"){
+					return "e1240Config";
 				}else
 					return "default";
 			}

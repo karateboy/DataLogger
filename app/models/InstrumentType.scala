@@ -31,11 +31,15 @@ object InstrumentType extends Enumeration{
   val t300 = Value
   val t360 = Value
   val t400 = Value
-  val t700 = Value
+  val t700 = Value  
 
   val TapiTypes = List(t100, t200, t300, t360, t400, t700)
   
   val verewa_f701 = Value
+  
+  val moxaE1240 = Value
+  val moxaE1212 = Value
+  
   val map = Map(
       baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000),
       adam4017->InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017, true),
@@ -46,7 +50,9 @@ object InstrumentType extends Enumeration{
       t400->InstrumentType(t400, "TAPI T400", List(tcp), TapiT400),
       t700->InstrumentType(t700, "TAPI T700", List(tcp), TapiT700),
 
-      verewa_f701->InstrumentType(verewa_f701, "Verewa F701-20", List(serial), VerewaF701_20)
+      verewa_f701->InstrumentType(verewa_f701, "Verewa F701-20", List(serial), VerewaF701_20),
+      moxaE1240->InstrumentType(moxaE1240, "MOXA E1240", List(tcp), MoxaE1240, true),
+      moxaE1212->InstrumentType(moxaE1212, "MOXA E1212", List(tcp), MoxaE1212)
       ) 
 }
 
