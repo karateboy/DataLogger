@@ -1,6 +1,6 @@
 @* historyReport Template File *@
 @import com.github.nscala_time.time.Imports._
-@(monitorTypes:Array[MonitorType.Value], explain:String, start:DateTime, end:DateTime, timeSeq:List[DateTime], recordTimeMap: Map[MonitorType.Value, Map[DateTime, Record]])
+@(monitorTypes:Array[MonitorType.Value], explain:String, start:DateTime, end:DateTime, timeSeq:List[DateTime], recordTimeMap: Map[MonitorType.Value, Map[DateTime, Record]], showSec:Boolean=false)
 
 <H3>測項:@explain</H3>
 <H5>區間:@start.toString("YYYY-MM-dd HH:mm")~@end.toString("YYYY-MM-dd HH:mm")</H5>
@@ -18,7 +18,11 @@
 <tbody>
 	@for(t <- timeSeq){
 		<tr>
-			<th>@t.toString("YYYY-MM-dd HH:mm")</th>						
+			@if(showSec){
+				<th>@t.toString("YYYY-MM-dd HH:mm:ss")</th>
+			}else{
+				<th>@t.toString("YYYY-MM-dd HH:mm")</th>
+			}
 			@for(mt<-monitorTypes){
 				<td class="@MonitorType.getCssClassStr(mt, recordTimeMap(mt).get(t))">
 				@Html(MonitorType.formatRecord(mt, recordTimeMap(mt).get(t)))</td>

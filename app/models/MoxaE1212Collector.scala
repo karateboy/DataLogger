@@ -31,6 +31,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
   import MoxaE1212Collector._
   import java.io.BufferedReader
   import java.io._
+  import DataCollectManager._
 
   var cancelable: Cancellable = _
 
@@ -41,8 +42,9 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         cfg <- param.ch.zipWithIndex
         chCfg = cfg._1 if chCfg.enable
         idx = cfg._2
+        scale = chCfg.scale.get
       } yield {
-        val v = values(idx)
+        val v = scale * values(idx)
         MonitorTypeData(chCfg.mt.get, v, "010")
       }
     context.parent ! ReportData(dataList.toList)
@@ -88,34 +90,33 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
     case Collect =>
       Future {
         blocking {
-          try{
-          import com.serotonin.modbus4j.BatchRead
-          val batch = new BatchRead[Integer]
+          try {
+            import com.serotonin.modbus4j.BatchRead
+            val batch = new BatchRead[Integer]
 
-          import com.serotonin.modbus4j.locator.BaseLocator
-          import com.serotonin.modbus4j.code.DataType
+            import com.serotonin.modbus4j.locator.BaseLocator
+            import com.serotonin.modbus4j.code.DataType
 
-          //FIXME It is just POC!!!
-          for (idx <- 0 to 7)
-            batch.addLocator(idx, BaseLocator.inputRegister(1, 32 + 2*idx, DataType.TWO_BYTE_INT_UNSIGNED))
+            //FIXME It is just POC!!!
+            for (idx <- 0 to 7)
+              batch.addLocator(idx, BaseLocator.inputRegister(1, 16 + 2 * idx, DataType.TWO_BYTE_INT_UNSIGNED))
 
-          batch.setContiguousRequests(true)
+            batch.setContiguousRequests(true)
 
-          assert(masterOpt.isDefined)
-          
-          val rawResult = masterOpt.get.send(batch)
-          val result =
-            for (idx <- 0 to 7) yield rawResult.getIntValue(idx).toShort
- 
+            assert(masterOpt.isDefined)
 
-          decode(result.toSeq)
-          cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
-          }catch{
-            case ex:Throwable=>
+            val rawResult = masterOpt.get.send(batch)
+            val result =
+              for (idx <- 0 to 7) yield rawResult.getIntValue(idx).toShort
+
+            decode(result.toSeq)
+            cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+          } catch {
+            case ex: Throwable =>
               Logger.error("Read reg failed", ex)
               masterOpt.get.destroy()
               context become handler(collectorState, None)
-              self ! ConnectHost              
+              self ! ConnectHost
           }
         }
       } onFailure errorHandler
@@ -123,6 +124,20 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
     case SetState(id, state) =>
       Logger.info(s"$self => $state")
       context become handler(state, masterOpt)
+
+    case ResetData =>
+      Logger.info("Reset all DI to 0")
+      try {
+        import com.serotonin.modbus4j.locator.BaseLocator
+        import com.serotonin.modbus4j.code.DataType
+        val resetRegAddr = 272
+        
+        val locator = BaseLocator.coilStatus(1, resetRegAddr)
+        masterOpt.get.setValue(locator, true)
+      } catch {
+        case ex: Exception =>
+          ModelHelper.logException(ex)
+      }
   }
 
   override def postStop(): Unit = {

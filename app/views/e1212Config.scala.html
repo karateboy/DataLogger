@@ -1,0 +1,35 @@
+@* Moxa e1212Config Template File *@
+<div ng-controller="e1212Ctrl">
+	<div class="form-group">
+		<label class="col-lg-2 control-label">位址</label>
+	   	<div class="col-lg-2">
+	    	<input type="text" ng-model="param.addr" class="form-control" maxlength="2" required>
+	    </div>
+	</div>
+
+	<div class="form-group">
+	<table class="table table-bordered table-condensed">
+		<thead>
+			<tr>
+				<th>通道</th>
+				<th>啟用</th>
+				<th>測項</th>
+				<th>單位刻度</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr ng-repeat="ch in channels">
+				<td>{{"CH"+ch}}</td>
+				<td><input type="checkbox" ng-model="param.ch[ch].enable" class="form-control"></td>
+				<td><select class="form-control" ng-model="param.ch[ch].mt">
+					@for(mt<-MonitorType.mtvList){
+						<option value="@mt">@MonitorType.map(mt).desp</option>
+					}
+  					</select>
+				</td>
+				<td><input type="text" ng-model="param.ch[ch].scale" class="form-control"></td>
+			</tr>
+		</tbody>
+	</table>
+	</div>
+</div>

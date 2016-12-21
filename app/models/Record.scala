@@ -16,6 +16,8 @@ object Record {
 
   val HourCollection = "hour_data"
   val MinCollection = "min_data"
+  val SecCollection = "sec_data"
+  
   def init(colNames: Seq[String]) {
     if (!colNames.contains(HourCollection)) {
       val f = MongoDB.database.createCollection(HourCollection).toFuture()
@@ -26,6 +28,12 @@ object Record {
       val f = MongoDB.database.createCollection(MinCollection).toFuture()
       f.onFailure(errorHandler)
     }
+    
+    if (!colNames.contains(SecCollection)) {
+      val f = MongoDB.database.createCollection(SecCollection).toFuture()
+      f.onFailure(errorHandler)
+    }
+
   }
 
   def toDocument(dt: DateTime, dataList: List[(MonitorType.Value, (Double, String))]) = {

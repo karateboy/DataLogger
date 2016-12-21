@@ -6,15 +6,14 @@ import play.api.libs.functional.syntax._
 import akka.actor._
 
 object MoxaE1212 extends DriverOps {
-  case class ChannelCfg(enable: Boolean, mt: Option[MonitorType.Value], max: Option[Double], mtMax: Option[Double],
-                        min: Option[Double], mtMin: Option[Double])
+  case class ChannelCfg(enable: Boolean, mt: Option[MonitorType.Value], scale: Option[Double])
   case class MoxaE1212Param(addr:Int, ch: Seq[ChannelCfg])
 
   implicit val cfgReads = Json.reads[ChannelCfg]
   implicit val reads = Json.reads[MoxaE1212Param]
 
   override def getMonitorTypes(param: String) = {
-    val e1212Param = MoxaE1240.validateParam(param)
+    val e1212Param = MoxaE1212.validateParam(param)
     e1212Param.ch.filter { _.enable }.flatMap { _.mt }.toList
   }
 
@@ -32,8 +31,7 @@ object MoxaE1212 extends DriverOps {
           for (cfg <- param.ch) {
             if (cfg.enable) {
               assert(cfg.mt.isDefined)
-              assert(cfg.max.get > cfg.min.get)
-              assert(cfg.mtMax.get > cfg.mtMin.get)
+              assert(cfg.scale.isDefined && cfg.scale.get != 0)
             }
           }
         json

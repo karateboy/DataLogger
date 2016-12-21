@@ -418,15 +418,22 @@ object Query extends Controller {
           val orignal_end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
 
           (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
-        } else
-          (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
-            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
-
-      val timeList = tabType match {
+        } else {
+          val timeStart = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+          tabType match {
+            case TableType.min =>
+              (timeStart, timeStart + 1.hour)
+            case TableType.second =>
+              (timeStart, timeStart + 5.minute)
+          }
+        }
+      val timeList = tabType match { 
         case TableType.hour =>
           getPeriods(start, end, 1.hour)
         case TableType.min =>
           getPeriods(start, end, 1.minute)
+        case TableType.second =>
+          getPeriods(start, end, 1.second)
       }
 
       val recordMap = Record.getRecordMap(TableType.mapCollection(tabType))(monitorTypes.toList, start, end)
@@ -440,7 +447,11 @@ object Query extends Controller {
         val mtCase = MonitorType.map(t)
         s"${mtCase.desp}(${mtCase.unit})"
       }.mkString(",")
-      val output = views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap)
+      val output =
+        if(tabType == TableType.second)
+          views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap, true)
+        else
+          views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap)
       Ok(output)
   }
 

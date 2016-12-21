@@ -29,6 +29,8 @@ object DataCollectManager {
   object AutoSpan extends CalibrationType(true, false)
   object ManualZero extends CalibrationType(false, true)
   object ManualSpan extends CalibrationType(false, false)
+  
+  case object ResetData
 
   var manager: ActorRef = _
   def startup() = {
@@ -86,7 +88,7 @@ object DataCollectManager {
   }
 
   import scala.collection.mutable.ListBuffer
-  def calculateAvgMap(mtMap: Map[MonitorType.Value, Map[String, ListBuffer[Double]]]) = {
+  def calculateAvgMap(mtMap: Map[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -104,14 +106,14 @@ object DataCollectManager {
             } else
               kv
           }
-          val values = statusKV._2
+          val values = statusKV._2.map(_._2)
           val avg = if (mt == MonitorType.WIN_DIRECTION) {
             val windDir = values
             val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
             import controllers.Query._
             if (windSpeedStatusMap.isDefined) {
               val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
-              val windSpeed = windSpeedMostStatus._2
+              val windSpeed = windSpeedMostStatus._2.map(_._2)
               windAvg(windSpeed.toList, windDir.toList)
             } else { //assume wind speed is all equal
               val windSpeed =
@@ -134,7 +136,7 @@ object DataCollectManager {
     val recordMap = Record.getRecordMap(Record.MinCollection)(mtList, current - 1.hour, current)
 
     import scala.collection.mutable.ListBuffer
-    var mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[Double]]]
+    var mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]
 
     for {
       mtRecords <- recordMap
@@ -142,19 +144,19 @@ object DataCollectManager {
       r <- mtRecords._2
     } {
       var statusMap = mtMap.getOrElse(mt, {
-        val map = Map.empty[String, ListBuffer[Double]]
+        val map = Map.empty[String, ListBuffer[(DateTime, Double)]]
         mtMap = mtMap ++ Map(mt -> map)
         map
       })
 
       val lb = statusMap.getOrElse(r.status, {
-        val l = ListBuffer.empty[Double]
+        val l = ListBuffer.empty[(DateTime, Double)]
         statusMap = statusMap ++ Map(r.status -> l)
         mtMap = mtMap ++ Map(mt -> statusMap)
         l
       })
 
-      lb.append(r.value)
+      lb.append((r.time, r.value))
     }
 
     val hourMtAvgList = calculateAvgMap(mtMap)
@@ -253,10 +255,17 @@ class DataCollectManager extends Actor {
       }
 
     case CalculateData => {
+      import scala.collection.mutable.ListBuffer
+      import scala.collection.mutable.Map
+      
+      def flushSecData(recordMap: Map[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]) = { 
+        val recordTimeMap = Map.empty[DateTime, List[(MonitorType.Value, (Double, String))]]
+        //val f = Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.SecCollection)
+      }
+      
       def calculateMinData(currentMintues: DateTime) = {
-        import scala.collection.mutable.ListBuffer
         import scala.collection.mutable.Map
-        val mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[(String, Double)]]]
+        val mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[(String, DateTime, Double)]]]
 
         val currentData = mtDataList.takeWhile(d => d._1 >= currentMintues)
         val minDataList = mtDataList.drop(currentData.length)
@@ -267,18 +276,18 @@ class DataCollectManager extends Actor {
           data <- dl._3
         } {
           val statusMap = mtMap.getOrElse(data.mt, {
-            val map = Map.empty[String, ListBuffer[(String, Double)]]
+            val map = Map.empty[String, ListBuffer[(String, DateTime, Double)]]
             mtMap.put(data.mt, map)
             map
           })
 
           val lb = statusMap.getOrElse(data.status, {
-            val l = ListBuffer.empty[(String, Double)]
+            val l = ListBuffer.empty[(String, DateTime, Double)]
             statusMap.put(data.status, l)
             l
           })
 
-          lb.append((instrumentId, data.value))
+          lb.append((instrumentId, dl._1, data.value))
         }
 
         val priorityMtPair =
@@ -302,15 +311,17 @@ class DataCollectManager extends Actor {
                 }
                 val winOutLbOpt = winOutInstrumentOpt.map {
                   winOutInstrument =>
-                    lb.filter(_._1 == winOutInstrument).map(_._2)
+                    lb.filter(_._1 == winOutInstrument).map(r=>(r._2, r._3))
                 }
 
-                status -> winOutLbOpt.getOrElse(ListBuffer.empty[Double])
+                status -> winOutLbOpt.getOrElse(ListBuffer.empty[(DateTime, Double)])
               }
             val winOutStatusMap = winOutStatusPair.toMap
             mt -> winOutStatusMap
           }
         val priorityMtMap = priorityMtPair.toMap
+        
+        flushSecData(priorityMtMap)
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
