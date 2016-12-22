@@ -125,15 +125,17 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
       Logger.info(s"$self => $state")
       context become handler(state, masterOpt)
 
-    case ResetData =>
+    case ResetCounter =>
       Logger.info("Reset all DI to 0")
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
         import com.serotonin.modbus4j.code.DataType
         val resetRegAddr = 272
-        
-        val locator = BaseLocator.coilStatus(1, resetRegAddr)
-        masterOpt.get.setValue(locator, true)
+
+        for (idx <- 0 to 15) {
+          val locator = BaseLocator.coilStatus(1, resetRegAddr + idx)
+          masterOpt.get.setValue(locator, true)
+        }
       } catch {
         case ex: Exception =>
           ModelHelper.logException(ex)

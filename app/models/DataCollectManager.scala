@@ -29,8 +29,8 @@ object DataCollectManager {
   object AutoSpan extends CalibrationType(true, false)
   object ManualZero extends CalibrationType(false, true)
   object ManualSpan extends CalibrationType(false, false)
-  
-  case object ResetData
+
+  case object ResetCounter
 
   var manager: ActorRef = _
   def startup() = {
@@ -121,6 +121,8 @@ object DataCollectManager {
                   yield 1.0
               windAvg(windSpeed.toList, windDir.toList)
             }
+          } else if (mt == MonitorType.RAIN) {
+            values.max
           } else {
             values.sum / values.length
           }
@@ -213,6 +215,14 @@ class DataCollectManager extends Actor {
         calibratorOpt = Some(collector)
       }
 
+      if(inst.instType == InstrumentType.moxaE1212){
+        val resetTime = DateTime.now().withMinuteOfHour(0).withMillisOfSecond(0) + 1.hour
+        val duration = new Duration(DateTime.now(), resetTime)
+
+        import scala.concurrent.duration._
+        Akka.system.scheduler.schedule(Duration(duration.getStandardSeconds + 1, SECONDS),
+          Duration(1, HOURS), self, ResetCounter)
+      }
       context become handler(instrumentMap + (inst._id -> instrumentParam),
         collectorInstrumentMap + (collector -> inst._id),
         latestDataMap, mtDataList)
@@ -256,13 +266,33 @@ class DataCollectManager extends Actor {
 
     case CalculateData => {
       import scala.collection.mutable.ListBuffer
-      import scala.collection.mutable.Map
-      
-      def flushSecData(recordMap: Map[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]) = { 
-        val recordTimeMap = Map.empty[DateTime, List[(MonitorType.Value, (Double, String))]]
-        //val f = Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.SecCollection)
+
+      def flushSecData(recordMap: Map[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]) {
+        import scala.collection.mutable.Map
+
+        if (!recordMap.isEmpty) {
+          val secRecordMap = Map.empty[DateTime, ListBuffer[(MonitorType.Value, (Double, String))]]
+          for {
+            mt_pair <- recordMap
+            mt = mt_pair._1
+            statusMap = mt_pair._2
+            status_pair <- statusMap
+            status = status_pair._1
+            recordList = status_pair._2
+            record <- recordList
+          } {
+            val adjustTime = record._1.withMillisOfSecond(0)
+            val mtSecListbuffer = secRecordMap.getOrElseUpdate(adjustTime, ListBuffer.empty[(MonitorType.Value, (Double, String))])
+            mtSecListbuffer.append((mt, (record._2, status)))
+          }
+
+          val docs = secRecordMap map { r => r._1 -> Record.toDocument(r._1, r._2.toList) }
+
+          val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
+          Record.insertManyRecord(sortedDocs)(Record.SecCollection)
+        }
       }
-      
+
       def calculateMinData(currentMintues: DateTime) = {
         import scala.collection.mutable.Map
         val mtMap = Map.empty[MonitorType.Value, Map[String, ListBuffer[(String, DateTime, Double)]]]
@@ -311,7 +341,7 @@ class DataCollectManager extends Actor {
                 }
                 val winOutLbOpt = winOutInstrumentOpt.map {
                   winOutInstrument =>
-                    lb.filter(_._1 == winOutInstrument).map(r=>(r._2, r._3))
+                    lb.filter(_._1 == winOutInstrument).map(r => (r._2, r._3))
                 }
 
                 status -> winOutLbOpt.getOrElse(ListBuffer.empty[(DateTime, Double)])
@@ -320,7 +350,7 @@ class DataCollectManager extends Actor {
             mt -> winOutStatusMap
           }
         val priorityMtMap = priorityMtPair.toMap
-        
+
         flushSecData(priorityMtMap)
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 

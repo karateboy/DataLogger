@@ -101,6 +101,8 @@ object MonitorType extends Enumeration {
 
   lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
+  lazy val RAIN = MonitorType.withName("RAIN")
+  
   def init(colNames: Seq[String]) = {
     def insertMt = {
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()

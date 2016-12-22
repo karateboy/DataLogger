@@ -60,6 +60,15 @@ object Record {
     f
   }
   
+  def insertManyRecord(docs: Seq[Document])(colName: String) = {
+    val col = MongoDB.database.getCollection(colName)
+    val f = col.insertMany(docs).toFuture()
+    f.onFailure({
+      case ex: Exception => Logger.error(ex.getMessage, ex)
+    })
+    f
+  }
+  
   import org.mongodb.scala.model.Filters._
   def upsertRecord(doc: Document)(colName: String) = {    
     import org.mongodb.scala.model.UpdateOptions
