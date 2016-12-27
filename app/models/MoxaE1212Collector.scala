@@ -99,7 +99,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
             //FIXME It is just POC!!!
             for (idx <- 0 to 7)
-              batch.addLocator(idx, BaseLocator.inputRegister(1, 16 + 2 * idx, DataType.TWO_BYTE_INT_SIGNED_SWAPPED))
+              batch.addLocator(idx, BaseLocator.inputRegister(1, 16 + 2 * idx, DataType.FOUR_BYTE_INT_SIGNED_SWAPPED))
 
             batch.setContiguousRequests(true)
 
