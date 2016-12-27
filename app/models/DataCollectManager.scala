@@ -217,7 +217,7 @@ class DataCollectManager extends Actor {
         calibratorOpt = Some(collector)
       }
 
-      if(inst.instType == InstrumentType.moxaE1212){
+      if (inst.instType == InstrumentType.moxaE1212) {
         val resetTime = DateTime.now().withMinuteOfHour(0).withMillisOfSecond(0) + 1.hour
         val duration = new Duration(DateTime.now(), resetTime)
 
@@ -269,11 +269,9 @@ class DataCollectManager extends Actor {
     case CalculateData => {
       import scala.collection.mutable.ListBuffer
 
-      
       def flushSecData(recordMap: Map[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]) {
         import scala.collection.mutable.Map
 
-        
         if (!recordMap.isEmpty) {
           val secRecordMap = Map.empty[DateTime, ListBuffer[(MonitorType.Value, (Double, String))]]
           for {
@@ -283,28 +281,48 @@ class DataCollectManager extends Actor {
             status_pair <- statusMap
             status = status_pair._1
             recordList = status_pair._2
-            
+
           } {
-            val adjustedRecList = recordList map {rec => (rec._1.withMillisOfSecond(0), rec._2) }
+            val adjustedRecList = recordList map { rec => (rec._1.withMillisOfSecond(0), rec._2) }
             val sortedRecList = adjustedRecList.sortBy(_._1)
-            def rangeList(head:(DateTime, Double), tail:List[(DateTime, Double)]):List[(Int, Int, Double)] = {
-              val range = if(tail.isEmpty) 
-                (head._1.getSecondOfMinute, 60, head._2)
-                else
-                (head._1.getSecondOfMinute, tail.head._1.getSecondOfMinute, head._2)
+            def fillList(head: (DateTime, Double), tail: List[(DateTime, Double)]): List[(DateTime, Double)] = {
+              val secondEnd = if (tail.isEmpty)
+                60
+              else
+                tail.head._1.getSecondOfMinute
+
+              val sameDataList =
+                for (s <- head._1.getSecondOfMinute to secondEnd - 1) yield {
+                  val minPart = head._1.withSecond(0)
+                  (minPart + s.second, head._2)  
+                }
               
-              range :: rangeList(tail.head, tail.tail)
+              if(!tail.isEmpty)
+                sameDataList.toList ++ fillList(tail.head, tail.tail)
+              else
+                sameDataList.toList
             }
+
+            val completeList = if(!sortedRecList.isEmpty){
+              val head = sortedRecList.head
+              if(head._1.getSecondOfMinute == 0)
+                fillList(head, sortedRecList.tail.toList)
+              else
+                fillList((head._1.withSecondOfMinute(0), head._2), sortedRecList.toList)
+            }else
+              List.empty[(DateTime, Double)]
             
-            //val adjustTime = record._1.withMillisOfSecond(0)
-            //val mtSecListbuffer = secRecordMap.getOrElseUpdate(adjustTime, ListBuffer.empty[(MonitorType.Value, (Double, String))])
-            //mtSecListbuffer.append((mt, (record._2, status)))
+            for(record <- completeList){
+              val mtSecListbuffer = secRecordMap.getOrElseUpdate(record._1, ListBuffer.empty[(MonitorType.Value, (Double, String))])
+              mtSecListbuffer.append((mt, (record._2, status)))
+            }
           }
 
           val docs = secRecordMap map { r => r._1 -> Record.toDocument(r._1, r._2.toList) }
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
-          Record.insertManyRecord(sortedDocs)(Record.SecCollection)
+          if(!sortedDocs.isEmpty)
+            Record.insertManyRecord(sortedDocs)(Record.SecCollection)
         }
       }
 
@@ -366,9 +384,9 @@ class DataCollectManager extends Actor {
           }
         val priorityMtMap = priorityMtPair.toMap
 
-        if(storeSecondData)
+        if (storeSecondData)
           flushSecData(priorityMtMap)
-          
+
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
