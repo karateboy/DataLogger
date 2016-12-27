@@ -35,7 +35,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
   var cancelable: Cancellable = _
 
-  def decode(values: Seq[Short]) = {
+  def decode(values: Seq[Int]) = {
     import DataCollectManager._
     val dataList =
       for {
@@ -99,7 +99,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
             //FIXME It is just POC!!!
             for (idx <- 0 to 7)
-              batch.addLocator(idx, BaseLocator.inputRegister(1, 16 + 2 * idx, DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED))
+              batch.addLocator(idx, BaseLocator.inputRegister(1, 16 + 2 * idx, DataType.TWO_BYTE_INT_UNSIGNED))
 
             batch.setContiguousRequests(true)
 
@@ -107,7 +107,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
             val rawResult = masterOpt.get.send(batch)
             val result =
-              for (idx <- 0 to 7) yield rawResult.getIntValue(idx).toShort
+              for (idx <- 0 to 7) yield rawResult.getIntValue(idx).toInt
 
             decode(result.toSeq)
             cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
