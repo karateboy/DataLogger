@@ -13,6 +13,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object DataCollectManager {
   val effectivRatio = 0.75
+  val storeSecondData = Play.current.configuration.getBoolean("storeSecondData").getOrElse(false)
+  Logger.info(s"store second data = $storeSecondData")
   case class AddInstrument(inst: Instrument)
   case class RemoveInstrument(id: String)
   case class SetState(instId: String, state: String)
@@ -267,9 +269,11 @@ class DataCollectManager extends Actor {
     case CalculateData => {
       import scala.collection.mutable.ListBuffer
 
+      
       def flushSecData(recordMap: Map[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]) {
         import scala.collection.mutable.Map
 
+        
         if (!recordMap.isEmpty) {
           val secRecordMap = Map.empty[DateTime, ListBuffer[(MonitorType.Value, (Double, String))]]
           for {
@@ -279,11 +283,22 @@ class DataCollectManager extends Actor {
             status_pair <- statusMap
             status = status_pair._1
             recordList = status_pair._2
-            record <- recordList
+            
           } {
-            val adjustTime = record._1.withMillisOfSecond(0)
-            val mtSecListbuffer = secRecordMap.getOrElseUpdate(adjustTime, ListBuffer.empty[(MonitorType.Value, (Double, String))])
-            mtSecListbuffer.append((mt, (record._2, status)))
+            val adjustedRecList = recordList map {rec => (rec._1.withMillisOfSecond(0), rec._2) }
+            val sortedRecList = adjustedRecList.sortBy(_._1)
+            def rangeList(head:(DateTime, Double), tail:List[(DateTime, Double)]):List[(Int, Int, Double)] = {
+              val range = if(tail.isEmpty) 
+                (head._1.getSecondOfMinute, 60, head._2)
+                else
+                (head._1.getSecondOfMinute, tail.head._1.getSecondOfMinute, head._2)
+              
+              range :: rangeList(tail.head, tail.tail)
+            }
+            
+            //val adjustTime = record._1.withMillisOfSecond(0)
+            //val mtSecListbuffer = secRecordMap.getOrElseUpdate(adjustTime, ListBuffer.empty[(MonitorType.Value, (Double, String))])
+            //mtSecListbuffer.append((mt, (record._2, status)))
           }
 
           val docs = secRecordMap map { r => r._1 -> Record.toDocument(r._1, r._2.toList) }
@@ -351,7 +366,9 @@ class DataCollectManager extends Actor {
           }
         val priorityMtMap = priorityMtPair.toMap
 
-        flushSecData(priorityMtMap)
+        if(storeSecondData)
+          flushSecData(priorityMtMap)
+          
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)

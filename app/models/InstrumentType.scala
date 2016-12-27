@@ -4,7 +4,9 @@ import com.github.nscala_time.time.Imports._
 case class ProtocolInfo(id:Protocol.Value, desp:String)
 case class InstrumentTypeInfo(id:InstrumentType.Value ,desp:String, protocolInfo:List[ProtocolInfo])
 case class InstrumentType(id:InstrumentType.Value ,desp:String, protocol:List[Protocol.Value], 
-    driver:DriverOps, analog:Boolean = false)
+    driver:DriverOps, analog:Boolean = false){
+  def infoPair = id->this
+}
 
 trait DriverOps {
   import Protocol.ProtocolParam
@@ -40,19 +42,26 @@ object InstrumentType extends Enumeration{
   val moxaE1240 = Value
   val moxaE1212 = Value
   
+  val horiba370 = Value
+  
+  def getInstInfoPair(instType:InstrumentType)={
+    instType.id -> instType
+  }
+  
   val map = Map(
-      baseline9000->InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000),
-      adam4017->InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017, true),
-      t100->InstrumentType(t100, "TAPI T100", List(tcp), TapiT100),
-      t200->InstrumentType(t200, "TAPI T200", List(tcp), TapiT200),
-      t300->InstrumentType(t300, "TAPI T300", List(tcp), TapiT300),
-      t360->InstrumentType(t360, "TAPI T360", List(tcp), TapiT360),
-      t400->InstrumentType(t400, "TAPI T400", List(tcp), TapiT400),
-      t700->InstrumentType(t700, "TAPI T700", List(tcp), TapiT700),
+      InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000).infoPair,
+      InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017, true).infoPair,
+      InstrumentType(t100, "TAPI T100", List(tcp), TapiT100).infoPair,
+      InstrumentType(t200, "TAPI T200", List(tcp), TapiT200).infoPair,
+      InstrumentType(t300, "TAPI T300", List(tcp), TapiT300).infoPair,
+      InstrumentType(t360, "TAPI T360", List(tcp), TapiT360).infoPair,
+      InstrumentType(t400, "TAPI T400", List(tcp), TapiT400).infoPair,
+      InstrumentType(t700, "TAPI T700", List(tcp), TapiT700).infoPair,
 
-      verewa_f701->InstrumentType(verewa_f701, "Verewa F701-20", List(serial), VerewaF701_20),
-      moxaE1240->InstrumentType(moxaE1240, "MOXA E1240", List(tcp), MoxaE1240, true),
-      moxaE1212->InstrumentType(moxaE1212, "MOXA E1212", List(tcp), MoxaE1212)
-      ) 
+      InstrumentType(verewa_f701, "Verewa F701-20", List(serial), VerewaF701_20).infoPair,
+      InstrumentType(moxaE1240, "MOXA E1240", List(tcp), MoxaE1240, true).infoPair,
+      InstrumentType(moxaE1212, "MOXA E1212", List(tcp), MoxaE1212).infoPair,
+      InstrumentType(horiba370, "Horiba APXX-370", List(tcp), MoxaE1212).infoPair
+  )
 }
 
