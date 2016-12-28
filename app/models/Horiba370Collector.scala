@@ -61,23 +61,30 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   val mtNMHC = MonitorType.withName("NMHC")
   val mtTHC = MonitorType.withName("THC")
 
-  def processResponse(implicit calibrateRecordStart:Boolean) = {
-    Future {
-      blocking {
-        val ch4Value = 0d
-        val nmhcValue = 0d
-        val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
-        val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
-        val thc = MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
-
-        if (calibrateRecordStart)
-          self ! ReportData(List(ch4, nmhc, thc))
-
-        context.parent ! ReportData(List(ch4, nmhc, thc))
-
-        timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
-      }
+  def processResponse(data: ByteString)(implicit calibrateRecordStart: Boolean) = {
+    def getProgramStr = {
+      assert(data(0) == 0x1)
+      assert(data(data.length-1) == 0x3)
+      
+      data.slice(12, data.length -3)
     }
+    
+    val prmStr = getProgramStr.decodeString("US-ASCII") 
+    val result = prmStr.split(",")
+    Logger.debug(result.toString)
+    
+    val ch4Value = 0d
+    val nmhcValue = 0d
+    val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
+    val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
+    val thc = MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
+
+    if (calibrateRecordStart)
+      self ! ReportData(List(ch4, nmhc, thc))
+
+    context.parent ! ReportData(List(ch4, nmhc, thc))
+
+    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
   }
 
   case object RaiseStart
@@ -100,35 +107,30 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
   }
 
-  def reqData(connection: ActorRef)= {
-    Logger.debug("reqData")
-    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0', 
-        'R', '0', '0', '1', 0x2)
-    val FCS = reqCmd.foldLeft(0x0)((a,b)=>a^b.toByte)
-    Logger.debug("FCS=" + "0x%x".format(FCS.toByte))
+  def reqData(connection: ActorRef) = {
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'R', '0', '0', '1', 0x2)
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
     val fcsStr = "%x".format(FCS.toByte)
-    fcsStr.getBytes("UTF-8")
     val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
-    Logger.debug("send=>" + reqFrame.toString())
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
-  
-  object CommCmd extends Enumeration{
+
+  object CommCmd extends Enumeration {
     val ValueAcquisition = Value
   }
-  
-  def connectionReady(connection: ActorRef, pendingCmd: Option[CommCmd.Value])(implicit calibrateRecordStart:Boolean): Receive = {
-    
+
+  def connectionReady(connection: ActorRef, pendingCmd: Option[CommCmd.Value])(implicit calibrateRecordStart: Boolean): Receive = {
+
     case UdpConnected.Received(data) =>
-    // process data, send it on, etc.
-    Logger.info(data.toString())
-    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
-    
+      processResponse(data)
+      timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+
     case UdpConnected.Disconnect =>
       connection ! UdpConnected.Disconnect
-      
+
     case UdpConnected.Disconnected => context.stop(self)
-    
+
     case ReadData =>
       reqData(connection)
       context become connectionReady(connection, Some(CommCmd.ValueAcquisition))
@@ -166,29 +168,28 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
   var calibrateTimerOpt: Option[Cancellable] = None
 
-  def calibrationHandler(connection:ActorRef, calibrationType: CalibrationType, mt: MonitorType.Value, 
-      startTime: com.github.nscala_time.time.Imports.DateTime,
-      calibrationDataList: List[MonitorTypeData], 
-      zeroValue: Option[Double]): Receive = {
-    
+  def calibrationHandler(connection: ActorRef, calibrationType: CalibrationType, mt: MonitorType.Value,
+                         startTime: com.github.nscala_time.time.Imports.DateTime,
+                         calibrationDataList: List[MonitorTypeData],
+                         zeroValue: Option[Double]): Receive = {
+
     case UdpConnected.Received(data) =>
-    // process data, send it on, etc.
-    Logger.info(data.toString())
-    
+      // process data, send it on, etc.
+      Logger.info(data.toString())
+
     case UdpConnected.Disconnect =>
       connection ! UdpConnected.Disconnect
-      
+
     case UdpConnected.Disconnected => context.stop(self)
-    
 
     case ReadData =>
       reqData(connection)
-      context become calibrationHandler(connection, 
-          calibrationType, 
-          mt, 
-          startTime,
-          calibrationDataList, 
-          zeroValue)
+      context become calibrationHandler(connection,
+        calibrationType,
+        mt,
+        startTime,
+        calibrationDataList,
+        zeroValue)
 
     case RaiseStart =>
       Future {
