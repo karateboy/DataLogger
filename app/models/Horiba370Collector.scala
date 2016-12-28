@@ -73,12 +73,14 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     Logger.debug(prmStr)
     val result = prmStr.split(",")
     Logger.debug("prmStr #=" + result.length)
+    assert(result.length == 8)
     
-    val ch4Value = 0d
-    val nmhcValue = 0d
+    val ch4Value = result(2).substring(5).toDouble
+    val nmhcValue = result(3).substring(5).toDouble
+    val thcValue = result(4).substring(5).toDouble
     val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
     val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
-    val thc = MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
+    val thc = MonitorTypeData(mtTHC, thcValue, collectorState)
 
     if (calibrateRecordStart)
       self ! ReportData(List(ch4, nmhc, thc))
