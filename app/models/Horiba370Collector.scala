@@ -97,6 +97,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     case UdpConnected.Connected =>
       Logger.info("UDP connected...")
       context become connectionReady(sender(), None)(false)
+      timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
   }
 
   def reqData(connection: ActorRef)= {
@@ -116,6 +117,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     case UdpConnected.Received(data) =>
     // process data, send it on, etc.
     Logger.info(data.toString())
+    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
     
     case UdpConnected.Disconnect =>
       connection ! UdpConnected.Disconnect
