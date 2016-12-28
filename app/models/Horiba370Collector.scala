@@ -69,9 +69,10 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       data.slice(12, data.length -3)
     }
     
-    val prmStr = getProgramStr.decodeString("US-ASCII") 
+    val prmStr = getProgramStr.decodeString("US-ASCII")
+    Logger.debug(prmStr)
     val result = prmStr.split(",")
-    Logger.debug(result.toString)
+    Logger.debug("prmStr #=" + result.length)
     
     val ch4Value = 0d
     val nmhcValue = 0d
