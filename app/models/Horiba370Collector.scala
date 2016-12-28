@@ -73,9 +73,6 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     val result = prmStr.split(",")
     assert(result.length == 8)
 
-    Logger.debug("ch4 =>" +result(2).substring(5))
-    Logger.debug("nmhc =>" +result(3).substring(5))
-    
     val ch4Value = result(2).substring(5).toDouble
     val nmhcValue = result(3).substring(5).toDouble
     val thcValue = result(4).substring(5).toDouble
