@@ -101,10 +101,12 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   }
 
   def reqData(connection: ActorRef)= {
+    Logger.debug("reqData")
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0', 
         'R', '0', '0', '1', 0x2)
     val FCS = reqCmd.foldLeft(0x0)((a,b)=>a^b.toByte)
     val reqFrame = reqCmd.:+(FCS.toByte).:+(0x3.toByte)
+    Logger.debug("send=>" + reqFrame.toString())
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
   
