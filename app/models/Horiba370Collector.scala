@@ -61,7 +61,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   val mtNMHC = MonitorType.withName("NMHC")
   val mtTHC = MonitorType.withName("THC")
 
-  def readData(implicit calibrateRecordStart:Boolean) = {
+  def processResponse(implicit calibrateRecordStart:Boolean) = {
     Future {
       blocking {
         val ch4Value = 0d
@@ -95,25 +95,36 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
   def receive = {
     case UdpConnected.Connected =>
-      context.become(connectionReady(sender())(false))
+      Logger.info("UDP connected...")
+      context become connectionReady(sender(), None)(false)
   }
 
-  def connectionReady(connection: ActorRef)(implicit calibrateRecordStart:Boolean): Receive = {
+  def reqData(connection: ActorRef)= {
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0', 
+        'R', '0', '0', '1', 0x2)
+    val FCS = reqCmd.foldLeft(0x0)((a,b)=>a^b.toByte)
+    val reqFrame = reqCmd.:+(FCS.toByte).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+  
+  object CommCmd extends Enumeration{
+    val ValueAcquisition = Value
+  }
+  
+  def connectionReady(connection: ActorRef, pendingCmd: Option[CommCmd.Value])(implicit calibrateRecordStart:Boolean): Receive = {
     
     case UdpConnected.Received(data) =>
     // process data, send it on, etc.
-      
-    case msg: String =>
-      connection ! UdpConnected.Send(ByteString(msg))
-      
+    Logger.info(data.toString())
+    
     case UdpConnected.Disconnect =>
       connection ! UdpConnected.Disconnect
       
     case UdpConnected.Disconnected => context.stop(self)
     
     case ReadData =>
-      readData
-
+      reqData(connection)
+      context become connectionReady(connection, Some(CommCmd.ValueAcquisition))
     case SetState(id, state) =>
       Future {
         blocking {
@@ -128,32 +139,49 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
       Instrument.setState(id, collectorState)
-      context become calibrationHandler(AutoZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+      context become calibrationHandler(connection, AutoZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
 
     case ManualZeroCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
       Instrument.setState(id, collectorState)
-      context become calibrationHandler(ManualZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+      context become calibrationHandler(connection, ManualZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
 
     case ManualSpanCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.SpanCalibrationStat
       Instrument.setState(id, collectorState)
-      context become calibrationHandler(ManualSpan, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+      context become calibrationHandler(connection, ManualSpan, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
   }
 
   var calibrateTimerOpt: Option[Cancellable] = None
 
-  def calibrationHandler(calibrationType: CalibrationType, mt: MonitorType.Value, 
+  def calibrationHandler(connection:ActorRef, calibrationType: CalibrationType, mt: MonitorType.Value, 
       startTime: com.github.nscala_time.time.Imports.DateTime,
       calibrationDataList: List[MonitorTypeData], 
-      zeroValue: Option[Double])(implicit calibrateRecordStart:Boolean): Receive = {
+      zeroValue: Option[Double]): Receive = {
+    
+    case UdpConnected.Received(data) =>
+    // process data, send it on, etc.
+    Logger.info(data.toString())
+    
+    case UdpConnected.Disconnect =>
+      connection ! UdpConnected.Disconnect
+      
+    case UdpConnected.Disconnected => context.stop(self)
+    
+
     case ReadData =>
-      readData
+      reqData(connection)
+      context become calibrationHandler(connection, 
+          calibrationType, 
+          mt, 
+          startTime,
+          calibrationDataList, 
+          zeroValue)
 
     case RaiseStart =>
       Future {
@@ -188,16 +216,16 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
     case ReportData(mtDataList) =>
       val data = mtDataList.filter { data => data.mt == mt }
-      context become calibrationHandler(calibrationType, mt, startTime, data ::: calibrationDataList, zeroValue)
+      context become calibrationHandler(connection, calibrationType, mt, startTime, data ::: calibrationDataList, zeroValue)
 
     case HoldStart =>
       Logger.debug(s"${calibrationType} HoldStart: $mt")
-      context become calibrationHandler(calibrationType, mt, startTime, calibrationDataList, zeroValue)(true)
+      context become calibrationHandler(connection, calibrationType, mt, startTime, calibrationDataList, zeroValue)
       calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
       Logger.debug(s"${calibrationType} DownStart: $mt")
-      context become calibrationHandler(calibrationType, mt, startTime, calibrationDataList, zeroValue)(false)
+      context become calibrationHandler(connection, calibrationType, mt, startTime, calibrationDataList, zeroValue)
 
       if (calibrationType.zero) {
         config.calibrateZeoSeq map {
@@ -236,7 +264,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         Logger.info(s"$mt zero calibration end. ($avg)")
         collectorState = MonitorStatus.SpanCalibrationStat
         Instrument.setState(id, collectorState)
-        context become calibrationHandler(AutoSpan, mt, startTime, List.empty[MonitorTypeData], avg)
+        context become calibrationHandler(connection, AutoSpan, mt, startTime, List.empty[MonitorTypeData], avg)
         self ! RaiseStart
       } else {
         Logger.info(s"$mt calibration end.")
@@ -256,18 +284,18 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
           if (calibrationType.auto) {
             collectorState = MonitorStatus.ZeroCalibrationStat
             Instrument.setState(id, collectorState)
-            context become calibrationHandler(AutoZero,
+            context become calibrationHandler(connection, AutoZero,
               mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
           } else {
             if (calibrationType.zero) {
               collectorState = MonitorStatus.ZeroCalibrationStat
               Instrument.setState(id, collectorState)
-              context become calibrationHandler(ManualZero,
+              context become calibrationHandler(connection, ManualZero,
                 mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
             } else {
               collectorState = MonitorStatus.SpanCalibrationStat
               Instrument.setState(id, collectorState)
-              context become calibrationHandler(ManualSpan,
+              context become calibrationHandler(connection, ManualSpan,
                 mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
             }
           }

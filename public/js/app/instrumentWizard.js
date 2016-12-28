@@ -129,7 +129,8 @@ angular.module('newInstrumentView',
 				var tapiInstrument= ['t100', 't200', 't300', 't360', 't400', 't700'];
 				if(tapiInstrument.indexOf($scope.param.selectedInstTypeId)!= -1){					
 					return "tapiCfg";
-				}else if($scope.param.selectedInstTypeId === "baseline9000"){
+				}else if($scope.param.selectedInstTypeId === "baseline9000" ||
+						$scope.param.selectedInstTypeId === "horiba370"){
 					return "baseline9000Cfg";
 				}else if($scope.param.selectedInstTypeId === "adam4017"){
 					return "adam4017Cfg";
