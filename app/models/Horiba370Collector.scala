@@ -48,15 +48,6 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   // override postRestart so we don't call preStart and schedule a new message
   override def postRestart(reason: Throwable) = {}
 
-    val StartShippingDataByte: Byte = 0x11
-    val StopShippingDataByte: Byte = 0x13
-    val AutoCalibrationByte: Byte = 0x12
-    val BackToNormalByte: Byte = 0x10
-    val ActivateMethaneZeroByte: Byte = 0x0B
-    val ActivateMethaneSpanByte: Byte = 0x0C
-    val ActivateNonMethaneZeroByte: Byte = 0xE
-    val ActivateNonMethaneSpanByte: Byte = 0xF
-
   val mtCH4 = MonitorType.withName("CH4")
   val mtNMHC = MonitorType.withName("NMHC")
   val mtTHC = MonitorType.withName("THC")
@@ -91,6 +82,18 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
         timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
 
+      case "A024" =>
+        Logger.info("Response from line change (A024)")
+        Logger.info(prmStr)
+
+      case "A029" =>
+        Logger.info("Response from user zero (A029)")
+        Logger.info(prmStr)
+
+      case "A030" =>
+        Logger.info("Response from user span (A030)")
+        Logger.info(prmStr)
+
     }
   }
 
@@ -117,6 +120,49 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   def reqData(connection: ActorRef) = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'R', '0', '0', '1', 0x2)
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val fcsStr = "%x".format(FCS.toByte)
+    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+
+  def reqZeroCalibration(connection: ActorRef, mt: MonitorType.Value) = {
+    val componentNo = if (mt == mtCH4)
+      '0'.toByte
+    else if (mt == mtTHC)
+      '2'.toByte
+    else {
+      throw new Exception(s"Invalid monitorType ${mt.toString}")
+    }
+
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'A', '0', '2', '9', 0x2, componentNo)
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val fcsStr = "%x".format(FCS.toByte)
+    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+
+  def reqSpanCalibration(connection: ActorRef, mt: MonitorType.Value) = {
+    val componentNo = if (mt == mtCH4)
+      '0'.toByte
+    else if (mt == mtTHC)
+      '2'.toByte
+    else {
+      throw new Exception(s"Invalid monitorType ${mt.toString}")
+    }
+
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'A', '0', '3', '0', 0x2, componentNo)
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val fcsStr = "%x".format(FCS.toByte)
+    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+
+  def reqNormal(connection: ActorRef) = {
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'A', '0', '2', '4', 0x2, '0')
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
     val fcsStr = "%x".format(FCS.toByte)
     val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
@@ -202,20 +248,14 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
                   context.parent ! ExecuteSeq(seqNo, true)
               }
 
-              if (mt == mtCH4)
-                ActivateMethaneZeroByte
-              else
-                ActivateNonMethaneZeroByte
+              reqZeroCalibration(connection, mt)
             } else {
               config.calibrateSpanSeq map {
                 seqNo =>
                   context.parent ! ExecuteSeq(seqNo, true)
               }
 
-              if (mt == mtCH4)
-                ActivateMethaneSpanByte
-              else
-                ActivateNonMethaneSpanByte
+              reqSpanCalibration(connection, mt)
             }
 
           calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
@@ -321,6 +361,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
             collectorState = state
             Instrument.setState(id, state)
 
+            reqNormal(connection)
             calibrateTimerOpt map {
               timer => timer.cancel()
             }
