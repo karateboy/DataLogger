@@ -48,44 +48,50 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   // override postRestart so we don't call preStart and schedule a new message
   override def postRestart(reason: Throwable) = {}
 
-  val StartShippingDataByte: Byte = 0x11
-  val StopShippingDataByte: Byte = 0x13
-  val AutoCalibrationByte: Byte = 0x12
-  val BackToNormalByte: Byte = 0x10
-  val ActivateMethaneZeroByte: Byte = 0x0B
-  val ActivateMethaneSpanByte: Byte = 0x0C
-  val ActivateNonMethaneZeroByte: Byte = 0xE
-  val ActivateNonMethaneSpanByte: Byte = 0xF
+    val StartShippingDataByte: Byte = 0x11
+    val StopShippingDataByte: Byte = 0x13
+    val AutoCalibrationByte: Byte = 0x12
+    val BackToNormalByte: Byte = 0x10
+    val ActivateMethaneZeroByte: Byte = 0x0B
+    val ActivateMethaneSpanByte: Byte = 0x0C
+    val ActivateNonMethaneZeroByte: Byte = 0xE
+    val ActivateNonMethaneSpanByte: Byte = 0xF
 
   val mtCH4 = MonitorType.withName("CH4")
   val mtNMHC = MonitorType.withName("NMHC")
   val mtTHC = MonitorType.withName("THC")
 
   def processResponse(data: ByteString)(implicit calibrateRecordStart: Boolean) = {
-    def getProgramStr = {
+    def getResponse = {
       assert(data(0) == 0x1)
-      assert(data(data.length-1) == 0x3)
-      
-      data.slice(12, data.length -3)
+      assert(data(data.length - 1) == 0x3)
+
+      val cmd = data.slice(7, 11).decodeString("US-ASCII")
+      val prmStr = data.slice(12, data.length - 3).decodeString("US-ASCII")
+      (cmd, prmStr)
     }
-    
-    val prmStr = getProgramStr.decodeString("US-ASCII")
-    val result = prmStr.split(",")
-    assert(result.length == 8)
 
-    val ch4Value = result(2).substring(5).toDouble
-    val nmhcValue = result(3).substring(5).toDouble
-    val thcValue = result(4).substring(5).toDouble
-    val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
-    val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
-    val thc = MonitorTypeData(mtTHC, thcValue, collectorState)
+    val (cmd, prmStr) = getResponse
+    cmd match {
+      case "R001" =>
+        val result = prmStr.split(",")
+        assert(result.length == 8)
 
-    if (calibrateRecordStart)
-      self ! ReportData(List(ch4, nmhc, thc))
+        val ch4Value = result(2).substring(5).toDouble
+        val nmhcValue = result(3).substring(5).toDouble
+        val thcValue = result(4).substring(5).toDouble
+        val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
+        val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
+        val thc = MonitorTypeData(mtTHC, thcValue, collectorState)
 
-    context.parent ! ReportData(List(ch4, nmhc, thc))
+        if (calibrateRecordStart)
+          self ! ReportData(List(ch4, nmhc, thc))
 
-    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+        context.parent ! ReportData(List(ch4, nmhc, thc))
+
+        timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+
+    }
   }
 
   case object RaiseStart
@@ -175,8 +181,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
                          zeroValue: Option[Double]): Receive = {
 
     case UdpConnected.Received(data) =>
-      // process data, send it on, etc.
-      Logger.info(data.toString())
+      processResponse(data)(true)
 
     case UdpConnected.Disconnect =>
       connection ! UdpConnected.Disconnect
@@ -185,12 +190,6 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
     case ReadData =>
       reqData(connection)
-      context become calibrationHandler(connection,
-        calibrationType,
-        mt,
-        startTime,
-        calibrationDataList,
-        zeroValue)
 
     case RaiseStart =>
       Future {
