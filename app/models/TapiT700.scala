@@ -35,12 +35,9 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     }
   }
 
-  def triggerZeroCalibration(v: Boolean) {
+  override  def triggerZeroCalibration(v: Boolean) {}
 
-  }
-
-  def triggerSpanCalibration(v: Boolean) {
-  }
+  override def triggerSpanCalibration(v: Boolean) {}
 
   def resetToNormal = {
     executeSeq(101, true)

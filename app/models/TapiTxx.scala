@@ -8,7 +8,10 @@ import com.typesafe.config.ConfigFactory
 
 case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[MonitorType.Value]], 
     raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int], 
-    calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int])
+    calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int], 
+    calibratorPurgeSeq:Option[Int], calibratorPurgeTime:Option[Int],
+    calibrateZeoDO:Option[Int], calibrateSpanDO:Option[Int])
+    
 case class ModelConfig(model: String, monitorTypeIDs: List[String])
 
 object TapiTxx {
@@ -109,7 +112,9 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         val mt = modelConfig.monitorTypeIDs.map { MonitorType.withName(_) }
         val newParam = TapiConfig(param.slaveID, param.calibrationTime, Some(mt), 
             param.raiseTime, param.downTime, param.holdTime,
-            param.calibrateZeoSeq, param.calibrateSpanSeq)
+            param.calibrateZeoSeq, param.calibrateSpanSeq,
+            param.calibratorPurgeSeq, param.calibratorPurgeTime,
+            param.calibrateZeoDO, param.calibrateSpanDO)
 
         Json.toJson(newParam).toString()
       })

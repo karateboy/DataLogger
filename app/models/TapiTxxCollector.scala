@@ -308,7 +308,12 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     import scala.concurrent.duration._
 
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
-    val timer = Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+    val timer = if (!calibrationType.zero && 
+        tapiConfig.calibratorPurgeTime.isDefined && tapiConfig.calibratorPurgeTime.get != 0)
+      purgeCalibrator
+    else
+      Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
 
@@ -434,9 +439,16 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
               Logger.info(s"${v._1} zero calibration end. (${v._2})")
             collectorState = MonitorStatus.SpanCalibrationStat
             Instrument.setState(instId, collectorState)
+
+            val raiseStartTimer = if (!calibrationType.zero && tapiConfig.calibratorPurgeTime.isDefined)
+              purgeCalibrator
+            else {
+              import scala.concurrent.duration._
+              Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+            }
+
             context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
-              values, endState, timer)
-            self ! RaiseStart
+              values, endState, raiseStartTimer)
           } else {
             val endTime = DateTime.now()
             val duration = new Duration(startTime, endTime)
@@ -479,9 +491,56 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
   }
 
   def resetToNormal: Unit
-  def triggerZeroCalibration(v: Boolean)
+  def triggerZeroCalibration(v: Boolean) {
+    tapiConfig.calibrateZeoDO map {
+      doBit =>
+        context.parent ! WriteDO(doBit, v)
+    }
 
-  def triggerSpanCalibration(v: Boolean)
+    tapiConfig.calibrateZeoSeq map {
+      seq =>
+        if (v)
+          context.parent ! ExecuteSeq(seq, v)
+        else
+          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+    }
+  }
+  
+  def triggerSpanCalibration(v: Boolean) {
+    tapiConfig.calibrateSpanDO map {
+      doBit =>
+        context.parent ! WriteDO(doBit, v)
+    }
+
+    tapiConfig.calibrateSpanSeq map {
+      seq =>
+        if (v)
+          context.parent ! ExecuteSeq(seq, v)
+        else
+          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+    }
+  }
+
+  def purgeCalibrator() = {
+    import scala.concurrent.duration._
+
+    val purgeTime = tapiConfig.calibratorPurgeTime.get
+    Logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
+    triggerCalibratorPurge(true)
+    Akka.system.scheduler.scheduleOnce(Duration(purgeTime+1, SECONDS), self, RaiseStart)
+  }
+
+  def triggerCalibratorPurge(v: Boolean) {
+    try {
+      if (v && tapiConfig.calibratorPurgeSeq.isDefined)
+        context.parent ! ExecuteSeq(tapiConfig.calibratorPurgeSeq.get, v)
+      else
+        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+    } catch {
+      case ex: Exception =>
+        ModelHelper.logException(ex)
+    }
+  }
 
   def reportData(regValue: ModelRegValue): ReportData
 

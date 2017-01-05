@@ -32,6 +32,7 @@ object DataCollectManager {
   object ManualZero extends CalibrationType(false, true)
   object ManualSpan extends CalibrationType(false, false)
 
+  case class WriteDO(bit: Int, on: Boolean)
   case object ResetCounter
 
   var manager: ActorRef = _
@@ -185,6 +186,7 @@ class DataCollectManager extends Actor {
   }
 
   var calibratorOpt: Option[ActorRef] = None
+  var digitalOutputOpt: Option[ActorRef] = None
 
   case class InstrumentParam(actor: ActorRef, mtList: List[MonitorType.Value], calibrationTimerOpt: Option[Cancellable])
 
@@ -215,16 +217,10 @@ class DataCollectManager extends Actor {
       val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
       if (inst.instType == InstrumentType.t700) {
         calibratorOpt = Some(collector)
+      } else if (inst.instType == InstrumentType.moxaE1212) {
+        digitalOutputOpt = Some(collector)
       }
 
-      if (inst.instType == InstrumentType.moxaE1212) {
-        val resetTime = DateTime.now().withMinuteOfHour(0).withMillisOfSecond(0) + 1.hour
-        val duration = new Duration(DateTime.now(), resetTime)
-
-        import scala.concurrent.duration._
-        Akka.system.scheduler.schedule(Duration(duration.getStandardSeconds + 1, SECONDS),
-          Duration(1, HOURS), self, ResetCounter)
-      }
       context become handler(instrumentMap + (inst._id -> instrumentParam),
         collectorInstrumentMap + (collector -> inst._id),
         latestDataMap, mtDataList)
@@ -241,8 +237,11 @@ class DataCollectManager extends Actor {
         context become handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
           latestDataMap -- param.mtList, mtDataList)
 
-        if (calibratorOpt == Some(param.actor))
+        if (calibratorOpt == Some(param.actor)) {
           calibratorOpt = None
+        } else if (digitalOutputOpt == Some(param.actor)) {
+          digitalOutputOpt = None
+        }
       }
 
     case ReportData(dataList) =>
@@ -294,25 +293,25 @@ class DataCollectManager extends Actor {
               val sameDataList =
                 for (s <- head._1.getSecondOfMinute to secondEnd - 1) yield {
                   val minPart = head._1.withSecond(0)
-                  (minPart + s.second, head._2)  
+                  (minPart + s.second, head._2)
                 }
-              
-              if(!tail.isEmpty)
+
+              if (!tail.isEmpty)
                 sameDataList.toList ++ fillList(tail.head, tail.tail)
               else
                 sameDataList.toList
             }
 
-            val completeList = if(!sortedRecList.isEmpty){
+            val completeList = if (!sortedRecList.isEmpty) {
               val head = sortedRecList.head
-              if(head._1.getSecondOfMinute == 0)
+              if (head._1.getSecondOfMinute == 0)
                 fillList(head, sortedRecList.tail.toList)
               else
                 fillList((head._1.withSecondOfMinute(0), head._2), sortedRecList.toList)
-            }else
+            } else
               List.empty[(DateTime, Double)]
-            
-            for(record <- completeList){
+
+            for (record <- completeList) {
               val mtSecListbuffer = secRecordMap.getOrElseUpdate(record._1, ListBuffer.empty[(MonitorType.Value, (Double, String))])
               mtSecListbuffer.append((mt, (record._2, status)))
             }
@@ -321,7 +320,7 @@ class DataCollectManager extends Actor {
           val docs = secRecordMap map { r => r._1 -> Record.toDocument(r._1, r._2.toList) }
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
-          if(!sortedDocs.isEmpty)
+          if (!sortedDocs.isEmpty)
             Record.insertManyRecord(sortedDocs)(Record.SecCollection)
         }
       }
@@ -429,7 +428,14 @@ class DataCollectManager extends Actor {
       if (calibratorOpt.isDefined)
         calibratorOpt.get ! msg
       else {
-        Logger.warn("Calibrator is not online! Ignore execute seq message.")
+        Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seq} - ${msg.on}).")
+      }
+
+    case msg: WriteDO =>
+      if (digitalOutputOpt.isDefined)
+        digitalOutputOpt.get ! msg
+      else {
+        Logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
       }
 
     case GetLatestData =>

@@ -4,7 +4,6 @@ import akka.actor._
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import ModelHelper._
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import MoxaE1212._
 import Protocol.ProtocolParam
@@ -34,6 +33,16 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
   import DataCollectManager._
 
   var cancelable: Cancellable = _
+
+  val resetTimer = {
+    import com.github.nscala_time.time.Imports._
+
+    val resetTime = DateTime.now().withMinuteOfHour(0).withMillisOfSecond(0) + 1.hour
+    val duration = new Duration(DateTime.now(), resetTime)
+    import scala.concurrent.duration._
+    Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(duration.getStandardSeconds, SECONDS),
+      scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
+  }
 
   def decode(values: Seq[Int]) = {
     import DataCollectManager._
@@ -75,12 +84,14 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
             master.setConnected(true)
             master.init();
             context become handler(collectorState, Some(master))
+            import scala.concurrent.duration._
             cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               Logger.info("Try again 1 min later...")
               //Try again
+              import scala.concurrent.duration._
               cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
 
@@ -110,6 +121,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
               for (idx <- 0 to 7) yield rawResult.getIntValue(idx).toInt
 
             decode(result.toSeq)
+            import scala.concurrent.duration._
             cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
@@ -140,11 +152,24 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         case ex: Exception =>
           ModelHelper.logException(ex)
       }
+
+    case WriteDO(bit, on) =>
+      Logger.info(s"Output DO $bit to $on")
+      try {
+        import com.serotonin.modbus4j.locator.BaseLocator
+        import com.serotonin.modbus4j.code.DataType
+        val locator = BaseLocator.coilStatus(1, 32 + bit)
+        masterOpt.get.setValue(locator, on)
+      } catch {
+        case ex: Exception =>
+          ModelHelper.logException(ex)
+      }
   }
 
   override def postStop(): Unit = {
     if (cancelable != null)
       cancelable.cancel()
 
+    resetTimer.cancel()  
   }
 }

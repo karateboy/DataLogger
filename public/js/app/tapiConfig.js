@@ -16,7 +16,9 @@ angular.module('tapiConfigView', [])
 					holdTime:60,
 					downTime:300,
 					calibrateZeoSeq:1,
-					calibrateSpanSeq:2
+					calibrateSpanSeq:2,
+					calibratorPurgeSeq:3,
+					calibratorPurgeTime:0,
 				};
 		}else{
 			//angular require calibrationTime to be Date		
@@ -39,6 +41,15 @@ angular.module('tapiConfigView', [])
 				desc += "<br/>校正下降時間:" + $scope.param.downTime;
 				desc += "<br/>零點校正執行程序:" + $scope.param.calibrateZeoSeq;
 				desc += "<br/>全幅校正執行程序:" + $scope.param.calibrateSpanSeq;
+				if($scope.param.calibratorPurgeTime)
+					desc += "<br/>校正器清空時間:" + $scope.param.calibratorPurgeTime;
+				if($scope.param.calibratorPurgeSeq)
+					desc += "<br/>校正器清空執行程序:" + $scope.param.calibratorPurgeSeq;
+				if($scope.param.calibrateZeoDO)
+					desc += "<br/>零點校正DO:" + $scope.param.calibrateZeoDO;
+				if($scope.param.calibrateSpanDO)
+					desc += "<br/>全幅校正DO:" + $scope.param.calibrateSpanDO;
+				
 			}
 			
 			return desc;
@@ -79,24 +90,30 @@ angular.module('tapiConfigView', [])
 				return false;
 			}
 			
-			if(!$scope.param.calibrateZeoSeq){
-				alert("沒有設定零點校正程序!");
-				return false;
-			}
-
-			if(!$scope.param.calibrateSpanSeq){
-				alert("沒有設定全幅校正程序!");
-				return false;
-			}
-
 			$scope.param.slaveID = parseInt($scope.param.slaveID);
 			$scope.param.calibrationTime = $scope.param.calibrationTimeDate.getTime();
 			$scope.param.raiseTime = parseInt($scope.param.raiseTime);
 			$scope.param.holdTime = parseInt($scope.param.holdTime);
 			$scope.param.downTime = parseInt($scope.param.downTime);
-			$scope.param.calibrateZeoSeq = parseInt($scope.param.calibrateZeoSeq);
-			$scope.param.calibrateSpanSeq = parseInt($scope.param.calibrateSpanSeq);
 			
+			if($scope.param.calibrateZeoSeq)
+				$scope.param.calibrateZeoSeq = parseInt($scope.param.calibrateZeoSeq);
+			
+			if($scope.param.calibrateSpanSeq)
+				$scope.param.calibrateSpanSeq = parseInt($scope.param.calibrateSpanSeq);
+			
+			if($scope.param.calibratorPurgeSeq)
+				$scope.param.calibratorPurgeSeq = parseInt($scope.param.calibratorPurgeSeq);
+			
+			if($scope.param.calibratorPurgeTime)
+				$scope.param.calibratorPurgeTime = parseInt($scope.param.calibratorPurgeTime);
+			
+			if($scope.param.calibrateZeoDO)
+				$scope.param.calibrateZeoDO = parseInt($scope.param.calibrateZeoDO);
+			
+			if($scope.param.calibrateSpanDO)
+				$scope.param.calibrateSpanDO = parseInt($scope.param.calibrateSpanDO);
+
 			//copy back
 			config.param = $scope.param;			
 		    return true;		

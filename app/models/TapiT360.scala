@@ -31,12 +31,9 @@ class T360Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     ReportData(List(MonitorTypeData(MonitorType.withName("CO2"), v._2.toDouble, collectorState)))
   }
 
-  def triggerZeroCalibration(v: Boolean) {
+  override def triggerZeroCalibration(v: Boolean) {
     try {
-      if (v)
-        context.parent ! ExecuteSeq(config.calibrateZeoSeq.get, v)
-      else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+      super.triggerZeroCalibration(v)
 
       val locator = BaseLocator.coilStatus(config.slaveID, 20)
       masterOpt.get.setValue(locator, v)
@@ -46,13 +43,10 @@ class T360Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     }
   }
 
-  def triggerSpanCalibration(v: Boolean) {
+  override def triggerSpanCalibration(v: Boolean) {
     try {
-      if (v)
-        context.parent ! ExecuteSeq(config.calibrateSpanSeq.get, v)
-      else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
-
+      super.triggerSpanCalibration(v)
+      
       val locator = BaseLocator.coilStatus(config.slaveID, 21)
       masterOpt.get.setValue(locator, v)
     } catch {

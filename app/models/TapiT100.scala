@@ -32,12 +32,10 @@ class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   }
 
   override def triggerZeroCalibration(v: Boolean) {
+    
     try {
-      if(v)
-        context.parent ! ExecuteSeq(config.calibrateZeoSeq.get, v)
-      else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
-        
+      super.triggerZeroCalibration(v)
+      
       val locator = BaseLocator.coilStatus(config.slaveID, 20)
       masterOpt.get.setValue(locator, v)
     } catch {
@@ -48,11 +46,8 @@ class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
 
   override def triggerSpanCalibration(v: Boolean) {
     try {
-      if(v)
-        context.parent ! ExecuteSeq(config.calibrateSpanSeq.get, v)
-      else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
-        
+      super.triggerSpanCalibration(v)
+      
       val locator = BaseLocator.coilStatus(config.slaveID, 21)
       masterOpt.get.setValue(locator, v)
     } catch {
@@ -62,7 +57,7 @@ class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   }
 
   override def resetToNormal = {
-    try { 
+    try {
       context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
       masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
       masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
