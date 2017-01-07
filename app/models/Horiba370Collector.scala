@@ -39,7 +39,8 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     instrument(0).state
   }
 
-  var timerOpt: Option[Cancellable] = None
+  val timerOpt: Option[Cancellable] = Some(Akka.system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS),
+      self, ReadData))
 
   //  override def preStart() = {
   //    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
@@ -80,8 +81,6 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
         context.parent ! ReportData(List(ch4, nmhc, thc))
 
-        timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
-
       case "A024" =>
         Logger.info("Response from line change (A024)")
         Logger.info(prmStr)
@@ -114,7 +113,6 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     case UdpConnected.Connected =>
       Logger.info("UDP connected...")
       context become connectionReady(sender())(false)
-      timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
   }
 
   def reqData(connection: ActorRef) = {
@@ -129,39 +127,39 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   def reqZeroCalibration(connection: ActorRef, mt: MonitorType.Value) = {
     reqZero(connection)
     
-    val componentNo = if (mt == mtCH4)
-      '0'.toByte
-    else if (mt == mtTHC)
-      '2'.toByte
-    else {
-      throw new Exception(s"Invalid monitorType ${mt.toString}")
-    }
-
-    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
-      'A', '0', '2', '9', 0x2, componentNo)
-    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
-    val fcsStr = "%x".format(FCS.toByte)
-    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
-    connection ! UdpConnected.Send(ByteString(reqFrame))
+//    val componentNo = if (mt == mtCH4)
+//      '0'.toByte
+//    else if (mt == mtTHC)
+//      '2'.toByte
+//    else {
+//      throw new Exception(s"Invalid monitorType ${mt.toString}")
+//    }
+//
+//    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+//      'A', '0', '2', '9', 0x2, componentNo)
+//    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+//    val fcsStr = "%x".format(FCS.toByte)
+//    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+//    connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
   def reqSpanCalibration(connection: ActorRef, mt: MonitorType.Value) = {
     reqSpan(connection)
     
-    val componentNo = if (mt == mtCH4)
-      '0'.toByte
-    else if (mt == mtTHC)
-      '2'.toByte
-    else {
-      throw new Exception(s"Invalid monitorType ${mt.toString}")
-    }
-
-    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
-      'A', '0', '3', '0', 0x2, componentNo)
-    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
-    val fcsStr = "%x".format(FCS.toByte)
-    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
-    connection ! UdpConnected.Send(ByteString(reqFrame))
+//    val componentNo = if (mt == mtCH4)
+//      '0'.toByte
+//    else if (mt == mtTHC)
+//      '2'.toByte
+//    else {
+//      throw new Exception(s"Invalid monitorType ${mt.toString}")
+//    }
+//
+//    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+//      'A', '0', '3', '0', 0x2, componentNo)
+//    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+//    val fcsStr = "%x".format(FCS.toByte)
+//    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+//    connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
   def reqNormal(connection: ActorRef) = {
@@ -227,7 +225,6 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
     case UdpConnected.Received(data) =>
       processResponse(data)
-      timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
 
     case UdpConnected.Disconnect =>
       connection ! UdpConnected.Disconnect

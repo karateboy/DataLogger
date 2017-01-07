@@ -37,7 +37,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
   val resetTimer = {
     import com.github.nscala_time.time.Imports._
 
-    val resetTime = DateTime.now().withMinuteOfHour(0).withMillisOfSecond(0) + 1.hour
+    val resetTime = DateTime.now().withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) + 1.hour
     val duration = new Duration(DateTime.now(), resetTime)
     import scala.concurrent.duration._
     Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(duration.getStandardSeconds, SECONDS),
@@ -144,7 +144,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         import com.serotonin.modbus4j.code.DataType
         val resetRegAddr = 272
 
-        for (idx <- 0 to 15) {
+        for (idx <- 0 to 7) {
           val locator = BaseLocator.coilStatus(1, resetRegAddr + idx)
           masterOpt.get.setValue(locator, true)
         }
@@ -158,7 +158,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
         import com.serotonin.modbus4j.code.DataType
-        val locator = BaseLocator.coilStatus(1, 32 + bit)
+        val locator = BaseLocator.coilStatus(1, bit)
         masterOpt.get.setValue(locator, on)
       } catch {
         case ex: Exception =>
