@@ -6,8 +6,10 @@ import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
-case class Horiba370Config(calibrationTime: LocalTime, 
-                              raiseTime: Int, downTime: Int, holdTime: Int, calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int])
+case class Horiba370Config(calibrationTime: LocalTime,
+                           raiseTime: Int, downTime: Int, holdTime: Int,
+                           calibrateZeoSeq: Option[Int], calibrateSpanSeq: Option[Int],
+                           calibratorPurgeSeq: Option[Int], calibratorPurgeTime: Option[Int])
 
 object Horiba370 extends DriverOps {
   implicit val cfgRead = Json.reads[Horiba370Config]
@@ -47,7 +49,7 @@ object Horiba370 extends DriverOps {
   import Protocol.ProtocolParam
   import akka.actor._
 
-  def start(id:String, protocol:ProtocolParam, param:String)(implicit context:ActorContext):ActorRef={
+  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
     val config = validateParam(param)
 
     Horiba370Collector.start(id, protocol, config)

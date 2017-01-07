@@ -34,6 +34,11 @@ angular.module('baselineConfigView', [])
 				desc += "<br/>校正下降時間:" + $scope.param.downTime;
 				desc += "<br/>零點校正執行程序:" + $scope.param.calibrateZeoSeq;
 				desc += "<br/>全幅校正執行程序:" + $scope.param.calibrateSpanSeq;
+				if($scope.param.calibratorPurgeTime)
+					desc += "<br/>校正器清空時間:" + $scope.param.calibratorPurgeTime;
+				if($scope.param.calibratorPurgeSeq)
+					desc += "<br/>校正器清空執行程序:" + $scope.param.calibratorPurgeSeq;
+
 			}
 			
 			return desc;
@@ -76,6 +81,12 @@ angular.module('baselineConfigView', [])
 			$scope.param.downTime = parseInt($scope.param.downTime);
 			$scope.param.calibrateZeoSeq = parseInt($scope.param.calibrateZeoSeq);
 			$scope.param.calibrateSpanSeq = parseInt($scope.param.calibrateSpanSeq);
+			
+			if($scope.param.calibrateZeoSeq)
+				$scope.param.calibrateZeoSeq = parseInt($scope.param.calibrateZeoSeq);
+			
+			if($scope.param.calibrateSpanSeq)
+				$scope.param.calibrateSpanSeq = parseInt($scope.param.calibrateSpanSeq);
 
 			//copy back
 			config.param = $scope.param;

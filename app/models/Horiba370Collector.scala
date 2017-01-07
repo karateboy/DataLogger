@@ -113,7 +113,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   def receive = {
     case UdpConnected.Connected =>
       Logger.info("UDP connected...")
-      context become connectionReady(sender(), None)(false)
+      context become connectionReady(sender())(false)
       timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
   }
 
@@ -173,7 +173,36 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     val ValueAcquisition = Value
   }
 
-  def connectionReady(connection: ActorRef, pendingCmd: Option[CommCmd.Value])(implicit calibrateRecordStart: Boolean): Receive = {
+  def setupSpanRaiseStartTimer {
+    Logger.debug("setupSpanRaiseStartTimer")
+    val timer =
+      if (config.calibratorPurgeTime.isDefined && config.calibratorPurgeTime.get != 0)
+        purgeCalibrator
+      else
+        Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+  }
+
+  def purgeCalibrator() = {
+    import scala.concurrent.duration._
+    def triggerCalibratorPurge(v: Boolean) {
+      try {
+        if (v && config.calibratorPurgeSeq.isDefined)
+          context.parent ! ExecuteSeq(config.calibratorPurgeSeq.get, v)
+        else
+          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+      } catch {
+        case ex: Exception =>
+          ModelHelper.logException(ex)
+      }
+    }
+
+    val purgeTime = config.calibratorPurgeTime.get
+    Logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
+    triggerCalibratorPurge(true)
+    Akka.system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
+  }
+
+  def connectionReady(connection: ActorRef)(implicit calibrateRecordStart: Boolean): Receive = {
 
     case UdpConnected.Received(data) =>
       processResponse(data)
@@ -186,7 +215,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
     case ReadData =>
       reqData(connection)
-      context become connectionReady(connection, Some(CommCmd.ValueAcquisition))
+      context become connectionReady(connection)
     case SetState(id, state) =>
       Future {
         blocking {
@@ -201,33 +230,38 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
       Instrument.setState(id, collectorState)
-      context become calibrationHandler(connection, AutoZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+      context become calibrationHandler(connection, AutoZero, mtCH4,
+        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
       self ! RaiseStart
 
     case ManualZeroCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
       Instrument.setState(id, collectorState)
-      context become calibrationHandler(connection, ManualZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+      context become calibrationHandler(connection, ManualZero, mtCH4,
+        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
       self ! RaiseStart
 
     case ManualSpanCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.SpanCalibrationStat
       Instrument.setState(id, collectorState)
-      context become calibrationHandler(connection, ManualSpan, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
-      self ! RaiseStart
+      context become calibrationHandler(connection, ManualSpan, mtCH4,
+        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
+
+      setupSpanRaiseStartTimer
   }
 
   var calibrateTimerOpt: Option[Cancellable] = None
 
   def calibrationHandler(connection: ActorRef, calibrationType: CalibrationType, mt: MonitorType.Value,
                          startTime: com.github.nscala_time.time.Imports.DateTime,
+                         recording: Boolean,
                          calibrationDataList: List[MonitorTypeData],
                          zeroValue: Option[Double]): Receive = {
 
     case UdpConnected.Received(data) =>
-      processResponse(data)(true)
+      processResponse(data)(recording)
 
     case UdpConnected.Disconnect =>
       connection ! UdpConnected.Disconnect
@@ -264,16 +298,19 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
     case ReportData(mtDataList) =>
       val data = mtDataList.filter { data => data.mt == mt }
-      context become calibrationHandler(connection, calibrationType, mt, startTime, data ::: calibrationDataList, zeroValue)
+      context become calibrationHandler(connection, calibrationType, mt, startTime, recording,
+        data ::: calibrationDataList, zeroValue)
 
     case HoldStart =>
       Logger.debug(s"${calibrationType} HoldStart: $mt")
-      context become calibrationHandler(connection, calibrationType, mt, startTime, calibrationDataList, zeroValue)
+      context become calibrationHandler(connection, calibrationType, mt, startTime, true,
+        calibrationDataList, zeroValue)
       calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
       Logger.debug(s"${calibrationType} DownStart: $mt")
-      context become calibrationHandler(connection, calibrationType, mt, startTime, calibrationDataList, zeroValue)
+      context become calibrationHandler(connection, calibrationType, mt, startTime, false,
+        calibrationDataList, zeroValue)
 
       if (calibrationType.zero) {
         config.calibrateZeoSeq map {
@@ -312,8 +349,9 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         Logger.info(s"$mt zero calibration end. ($avg)")
         collectorState = MonitorStatus.SpanCalibrationStat
         Instrument.setState(id, collectorState)
-        context become calibrationHandler(connection, AutoSpan, mt, startTime, List.empty[MonitorTypeData], avg)
-        self ! RaiseStart
+        context become calibrationHandler(connection, AutoSpan, mt, startTime, false, List.empty[MonitorTypeData], avg)
+
+        setupSpanRaiseStartTimer
       } else {
         Logger.info(s"$mt calibration end.")
         val cal =
@@ -333,24 +371,27 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
             collectorState = MonitorStatus.ZeroCalibrationStat
             Instrument.setState(id, collectorState)
             context become calibrationHandler(connection, AutoZero,
-              mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+              mtTHC, com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
+            self ! RaiseStart
           } else {
             if (calibrationType.zero) {
               collectorState = MonitorStatus.ZeroCalibrationStat
               Instrument.setState(id, collectorState)
               context become calibrationHandler(connection, ManualZero,
-                mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+                mtTHC, com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
+              self ! RaiseStart
             } else {
               collectorState = MonitorStatus.SpanCalibrationStat
               Instrument.setState(id, collectorState)
               context become calibrationHandler(connection, ManualSpan,
-                mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
+                mtTHC, com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
+              setupSpanRaiseStartTimer
             }
           }
-          self ! RaiseStart
         } else {
           collectorState = MonitorStatus.NormalStat
           Instrument.setState(id, collectorState)
+          context become connectionReady(connection)(false)
         }
       }
 
