@@ -127,6 +127,8 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   }
 
   def reqZeroCalibration(connection: ActorRef, mt: MonitorType.Value) = {
+    reqZero(connection)
+    
     val componentNo = if (mt == mtCH4)
       '0'.toByte
     else if (mt == mtTHC)
@@ -144,6 +146,8 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   }
 
   def reqSpanCalibration(connection: ActorRef, mt: MonitorType.Value) = {
+    reqSpan(connection)
+    
     val componentNo = if (mt == mtCH4)
       '0'.toByte
     else if (mt == mtTHC)
@@ -163,6 +167,24 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   def reqNormal(connection: ActorRef) = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'A', '0', '2', '4', 0x2, '0')
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val fcsStr = "%x".format(FCS.toByte)
+    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+
+  def reqZero(connection: ActorRef) = {
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'A', '0', '2', '4', 0x2, '1')
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val fcsStr = "%x".format(FCS.toByte)
+    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+  
+  def reqSpan(connection: ActorRef) = {
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'A', '0', '2', '4', 0x2, '2')
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
     val fcsStr = "%x".format(FCS.toByte)
     val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
