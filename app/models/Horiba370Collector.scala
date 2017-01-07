@@ -196,7 +196,6 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   }
 
   def setupSpanRaiseStartTimer {
-    Logger.debug("setupSpanRaiseStartTimer")
     val timer =
       if (config.calibratorPurgeTime.isDefined && config.calibratorPurgeTime.get != 0)
         purgeCalibrator
@@ -429,6 +428,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
               timer => timer.cancel()
             }
             context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+            context become connectionReady(connection)(false)
           } else {
             Logger.info(s"Ignore setState $state during calibration")
           }
