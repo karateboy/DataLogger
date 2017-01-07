@@ -420,14 +420,22 @@ object Query extends Controller {
           (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
         } else {
           val timeStart = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+          val timeEnd = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+          val timeDuration = new Duration(timeStart, timeEnd)
           tabType match {
             case TableType.min =>
-              (timeStart, timeStart + 1.hour)
+              if (timeDuration.getStandardMinutes > 60 * 12)
+                (timeStart, timeStart + 12.hour)
+              else
+                (timeStart, timeEnd)
             case TableType.second =>
-              (timeStart, timeStart + 5.minute)
+              if (timeDuration.getStandardSeconds > 60 * 60)
+                (timeStart, timeStart + 1.hour)
+              else
+                (timeStart, timeEnd)
           }
         }
-      val timeList = tabType match { 
+      val timeList = tabType match {
         case TableType.hour =>
           getPeriods(start, end, 1.hour)
         case TableType.min =>
@@ -448,7 +456,7 @@ object Query extends Controller {
         s"${mtCase.desp}(${mtCase.unit})"
       }.mkString(",")
       val output =
-        if(tabType == TableType.second)
+        if (tabType == TableType.second)
           views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap, true)
         else
           views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap)
@@ -471,7 +479,7 @@ object Query extends Controller {
     Ok(views.html.alarm())
   }
 
-  def alarmReport(level:Int, startStr: String, endStr: String) = Security.Authenticated {
+  def alarmReport(level: Int, startStr: String, endStr: String) = Security.Authenticated {
     val (start, end) =
       (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")) + 1.day)
@@ -586,7 +594,7 @@ object Query extends Controller {
         Ok(Json.toJson(recordList))
       }
   }
-  
+
   def calibrationRecordList(start: Long, end: Long) = Action.async {
     implicit request =>
       val startTime = new DateTime(start)
@@ -596,7 +604,7 @@ object Query extends Controller {
         Ok(Json.toJson(recordList))
       }
   }
-  
+
   def alertRecordList(start: Long, end: Long) = Action.async {
     implicit request =>
       val startTime = new DateTime(start)
@@ -606,7 +614,7 @@ object Query extends Controller {
         Ok(Json.toJson(recordList))
       }
   }
-  
+
   //
   //  def windRose() = Security.Authenticated {
   //    implicit request =>
