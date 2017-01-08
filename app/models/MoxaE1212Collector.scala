@@ -150,7 +150,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
           }
         {          
           val locator = BaseLocator.coilStatus(1, resetRegAddr + idx)
-          masterOpt.get.setValue(locator, 1)
+          masterOpt.get.setValue(locator, true)
         }
       } catch {
         case ex: Exception =>
