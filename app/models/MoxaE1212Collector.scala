@@ -144,9 +144,13 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         import com.serotonin.modbus4j.code.DataType
         val resetRegAddr = 272
 
-        for (idx <- 0 to 7) {
+        for {ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable
+          ch = ch_idx._1
+          idx = ch_idx._2
+          }
+        {          
           val locator = BaseLocator.coilStatus(1, resetRegAddr + idx)
-          masterOpt.get.setValue(locator, true)
+          masterOpt.get.setValue(locator, 1)
         }
       } catch {
         case ex: Exception =>
