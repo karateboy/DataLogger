@@ -308,8 +308,8 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     import scala.concurrent.duration._
 
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
-    val timer = if (!calibrationType.zero && 
-        tapiConfig.calibratorPurgeTime.isDefined && tapiConfig.calibratorPurgeTime.get != 0)
+    val timer = if (!calibrationType.zero &&
+      tapiConfig.calibratorPurgeTime.isDefined && tapiConfig.calibratorPurgeTime.get != 0)
       purgeCalibrator
     else
       Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
@@ -490,7 +490,18 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       }
   }
 
-  def resetToNormal: Unit
+  def resetToNormal {
+    tapiConfig.calibrateZeoDO map {
+      doBit =>
+        context.parent ! WriteDO(doBit, false)
+    }
+
+    tapiConfig.calibrateSpanSeq map {
+      seq =>
+        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+    }
+  }
+
   def triggerZeroCalibration(v: Boolean) {
     tapiConfig.calibrateZeoDO map {
       doBit =>
@@ -505,7 +516,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
           context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
     }
   }
-  
+
   def triggerSpanCalibration(v: Boolean) {
     tapiConfig.calibrateSpanDO map {
       doBit =>
@@ -527,7 +538,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     val purgeTime = tapiConfig.calibratorPurgeTime.get
     Logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
-    Akka.system.scheduler.scheduleOnce(Duration(purgeTime+1, SECONDS), self, RaiseStart)
+    Akka.system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
   }
 
   def triggerCalibratorPurge(v: Boolean) {

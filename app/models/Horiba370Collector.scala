@@ -40,7 +40,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   }
 
   val timerOpt: Option[Cancellable] = Some(Akka.system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS),
-      self, ReadData))
+    self, ReadData))
 
   //  override def preStart() = {
   //    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
@@ -126,40 +126,40 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
   def reqZeroCalibration(connection: ActorRef, mt: MonitorType.Value) = {
     reqZero(connection)
-    
-//    val componentNo = if (mt == mtCH4)
-//      '0'.toByte
-//    else if (mt == mtTHC)
-//      '2'.toByte
-//    else {
-//      throw new Exception(s"Invalid monitorType ${mt.toString}")
-//    }
-//
-//    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
-//      'A', '0', '2', '9', 0x2, componentNo)
-//    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
-//    val fcsStr = "%x".format(FCS.toByte)
-//    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
-//    connection ! UdpConnected.Send(ByteString(reqFrame))
+
+    //    val componentNo = if (mt == mtCH4)
+    //      '0'.toByte
+    //    else if (mt == mtTHC)
+    //      '2'.toByte
+    //    else {
+    //      throw new Exception(s"Invalid monitorType ${mt.toString}")
+    //    }
+    //
+    //    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+    //      'A', '0', '2', '9', 0x2, componentNo)
+    //    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    //    val fcsStr = "%x".format(FCS.toByte)
+    //    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    //    connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
   def reqSpanCalibration(connection: ActorRef, mt: MonitorType.Value) = {
     reqSpan(connection)
-    
-//    val componentNo = if (mt == mtCH4)
-//      '0'.toByte
-//    else if (mt == mtTHC)
-//      '2'.toByte
-//    else {
-//      throw new Exception(s"Invalid monitorType ${mt.toString}")
-//    }
-//
-//    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
-//      'A', '0', '3', '0', 0x2, componentNo)
-//    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
-//    val fcsStr = "%x".format(FCS.toByte)
-//    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
-//    connection ! UdpConnected.Send(ByteString(reqFrame))
+
+    //    val componentNo = if (mt == mtCH4)
+    //      '0'.toByte
+    //    else if (mt == mtTHC)
+    //      '2'.toByte
+    //    else {
+    //      throw new Exception(s"Invalid monitorType ${mt.toString}")
+    //    }
+    //
+    //    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+    //      'A', '0', '3', '0', 0x2, componentNo)
+    //    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    //    val fcsStr = "%x".format(FCS.toByte)
+    //    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    //    connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
   def reqNormal(connection: ActorRef) = {
@@ -179,7 +179,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
-  
+
   def reqSpan(connection: ActorRef) = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'A', '0', '2', '4', 0x2, '2')
@@ -240,6 +240,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
           collectorState = state
           Instrument.setState(id, state)
           if (state == MonitorStatus.NormalStat) {
+            reqNormal(connection)
           }
         }
       }
@@ -407,9 +408,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
             }
           }
         } else {
-          collectorState = MonitorStatus.NormalStat
-          Instrument.setState(id, collectorState)
-          context become connectionReady(connection)(false)
+          self ! SetState("SELF", MonitorStatus.NormalStat)
         }
       }
 
