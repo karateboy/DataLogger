@@ -35,8 +35,10 @@ class T360Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     try {
       super.triggerZeroCalibration(v)
 
-      val locator = BaseLocator.coilStatus(config.slaveID, 20)
-      masterOpt.get.setValue(locator, v)
+      if (config.skipInternalVault != Some(true)) {
+        val locator = BaseLocator.coilStatus(config.slaveID, 20)
+        masterOpt.get.setValue(locator, v)
+      }
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)
@@ -46,9 +48,11 @@ class T360Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   override def triggerSpanCalibration(v: Boolean) {
     try {
       super.triggerSpanCalibration(v)
-      
-      val locator = BaseLocator.coilStatus(config.slaveID, 21)
-      masterOpt.get.setValue(locator, v)
+
+      if (config.skipInternalVault != Some(true)) {
+        val locator = BaseLocator.coilStatus(config.slaveID, 21)
+        masterOpt.get.setValue(locator, v)
+      }
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)
@@ -58,9 +62,11 @@ class T360Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   override def resetToNormal = {
     try {
       super.resetToNormal
-      
-      masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
-      masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+
+      if (config.skipInternalVault != Some(true)) {
+        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
+        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+      }
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)

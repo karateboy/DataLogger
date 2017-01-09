@@ -39,8 +39,10 @@ angular.module('tapiConfigView', [])
 				desc += "<br/>校正上升時間:" + $scope.param.raiseTime;
 				desc += "<br/>校正持續時間:" + $scope.param.holdTime;
 				desc += "<br/>校正下降時間:" + $scope.param.downTime;
-				desc += "<br/>零點校正執行程序:" + $scope.param.calibrateZeoSeq;
-				desc += "<br/>全幅校正執行程序:" + $scope.param.calibrateSpanSeq;
+				if($scope.param.calibrateZeoSeq)
+					desc += "<br/>零點校正執行程序:" + $scope.param.calibrateZeoSeq;
+				if($scope.param.calibrateSpanSeq)
+					desc += "<br/>全幅校正執行程序:" + $scope.param.calibrateSpanSeq;
 				if($scope.param.calibratorPurgeTime)
 					desc += "<br/>校正器清空時間:" + $scope.param.calibratorPurgeTime;
 				if($scope.param.calibratorPurgeSeq)
@@ -49,6 +51,8 @@ angular.module('tapiConfigView', [])
 					desc += "<br/>零點校正DO:" + $scope.param.calibrateZeoDO;
 				if($scope.param.calibrateSpanDO)
 					desc += "<br/>全幅校正DO:" + $scope.param.calibrateSpanDO;
+				if($scope.param.skipInternalVault)
+					desc += "<br/>不切換校正電磁閥::不切換";
 				
 			}
 			

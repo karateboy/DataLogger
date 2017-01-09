@@ -10,7 +10,7 @@ case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorT
     raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int], 
     calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int], 
     calibratorPurgeSeq:Option[Int], calibratorPurgeTime:Option[Int],
-    calibrateZeoDO:Option[Int], calibrateSpanDO:Option[Int])
+    calibrateZeoDO:Option[Int], calibrateSpanDO:Option[Int], skipInternalVault:Option[Boolean])
     
 case class ModelConfig(model: String, monitorTypeIDs: List[String])
 
@@ -114,7 +114,8 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
             param.raiseTime, param.downTime, param.holdTime,
             param.calibrateZeoSeq, param.calibrateSpanSeq,
             param.calibratorPurgeSeq, param.calibratorPurgeTime,
-            param.calibrateZeoDO, param.calibrateSpanDO)
+            param.calibrateZeoDO, param.calibrateSpanDO,
+            param.skipInternalVault)
 
         Json.toJson(newParam).toString()
       })
