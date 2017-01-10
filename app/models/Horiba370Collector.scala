@@ -423,7 +423,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         for (cal <- calibrationList)
           Calibration.insert(cal)
 
-        self ! SetState("SELF", MonitorStatus.NormalStat)
+        self ! SetState(id, MonitorStatus.NormalStat)
       }
 
     case SetState(id, state) =>
