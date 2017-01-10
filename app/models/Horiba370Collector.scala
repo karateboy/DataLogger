@@ -124,7 +124,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqZeroCalibration(connection: ActorRef, mt: MonitorType.Value) = {
+  def reqZeroCalibration(connection: ActorRef) = {
     reqZero(connection)
 
     //    val componentNo = if (mt == mtCH4)
@@ -143,7 +143,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     //    connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqSpanCalibration(connection: ActorRef, mt: MonitorType.Value) = {
+  def reqSpanCalibration(connection: ActorRef) = {
     reqSpan(connection)
 
     //    val componentNo = if (mt == mtCH4)
@@ -193,12 +193,16 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     val ValueAcquisition = Value
   }
 
+  var raiseStartTimerOpt: Option[Cancellable] = None
+
   def setupSpanRaiseStartTimer {
-    val timer =
-      if (config.calibratorPurgeTime.isDefined && config.calibratorPurgeTime.get != 0)
-        purgeCalibrator
-      else
-        Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+    raiseStartTimerOpt =
+      if (config.calibratorPurgeTime.isDefined && config.calibratorPurgeTime.get != 0) {
+        collectorState = MonitorStatus.NormalStat
+        Instrument.setState(id, collectorState)
+        Some(purgeCalibrator)
+      } else
+        Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart))
   }
 
   def purgeCalibrator() = {
@@ -233,7 +237,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
     case ReadData =>
       reqData(connection)
-      context become connectionReady(connection)
+
     case SetState(id, state) =>
       Future {
         blocking {
@@ -241,6 +245,9 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
           Instrument.setState(id, state)
           if (state == MonitorStatus.NormalStat) {
             reqNormal(connection)
+            raiseStartTimerOpt map {
+              timer => timer.cancel()
+            }
           }
         }
       }
@@ -249,35 +256,36 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
       Instrument.setState(id, collectorState)
-      context become calibrationHandler(connection, AutoZero, mtCH4,
-        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
+      context become calibrationHandler(connection, AutoZero,
+        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
+        Map.empty[MonitorType.Value, Option[Double]])
       self ! RaiseStart
 
     case ManualZeroCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
       Instrument.setState(id, collectorState)
-      context become calibrationHandler(connection, ManualZero, mtCH4,
-        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
+      context become calibrationHandler(connection, ManualZero,
+        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
+        Map.empty[MonitorType.Value, Option[Double]])
       self ! RaiseStart
 
     case ManualSpanCalibration(instId) =>
       assert(instId == id)
-      collectorState = MonitorStatus.SpanCalibrationStat
-      Instrument.setState(id, collectorState)
-      context become calibrationHandler(connection, ManualSpan, mtCH4,
-        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
+      context become calibrationHandler(connection, ManualSpan,
+        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
+        Map.empty[MonitorType.Value, Option[Double]])
 
       setupSpanRaiseStartTimer
   }
 
   var calibrateTimerOpt: Option[Cancellable] = None
 
-  def calibrationHandler(connection: ActorRef, calibrationType: CalibrationType, mt: MonitorType.Value,
+  def calibrationHandler(connection: ActorRef, calibrationType: CalibrationType,
                          startTime: com.github.nscala_time.time.Imports.DateTime,
                          recording: Boolean,
                          calibrationDataList: List[MonitorTypeData],
-                         zeroValue: Option[Double]): Receive = {
+                         zeroMap: Map[MonitorType.Value, Option[Double]]): Receive = {
 
     case UdpConnected.Received(data) =>
       processResponse(data)(recording)
@@ -293,7 +301,14 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     case RaiseStart =>
       Future {
         blocking {
-          Logger.info(s"${calibrationType} RasieStart: $mt")
+          if (calibrationType.zero)
+            collectorState = MonitorStatus.ZeroCalibrationStat
+          else
+            collectorState = MonitorStatus.SpanCalibrationStat
+
+          Instrument.setState(id, collectorState)
+
+          Logger.info(s"${calibrationType} RasieStart")
           val cmd =
             if (calibrationType.zero) {
               config.calibrateZeoSeq map {
@@ -301,14 +316,14 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
                   context.parent ! ExecuteSeq(seqNo, true)
               }
 
-              reqZeroCalibration(connection, mt)
+              reqZeroCalibration(connection)
             } else {
               config.calibrateSpanSeq map {
                 seqNo =>
                   context.parent ! ExecuteSeq(seqNo, true)
               }
 
-              reqSpanCalibration(connection, mt)
+              reqSpanCalibration(connection)
             }
 
           calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
@@ -316,20 +331,20 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       }
 
     case ReportData(mtDataList) =>
-      val data = mtDataList.filter { data => data.mt == mt }
-      context become calibrationHandler(connection, calibrationType, mt, startTime, recording,
-        data ::: calibrationDataList, zeroValue)
+      val data = mtDataList
+      context become calibrationHandler(connection, calibrationType, startTime, recording,
+        data ::: calibrationDataList, zeroMap)
 
     case HoldStart =>
-      Logger.debug(s"${calibrationType} HoldStart: $mt")
-      context become calibrationHandler(connection, calibrationType, mt, startTime, true,
-        calibrationDataList, zeroValue)
+      Logger.debug(s"${calibrationType} HoldStart")
+      context become calibrationHandler(connection, calibrationType, startTime, true,
+        calibrationDataList, zeroMap)
       calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
-      Logger.debug(s"${calibrationType} DownStart: $mt")
-      context become calibrationHandler(connection, calibrationType, mt, startTime, false,
-        calibrationDataList, zeroValue)
+      Logger.debug(s"${calibrationType} DownStart")
+      context become calibrationHandler(connection, calibrationType, startTime, false,
+        calibrationDataList, zeroMap)
 
       if (calibrationType.zero) {
         config.calibrateZeoSeq map {
@@ -358,58 +373,57 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       }
 
     case CalibrateEnd =>
-      val values = calibrationDataList.map { _.value }
-      val avg = if (values.length == 0)
-        None
-      else
-        Some(values.sum / values.length)
+      import scala.collection.mutable.Map
+      val mtValueMap = Map.empty[MonitorType.Value, List[Double]]
+      for {
+        record <- calibrationDataList
+      } {
+        val dataList = mtValueMap.getOrElseUpdate(record.mt, List.empty[Double])
+        mtValueMap.put(record.mt, record.value :: dataList)
+      }
+
+      val mtAvgMap = mtValueMap map {
+        mt_values =>
+          val mt = mt_values._1
+          val values = mt_values._2
+          val avg = if (values.length == 0)
+            None
+          else
+            Some(values.sum / values.length)
+          mt -> avg
+      }
 
       if (calibrationType.auto && calibrationType.zero) {
-        Logger.info(s"$mt zero calibration end. ($avg)")
-        collectorState = MonitorStatus.SpanCalibrationStat
-        Instrument.setState(id, collectorState)
-        context become calibrationHandler(connection, AutoSpan, mt, startTime, false, List.empty[MonitorTypeData], avg)
+        Logger.info(s"zero calibration end.")
+        context become calibrationHandler(connection, AutoSpan, startTime, false, List.empty[MonitorTypeData], mtAvgMap.toMap)
 
         setupSpanRaiseStartTimer
       } else {
-        Logger.info(s"$mt calibration end.")
-        val cal =
+        Logger.info(s"calibration end.")
+        val monitorTypes = mtAvgMap.keySet.toList
+        val calibrationList =
           if (calibrationType.auto) {
-            Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, MonitorType.map(mt).span, avg)
+            for {
+              mt <- monitorTypes
+              zeroValue = zeroMap(mt)
+              avg = mtAvgMap(mt)
+            } yield Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, MonitorType.map(mt).span, avg)
           } else {
-            if (calibrationType.zero) {
-              Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
-            } else {
-              Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, MonitorType.map(mt).span, avg)
+            for {
+              mt <- monitorTypes
+              avg = mtAvgMap(mt)
+            } yield {
+              if (calibrationType.zero) {
+                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
+              } else {
+                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, MonitorType.map(mt).span, avg)
+              }
             }
           }
-        Calibration.insert(cal)
+        for (cal <- calibrationList)
+          Calibration.insert(cal)
 
-        if (mt == mtCH4) {
-          if (calibrationType.auto) {
-            collectorState = MonitorStatus.ZeroCalibrationStat
-            Instrument.setState(id, collectorState)
-            context become calibrationHandler(connection, AutoZero,
-              mtTHC, com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
-            self ! RaiseStart
-          } else {
-            if (calibrationType.zero) {
-              collectorState = MonitorStatus.ZeroCalibrationStat
-              Instrument.setState(id, collectorState)
-              context become calibrationHandler(connection, ManualZero,
-                mtTHC, com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
-              self ! RaiseStart
-            } else {
-              collectorState = MonitorStatus.SpanCalibrationStat
-              Instrument.setState(id, collectorState)
-              context become calibrationHandler(connection, ManualSpan,
-                mtTHC, com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData], None)
-              setupSpanRaiseStartTimer
-            }
-          }
-        } else {
-          self ! SetState("SELF", MonitorStatus.NormalStat)
-        }
+        self ! SetState("SELF", MonitorStatus.NormalStat)
       }
 
     case SetState(id, state) =>
