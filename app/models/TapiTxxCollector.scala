@@ -316,14 +316,6 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
 
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
-
-    collectorState =
-      if (calibrationType.zero)
-        MonitorStatus.ZeroCalibrationStat
-      else
-        MonitorStatus.SpanCalibrationStat
-
-    Instrument.setState(instId, collectorState)
     context become calibration(calibrationType, DateTime.now, false, List.empty[ReportData],
       List.empty[(MonitorType.Value, Double)], endState, timer)
   }
@@ -364,6 +356,14 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
     case RaiseStart =>
       Future {
         blocking {
+          collectorState =
+            if (calibrationType.zero)
+              MonitorStatus.ZeroCalibrationStat
+            else
+              MonitorStatus.SpanCalibrationStat
+
+          Instrument.setState(instId, collectorState)
+
           Logger.info(s"${self.path.name} => RaiseStart")
           import scala.concurrent.duration._
           if (calibrationType.zero) {
@@ -437,12 +437,12 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
           if (calibrationType.auto && calibrationType.zero) {
             for (v <- values)
               Logger.info(s"${v._1} zero calibration end. (${v._2})")
-            collectorState = MonitorStatus.SpanCalibrationStat
-            Instrument.setState(instId, collectorState)
 
-            val raiseStartTimer = if (!calibrationType.zero && tapiConfig.calibratorPurgeTime.isDefined)
+            val raiseStartTimer = if (tapiConfig.calibratorPurgeTime.isDefined) {
+              collectorState = MonitorStatus.NormalStat
+              Instrument.setState(instId, collectorState)
               purgeCalibrator
-            else {
+            } else {
               import scala.concurrent.duration._
               Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
             }

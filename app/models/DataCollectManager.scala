@@ -277,14 +277,8 @@ class DataCollectManager extends Actor {
             mt_pair <- recordMap
             mt = mt_pair._1
             statusMap = mt_pair._2
-            status_pair <- statusMap
-            status = status_pair._1
-            recordList = status_pair._2
-
           } {
-            val adjustedRecList = recordList map { rec => (rec._1.withMillisOfSecond(0), rec._2) }
-            val sortedRecList = adjustedRecList.sortBy(_._1)
-            def fillList(head: (DateTime, Double), tail: List[(DateTime, Double)]): List[(DateTime, Double)] = {
+            def fillList(head: (DateTime, Double, String), tail: List[(DateTime, Double, String)]): List[(DateTime, Double, String)] = {
               val secondEnd = if (tail.isEmpty)
                 60
               else
@@ -293,7 +287,7 @@ class DataCollectManager extends Actor {
               val sameDataList =
                 for (s <- head._1.getSecondOfMinute to secondEnd - 1) yield {
                   val minPart = head._1.withSecond(0)
-                  (minPart + s.second, head._2)
+                  (minPart + s.second, head._2, head._3)
                 }
 
               if (!tail.isEmpty)
@@ -302,18 +296,27 @@ class DataCollectManager extends Actor {
                 sameDataList.toList
             }
 
-            val completeList = if (!sortedRecList.isEmpty) {
-              val head = sortedRecList.head
+            val mtList = statusMap.flatMap { status_pair =>
+              val status = status_pair._1
+              val recordList = status_pair._2
+              val adjustedRecList = recordList map { rec => (rec._1.withMillisOfSecond(0), rec._2) }
+
+              adjustedRecList map { record => (record._1, record._2, status) }
+            }
+
+            val mtSortedList = mtList.toList.sortBy(_._1)
+            val completeList = if (!mtSortedList.isEmpty) {
+              val head = mtSortedList.head
               if (head._1.getSecondOfMinute == 0)
-                fillList(head, sortedRecList.tail.toList)
+                fillList(head, mtSortedList.tail.toList)
               else
-                fillList((head._1.withSecondOfMinute(0), head._2), sortedRecList.toList)
+                fillList((head._1.withSecondOfMinute(0), head._2, head._3), mtSortedList)
             } else
-              List.empty[(DateTime, Double)]
+              List.empty[(DateTime, Double, String)]
 
             for (record <- completeList) {
               val mtSecListbuffer = secRecordMap.getOrElseUpdate(record._1, ListBuffer.empty[(MonitorType.Value, (Double, String))])
-              mtSecListbuffer.append((mt, (record._2, status)))
+              mtSecListbuffer.append((mt, (record._2, record._3)))
             }
           }
 
