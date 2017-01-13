@@ -1,6 +1,6 @@
 package models
 import scala.concurrent.ExecutionContext.Implicits.global
-import com.github.nscala_time.time.Imports.DateTime
+import com.github.nscala_time.time.Imports._
 import akka.actor.Actor
 import akka.actor.actorRef2Scala
 import play.api.Logger
@@ -23,8 +23,15 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
           },
           latest => {
             Logger.info(s"server latest hour: ${new DateTime(latest.time).toString}")
-            context become handler(Some(latest.time))
-            uploadRecord(latest.time)
+            val serverLatest =
+              if (latest.time == 0) {
+                DateTime.now() - 1.day
+              } else {
+                new DateTime(latest.time)
+              }
+
+            context become handler(Some(serverLatest.getMillis))
+            uploadRecord(serverLatest.getMillis)
           })
     }
     f onFailure {
@@ -40,23 +47,23 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
         val f = WS.url(url).put(Json.toJson(record))
         f onSuccess {
           case response =>
-            if(response.status == 200)
+            if (response.status == 200)
               context become handler(Some(record.last.time))
-            else{
+            else {
               Logger.error(s"${response.status}:${response.statusText}")
               context become handler(None)
             }
         }
         f onFailure {
           case ex: Throwable =>
-            context become handler(None)            
+            context become handler(None)
             ModelHelper.logException(ex)
         }
       }
     }
   }
 
-  def uploadRecord(start:DateTime, end:DateTime) = {
+  def uploadRecord(start: DateTime, end: DateTime) = {
     Logger.info(s"upload hour ${start.toString()} => ${end.toString}")
 
     val recordFuture = Record.getRecordListFuture(Record.HourCollection)(start, end)
@@ -64,9 +71,9 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
       if (!record.isEmpty) {
         val url = s"http://$server/HourRecord/$monitor"
         val f = WS.url(url).put(Json.toJson(record))
-        f onSuccess{
+        f onSuccess {
           case response =>
-            if(response.status == 200)
+            if (response.status == 200)
               Logger.info("Success upload!")
             else
               Logger.error(s"${response.status}:${response.statusText}")
@@ -75,7 +82,7 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
           case ex: Throwable =>
             ModelHelper.logException(ex)
         }
-      }else{
+      } else {
         Logger.error("No hour record!")
       }
     }
@@ -86,8 +93,8 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
         checkLatest
       else
         uploadRecord(latestRecordTimeOpt.get)
-        
-    case ForwardHourRecord(start, end)=>
+
+    case ForwardHourRecord(start, end) =>
       uploadRecord(start, end)
 
   }

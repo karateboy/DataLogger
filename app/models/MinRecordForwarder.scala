@@ -23,8 +23,15 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
           },
           latest => {
             Logger.info(s"server latest min: ${new DateTime(latest.time).toString}")
-            context become handler(Some(latest.time))
-            uploadRecord(latest.time)
+            val serverLatest =
+              if(latest.time == 0){
+                DateTime.now() - 1.day
+              }else{
+                new DateTime(latest.time)
+              }
+            
+            context become handler(Some(serverLatest.getMillis))
+            uploadRecord(serverLatest.getMillis)
           })
     }
     f onFailure {

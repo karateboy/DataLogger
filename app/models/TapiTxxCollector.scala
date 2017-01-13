@@ -218,7 +218,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             connected = false
         } finally {
           import scala.concurrent.duration._
-          timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+          timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
         }
       }
     }
@@ -264,7 +264,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
               Instrument.updateStatusType(instId, instrumentStatusTypesOpt.get)
             }
             import scala.concurrent.duration._
-            timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+            timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)

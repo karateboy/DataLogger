@@ -1,7 +1,7 @@
 package models
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import com.github.nscala_time.time.Imports.DateTime
+import com.github.nscala_time.time.Imports._
 import akka.actor.Actor
 import akka.actor.actorRef2Scala
 import play.api.Logger
@@ -25,8 +25,15 @@ class CalibrationForwarder(server: String, monitor: String) extends Actor {
           },
           latest => {
             Logger.info(s"server latest calibration: ${new DateTime(latest.time).toString}")
-            context become handler(Some(latest.time))
-            uploadCalibration(latest.time)
+            val serverLatest =
+              if (latest.time == 0) {
+                DateTime.now() - 1.day
+              } else {
+                new DateTime(latest.time)
+              }
+
+            context become handler(Some(serverLatest.getMillis))
+            uploadCalibration(serverLatest.getMillis)
           })
     }
     f onFailure {
