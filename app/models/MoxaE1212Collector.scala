@@ -46,7 +46,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
   def decode(values: Seq[Int]) = {
     import DataCollectManager._
-    val dataList =
+    val dataOptList =
       for {
         cfg <- param.ch.zipWithIndex
         chCfg = cfg._1 if chCfg.enable
@@ -54,8 +54,19 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         scale = chCfg.scale.get
       } yield {
         val v = scale * values(idx)
-        MonitorTypeData(chCfg.mt.get, v, "010")
+        if(chCfg.mt.get != MonitorType.DOOR)
+          Some(MonitorTypeData(chCfg.mt.get, v, "010"))
+        else{
+          import com.github.nscala_time.time.Imports._
+          import Alarm._
+          if(values(idx) >0){
+            Logger.info("門開啟")
+            models.Alarm.log(Src(), Level.INFO, "門開啟")
+          }  
+          None
+        }
       }
+    val dataList = dataOptList.flatMap { d=>d }
     context.parent ! ReportData(dataList.toList)
   }
 

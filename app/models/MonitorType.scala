@@ -103,6 +103,9 @@ object MonitorType extends Enumeration {
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
   lazy val RAIN = MonitorType.withName("RAIN")
   
+  val DOOR = Value("DOOR")
+  val DOOR_MTCASE = MonitorType("DOOR", "門禁", "N/A", None, 0, 1000)
+  
   def init(colNames: Seq[String]) = {
     def insertMt = {
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
@@ -165,7 +168,7 @@ object MonitorType extends Enumeration {
     {
       val f = MongoDB.database.getCollection(colName).find().toFuture()
       val r = waitReadyResult(f)
-      r.map { toMonitorType }.toList
+      DOOR_MTCASE :: r.map { toMonitorType }.toList
     }
 
   def refreshMtv = {
@@ -181,7 +184,9 @@ object MonitorType extends Enumeration {
     mtvList = list.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   }
 
-  var map: Map[Value, MonitorType] = Map(mtList.map { e => Value(e._id) -> e }: _*)
+  var map: Map[Value, MonitorType] = 
+    Map(mtList.map { e => Value(e._id) -> e }: _*) ++ Map(DOOR-> DOOR_MTCASE)
+    
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   def activeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
   def realtimeMtvList = mtvList.filter { mt =>
