@@ -110,10 +110,10 @@ object Alarm {
       yield docs.map { toAlarm }
   }
 
-  private def log(ar: Alarm) {
+  private def logFilter(ar: Alarm, coldPeriod:Int = 30){
     import org.mongodb.scala.bson.BsonDateTime
     //None blocking...
-    val start: BsonDateTime = ar.time - 30.minutes
+    val start: BsonDateTime = ar.time - coldPeriod.minutes
     val end: BsonDateTime = ar.time
 
     val countObserver = collection.count(and(gte("time", start), lt("time", end),
@@ -131,8 +131,8 @@ object Alarm {
 
   }
 
-  def log(src: String, level: Int, desc: String) {
+  def log(src: String, level: Int, desc: String, coldPeriod:Int = 30) {
     val ar = Alarm(DateTime.now(), src, level, desc)
-    log(ar)
-  }
+    logFilter(ar, coldPeriod)
+  }  
 }

@@ -44,7 +44,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
       scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
   }
 
-  def decode(values: Seq[Int]) = {
+  def decodeDiCounter(values: Seq[Int]) = {
     import DataCollectManager._
     val dataOptList =
       for {
@@ -54,19 +54,13 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         scale = chCfg.scale.get
       } yield {
         val v = scale * values(idx)
-        if(chCfg.mt.get != MonitorType.DOOR)
+        if (chCfg.mt.get != MonitorType.DOOR)
           Some(MonitorTypeData(chCfg.mt.get, v, "010"))
-        else{
-          import com.github.nscala_time.time.Imports._
-          import Alarm._
-          if(values(idx) >0){
-            Logger.info("門開啟")
-            models.Alarm.log(Src(), Level.INFO, "門開啟")
-          }  
+        else
           None
-        }
+
       }
-    val dataList = dataOptList.flatMap { d=>d }
+    val dataList = dataOptList.flatMap { d => d }
     context.parent ! ReportData(dataList.toList)
   }
 
@@ -114,24 +108,56 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         blocking {
           try {
             import com.serotonin.modbus4j.BatchRead
-            val batch = new BatchRead[Integer]
-
             import com.serotonin.modbus4j.locator.BaseLocator
             import com.serotonin.modbus4j.code.DataType
 
-            //FIXME It is just POC!!!
-            for (idx <- 0 to 7)
-              batch.addLocator(idx, BaseLocator.inputRegister(1, 16 + 2 * idx, DataType.FOUR_BYTE_INT_SIGNED))
+            //DI Counter ...
+            {
+              val batch = new BatchRead[Integer]
 
-            batch.setContiguousRequests(true)
+              for (idx <- 0 to 7)
+                batch.addLocator(idx, BaseLocator.inputRegister(1, 16 + 2 * idx, DataType.FOUR_BYTE_INT_SIGNED))
 
-            assert(masterOpt.isDefined)
+              batch.setContiguousRequests(true)
 
-            val rawResult = masterOpt.get.send(batch)
-            val result =
-              for (idx <- 0 to 7) yield rawResult.getIntValue(idx).toInt
+              val rawResult = masterOpt.get.send(batch)
+              val result =
+                for (idx <- 0 to 7) yield rawResult.getIntValue(idx).toInt
 
-            decode(result.toSeq)
+              decodeDiCounter(result.toSeq)
+            }
+            // DI Value ...
+            {
+              val batch = new BatchRead[Integer]
+              for (idx <- 0 to 7)
+                batch.addLocator(idx, BaseLocator.inputStatus(1, idx))
+
+              batch.setContiguousRequests(true)
+
+              val rawResult = masterOpt.get.send(batch)
+              val result =
+                for (idx <- 0 to 7) yield rawResult.getValue(idx).asInstanceOf[Boolean]
+
+              def decodeDiValue() {
+                import DataCollectManager._
+
+                for {
+                  cfg <- param.ch.zipWithIndex
+                  chCfg = cfg._1 if chCfg.enable
+                  idx = cfg._2
+                  v = result(idx)
+                } yield {
+                  if (chCfg.mt.get == MonitorType.DOOR) {
+                    import com.github.nscala_time.time.Imports._
+                    import Alarm._
+                    if (v == false) {
+                      models.Alarm.log(Src(), Level.INFO, "門開啟", 1)
+                    }
+                  }
+                }
+              }
+            }
+
             import scala.concurrent.duration._
             cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
@@ -155,11 +181,11 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         import com.serotonin.modbus4j.code.DataType
         val resetRegAddr = 272
 
-        for {ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable
+        for {
+          ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable
           ch = ch_idx._1
           idx = ch_idx._2
-          }
-        {          
+        } {
           val locator = BaseLocator.coilStatus(1, resetRegAddr + idx)
           masterOpt.get.setValue(locator, true)
         }
@@ -185,6 +211,6 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
     if (cancelable != null)
       cancelable.cancel()
 
-    resetTimer.cancel()  
+    resetTimer.cancel()
   }
 }

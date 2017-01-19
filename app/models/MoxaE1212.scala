@@ -14,7 +14,7 @@ object MoxaE1212 extends DriverOps {
 
   override def getMonitorTypes(param: String) = {
     val e1212Param = MoxaE1212.validateParam(param)
-    e1212Param.ch.filter { _.enable }.flatMap { _.mt }.toList
+    e1212Param.ch.filter { _.enable }.flatMap { _.mt }.toList.filter { mt => mt != MonitorType.DOOR }
   }
 
   override def verifyParam(json: String) = {
