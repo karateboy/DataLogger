@@ -43,10 +43,7 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
   def uploadRecord(latestRecordTime: Long) {
     val serverRecordStart = new DateTime(latestRecordTime + 1)
     val recordFuture =
-      if (serverRecordStart + 1.hour < DateTime.now)
-        Record.getRecordListFuture(Record.MinCollection)(serverRecordStart, serverRecordStart + 1.hour)
-      else
-        Record.getRecordListFuture(Record.MinCollection)(serverRecordStart, DateTime.now)
+        Record.getRecordWithLimitFuture(Record.MinCollection)(serverRecordStart, DateTime.now, 60)
 
     for (record <- recordFuture) {
       if (!record.isEmpty) {

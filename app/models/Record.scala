@@ -176,4 +176,42 @@ object Record {
       }
     }
   }
+  
+  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit:Int) = {
+    import org.mongodb.scala.bson._
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+    import scala.concurrent._
+    import scala.concurrent.duration._
+
+    val mtList = MonitorType.activeMtvList
+    val col = MongoDB.database.getCollection(colName)
+    val proj = include(mtList.map { MonitorType.BFName(_) }: _*)
+    val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).limit(limit).projection(proj).sort(ascending("_id")).toFuture()
+
+    for {
+      docs <- f
+    } yield {
+      for {
+        doc <- docs
+        time = doc("_id").asDateTime()
+      } yield {
+
+        val mtDataList =
+          for {
+            mt <- mtList
+            mtBFName = MonitorType.BFName(mt)
+
+            mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
+            mtDoc = mtDocOpt.get.asDocument()
+            v = mtDoc.get("v") if v.isDouble()
+            s = mtDoc.get("s") if s.isString()
+          } yield {
+            MtRecord(mtBFName, v.asDouble().doubleValue(), s.asString().getValue)
+          }
+        RecordList(time.getMillis, mtDataList)
+      }
+    }
+  }
 }

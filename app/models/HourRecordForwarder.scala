@@ -1,6 +1,6 @@
 package models
 import scala.concurrent.ExecutionContext.Implicits.global
-import com.github.nscala_time.time.Imports._
+//
 import akka.actor.Actor
 import akka.actor.actorRef2Scala
 import play.api.Logger
@@ -13,6 +13,7 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
   import ForwardManager._
   def receive = handler(None)
   def checkLatest = {
+    import com.github.nscala_time.time.Imports._
     val url = s"http://$server/HourRecordRange/$monitor"
     val f = WS.url(url).get().map {
       response =>
@@ -39,30 +40,53 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
         ModelHelper.logException(ex)
     }
   }
+
   def uploadRecord(latestRecordTime: Long) = {
-    val recordFuture = Record.getRecordListFuture(Record.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now)
+    import com.github.nscala_time.time.Imports._
+    val recordFuture = 
+      Record.getRecordWithLimitFuture(Record.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 60)
+      
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         val url = s"http://$server/HourRecord/$monitor"
         val f = WS.url(url).put(Json.toJson(record))
         f onSuccess {
           case response =>
-            if (response.status == 200)
+            if (response.status == 200){
               context become handler(Some(record.last.time))
-            else {
+              
+              // This shall stop when there is no more records...
+              self ! ForwardHour 
+            }else {
               Logger.error(s"${response.status}:${response.statusText}")
               context become handler(None)
+              delayForward
             }
         }
         f onFailure {
           case ex: Throwable =>
             context become handler(None)
             ModelHelper.logException(ex)
+            delayForward
         }
       }
     }
   }
 
+  def delayForward = {
+    val currentMin = {
+      import com.github.nscala_time.time.Imports._
+      val now = DateTime.now()
+      now.getMinuteOfHour
+    }
+    import scala.concurrent.duration._
+    import play.api.libs.concurrent.Akka
+    
+    if(currentMin < 58)
+      Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ForwardHour)
+  }
+  
+  import com.github.nscala_time.time.Imports._
   def uploadRecord(start: DateTime, end: DateTime) = {
     Logger.info(s"upload hour ${start.toString()} => ${end.toString}")
 
@@ -83,7 +107,7 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
             ModelHelper.logException(ex)
         }
       } else {
-        Logger.error("No hour record!")
+        Logger.info("No more hour record")
       }
     }
   }
