@@ -26,6 +26,7 @@ GET		/Excel/HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end	cont
 
 GET		/History					controllers.Query.history
 GET		/HistoryReport/:monitorType/:tabType/:start/:end		controllers.Query.historyReport(monitorType, tabType, start, end)
+
 GET		/Calibration				controllers.Query.calibration
 GET		/CalibrationReport/:start/:end	controllers.Query.calibrationReport(start, end)
 GET		/Alarm						controllers.Query.alarm

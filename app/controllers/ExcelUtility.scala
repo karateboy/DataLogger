@@ -60,12 +60,12 @@ object ExcelUtility {
   }
     
   import controllers.Highchart._
-  def exportChartData(chart: HighchartData, monitorTypes: Array[MonitorType.Value]): File = {
+  def exportChartData(chart: HighchartData, monitorTypes: Array[MonitorType.Value], showSec:Boolean): File = {
     val precArray = monitorTypes.map { mt => MonitorType.map(mt).prec }
-    exportChartData(chart, precArray)
+    exportChartData(chart, precArray, showSec)
   }
 
-  def exportChartData(chart: HighchartData, precArray: Array[Int]) = {
+  def exportChartData(chart: HighchartData, precArray: Array[Int], showSec:Boolean) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("chart_export.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat();
@@ -133,7 +133,10 @@ object ExcelUtility {
           val pair = series.data(row - 1)
           if (col == 1) {
             val dt = new DateTime(pair(0).get.toLong)
-            timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm"))
+            if(!showSec)
+              timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm"))
+            else
+              timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
           if (pair(1).isDefined) {
             cell.setCellValue(pair(1).get)

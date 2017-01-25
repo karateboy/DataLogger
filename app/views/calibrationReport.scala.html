@@ -38,7 +38,7 @@
 				@if(item.endTime.getDayOfYear != item.startTime.getDayOfYear){
 					<td>@item.endTime.toString("YYYY-MM-dd HH:mm")</td>
 				}else{
-					<td>@item.endTime.toString("hh:mm")</td>
+					<td>@item.endTime.toString("HH:mm")</td>
 				}
 				<td style="@Calibration.getZeroCalibrationStyle(item)">@MonitorType.format(item.monitorType, item.zero_val)</td>
 				<td>@MonitorType.format(item.monitorType, map(item.monitorType).zd_internal)</td>

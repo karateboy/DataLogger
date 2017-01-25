@@ -196,6 +196,8 @@ object Query extends Controller {
     val windMtv = MonitorType.WIN_DIRECTION
     val period: Period =
       reportUnit match {
+        case ReportUnit.Sec =>
+          1.second
         case ReportUnit.Min =>
           1.minute
         case ReportUnit.TenMin =>
@@ -258,6 +260,8 @@ object Query extends Controller {
 
     val title =
       reportUnit match {
+        case ReportUnit.Sec =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"      
         case ReportUnit.Min =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.TenMin =>
@@ -363,9 +367,12 @@ object Query extends Controller {
       val reportUnit = ReportUnit.withName(reportUnitStr)
       val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
       val (tabType, start, end) =
-        if (reportUnit == ReportUnit.Hour || reportUnit == ReportUnit.Min || reportUnit == ReportUnit.TenMin) {
+        if (reportUnit == ReportUnit.Hour || reportUnit == ReportUnit.Min 
+            || reportUnit == ReportUnit.TenMin || reportUnit == ReportUnit.Sec) {
           val tab = if (reportUnit == ReportUnit.Hour)
             TableType.hour
+          else if(reportUnit == ReportUnit.Sec)
+            TableType.second
           else
             TableType.min
 
@@ -385,7 +392,7 @@ object Query extends Controller {
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
-        val excelFile = ExcelUtility.exportChartData(chart, monitorTypes)
+        val excelFile = ExcelUtility.exportChartData(chart, monitorTypes, reportUnit == ReportUnit.Sec)
         val downloadFileName =
           if (chart.downloadFileName.isDefined)
             chart.downloadFileName.get

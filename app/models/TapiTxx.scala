@@ -27,7 +27,7 @@ object TapiTxx {
       modeRegs:List[(InstrumentStatusType, Boolean)], warnRegs:List[(InstrumentStatusType, Boolean)])
 
   val T700_PURGE_SEQ = 100      
-  val T700_STANDBY_SEQ = 101
+  val T700_STANDBY_SEQ = 99
 }
 
 abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
