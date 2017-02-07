@@ -54,7 +54,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         scale = chCfg.scale.get
       } yield {
         val v = scale * values(idx)
-        if (chCfg.mt.get != MonitorType.DOOR)
+        if (!MonitorType.DI_TYPES.contains(chCfg.mt.get))
           Some(MonitorTypeData(chCfg.mt.get, v, "010"))
         else
           None
@@ -138,22 +138,23 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
               val result =
                 for (idx <- 0 to 7) yield rawResult.getValue(idx).asInstanceOf[Boolean]
 
-              def decodeDiValue() {
-                import DataCollectManager._
+              import DataCollectManager._
 
-                for {
-                  cfg <- param.ch.zipWithIndex
-                  chCfg = cfg._1 if chCfg.enable
-                  idx = cfg._2
-                  v = result(idx)
-                } yield {
-                  if (chCfg.mt.get == MonitorType.DOOR) {
-                    import com.github.nscala_time.time.Imports._
-                    import Alarm._
-                    if (v == false) {
-                      models.Alarm.log(Src(), Level.INFO, "門開啟", 1)
-                    }
-                  }
+              for {
+                cfg <- param.ch.zipWithIndex
+                chCfg = cfg._1 if chCfg.enable
+                idx = cfg._2
+                v = result(idx)
+              } yield {
+                chCfg.mt.get match {
+                  case MonitorType.DOOR =>
+                    if (!v)
+                      Alarm.log(Alarm.Src(), Alarm.Level.INFO, "門開啟", 1)
+
+                  case MonitorType.SMOKE =>
+                    if (v)
+                      Alarm.log(Alarm.Src(), Alarm.Level.WARN, "煙霧偵測!", 1)
+                  case _=>
                 }
               }
             }

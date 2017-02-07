@@ -105,6 +105,12 @@ object MonitorType extends Enumeration {
   
   val DOOR = Value("DOOR")
   val DOOR_MTCASE = MonitorType("DOOR", "門禁", "N/A", None, 0, 1000)
+  val SMOKE = Value("SMOKE")
+  val SMOKE_MTCASE = MonitorType("SMOKE", "煙霧", "N/A", None, 0, 1000)
+  
+  val DI_TYPES = Seq(DOOR, SMOKE)
+  val DI_MTCASES = Seq(DOOR_MTCASE, SMOKE_MTCASE)
+  val DI_MAP = Map(DOOR-> DOOR_MTCASE, SMOKE->SMOKE_MTCASE)
   
   def init(colNames: Seq[String]) = {
     def insertMt = {
@@ -168,7 +174,7 @@ object MonitorType extends Enumeration {
     {
       val f = MongoDB.database.getCollection(colName).find().toFuture()
       val r = waitReadyResult(f)
-      DOOR_MTCASE :: r.map { toMonitorType }.toList
+      r.map { toMonitorType }.toList ++ DI_MTCASES
     }
 
   def refreshMtv = {
@@ -185,7 +191,7 @@ object MonitorType extends Enumeration {
   }
 
   var map: Map[Value, MonitorType] = 
-    Map(mtList.map { e => Value(e._id) -> e }: _*) ++ Map(DOOR-> DOOR_MTCASE)
+    Map(mtList.map { e => Value(e._id) -> e }: _*) ++ DI_MAP
     
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   def activeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }

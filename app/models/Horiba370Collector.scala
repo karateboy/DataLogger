@@ -195,11 +195,13 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
   var raiseStartTimerOpt: Option[Cancellable] = None
 
-  def setupSpanRaiseStartTimer {
+  def setupSpanRaiseStartTimer(connection: ActorRef) {
     raiseStartTimerOpt =
       if (config.calibratorPurgeTime.isDefined && config.calibratorPurgeTime.get != 0) {
         collectorState = MonitorStatus.NormalStat
+        reqNormal(connection)
         Instrument.setState(id, collectorState)
+        
         Some(purgeCalibrator)
       } else
         Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart))
@@ -276,7 +278,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
         Map.empty[MonitorType.Value, Option[Double]])
 
-      setupSpanRaiseStartTimer
+      setupSpanRaiseStartTimer(connection)
   }
 
   var calibrateTimerOpt: Option[Cancellable] = None
@@ -397,7 +399,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         Logger.info(s"zero calibration end.")
         context become calibrationHandler(connection, AutoSpan, startTime, false, List.empty[MonitorTypeData], mtAvgMap.toMap)
 
-        setupSpanRaiseStartTimer
+        setupSpanRaiseStartTimer(connection)
       } else {
         Logger.info(s"calibration end.")
         val monitorTypes = mtAvgMap.keySet.toList
