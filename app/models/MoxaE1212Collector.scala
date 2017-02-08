@@ -154,6 +154,11 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
                   case MonitorType.SMOKE =>
                     if (v)
                       Alarm.log(Alarm.Src(), Alarm.Level.WARN, "煙霧偵測!", 1)
+                      
+                  case MonitorType.FLOW =>
+                    if(v)
+                      Alarm.log(Alarm.Src(), Alarm.Level.WARN, "採樣流量異常!", 1)
+                      
                   case _=>
                 }
               }

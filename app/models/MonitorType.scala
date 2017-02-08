@@ -107,10 +107,12 @@ object MonitorType extends Enumeration {
   val DOOR_MTCASE = MonitorType("DOOR", "門禁", "N/A", None, 0, 1000)
   val SMOKE = Value("SMOKE")
   val SMOKE_MTCASE = MonitorType("SMOKE", "煙霧", "N/A", None, 0, 1000)
+  val FLOW = Value("FLOW")
+  val FLOW_MTCASE = MonitorType("SMOKE", "採樣流量", "N/A", None, 0, 1000)
   
-  val DI_TYPES = Seq(DOOR, SMOKE)
-  val DI_MTCASES = Seq(DOOR_MTCASE, SMOKE_MTCASE)
-  val DI_MAP = Map(DOOR-> DOOR_MTCASE, SMOKE->SMOKE_MTCASE)
+  val DI_TYPES = Seq(DOOR, SMOKE, FLOW)
+  val DI_MTCASES = Seq(DOOR_MTCASE, SMOKE_MTCASE, FLOW_MTCASE)
+  val DI_MAP = Map(DOOR-> DOOR_MTCASE, SMOKE->SMOKE_MTCASE, FLOW->FLOW_MTCASE)
   
   def init(colNames: Seq[String]) = {
     def insertMt = {
