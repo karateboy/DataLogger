@@ -214,4 +214,20 @@ object Record {
       }
     }
   }
+  
+  def updateMtRecord(colName: String)(mt:MonitorType.Value, updateList:Seq[(DateTime, Double)])={
+    import org.mongodb.scala.model._
+    import org.mongodb.scala.bson._
+    val col = MongoDB.database.getCollection(colName)
+    val mtName = mt.toString()
+    val seqF =
+    for(update<-updateList)
+      yield{
+      val btime:BsonDateTime = update._1            
+      col.updateOne(equal("_id", btime) , and(Updates.set(mtName +".v", update._2), Updates.setOnInsert(mtName +".s", "010")), UpdateOptions().upsert(true)).toFuture()
+    }
+ 
+    import scala.concurrent._
+    Future.sequence(seqF)
+  }
 }

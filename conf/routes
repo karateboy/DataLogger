@@ -98,6 +98,6 @@ GET 	/AlertRecord/:start/end 		controllers.Query.alertRecordList(start:Long, end
 
 #import Data
 GET		/importEpaXLS			controllers.Application.importEpa103
-
+GET		/import					controllers.Application.importEpa
 # websockets
 GET		/MinMonthlyReportSocket		controllers.Report.getMinMonthlySocket
