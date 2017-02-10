@@ -1,6 +1,6 @@
 name := """DataLogger"""
 
-version := "1.1.6"
+version := "1.1.8"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
@@ -15,6 +15,10 @@ libraryDependencies ++= Seq(
 mappings in Universal ++=
 (baseDirectory.value / "report_template" * "*" get) map
     (x => x -> ("report_template/" + x.getName))
+
+mappings in Universal ++=
+(baseDirectory.value / "importEPA" * "*" get) map
+    (x => x -> ("importEPA/" + x.getName))
 	
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 
