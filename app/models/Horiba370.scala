@@ -55,4 +55,34 @@ object Horiba370 extends DriverOps {
     Horiba370Collector.start(id, protocol, config)
   }
 
+  val FlameStatus = "FlameStatus"
+  val Press = "Press"
+  val Flow = "Flow"
+  val Temp = "Temp"
+
+  val InstrumentStatusTypeList = List(
+    InstrumentStatusType(FlameStatus, 10, "Flame Status", "0:Extinguishing/1:Ignition sequence/2:Ignition"),
+    InstrumentStatusType(Press + 0, 37, "Presssure 0", "kPa"),
+    InstrumentStatusType(Press + 1, 37, "Presssure 1", "kPa"),
+    InstrumentStatusType(Press + 2, 37, "Presssure 2", "kPa"),
+    InstrumentStatusType(Flow + 0, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 1, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 2, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 3, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 4, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 5, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 6, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 7, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 8, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 9, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Temp + 0, 39, "Temperature 0", "C"),
+    InstrumentStatusType(Temp + 1, 39, "Temperature 1", "C"),
+    InstrumentStatusType(Temp + 2, 39, "Temperature 2", "C"),
+    InstrumentStatusType(Temp + 3, 39, "Temperature 3", "C"),
+    InstrumentStatusType(Temp + 4, 39, "Temperature 4", "C"),
+    InstrumentStatusType(Temp + 5, 39, "Temperature 5", "C"),
+    InstrumentStatusType(Temp + 6, 39, "Temperature 6", "C"),
+    InstrumentStatusType(Temp + 7, 39, "Temperature 7", "C"),
+    InstrumentStatusType(Temp + 8, 39, "Temperature 8", "C"),
+    InstrumentStatusType(Temp + 9, 39, "Temperature 9", "C"))
 }

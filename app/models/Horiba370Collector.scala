@@ -11,6 +11,7 @@ import akka.util.ByteString
 
 object Horiba370Collector {
   case object ReadData
+  case object CheckStatus
 
   var count = 0
   def start(id: String, protocolParam: ProtocolParam, config: Horiba370Config)(implicit context: ActorContext) = {
@@ -23,6 +24,22 @@ object Horiba370Collector {
     collector
   }
 
+  def getNextLoggingStatusTime = {
+    import com.github.nscala_time.time.Imports._
+    def getNextTime(period: Int) = {
+      val now = DateTime.now()
+      val nextMin = (now.getMinuteOfHour / period + 1) * period
+      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
+      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
+
+      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
+    }
+    // suppose every 10 min
+    val period = 30
+    val nextTime = getNextTime(period)
+    //Logger.debug(s"$instId next logging time= $nextTime")
+    nextTime
+  }
 }
 
 class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config) extends Actor {
@@ -34,17 +51,45 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   import DataCollectManager._
   import TapiTxx._
 
-  var collectorState = {
+  var (collectorState, instrumentStatusTypesOpt) = {
     val instrument = Instrument.getInstrument(id)
-    instrument(0).state
+    val inst = instrument(0)
+    (inst.state, inst.statusType)
   }
 
-  val timerOpt: Option[Cancellable] = Some(Akka.system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS),
+  var nextLoggingStatusTime = getNextLoggingStatusTime
+  var statusMap = Map.empty[String, Double]
+  def logStatus() = {
+    import com.github.nscala_time.time.Imports._
+    //Log Instrument state
+    if (DateTime.now() > nextLoggingStatusTime) {
+      try {
+        val statusList = statusMap map { kv => InstrumentStatus.Status(kv._1, kv._2) }
+        val is = InstrumentStatus.InstrumentStatus(DateTime.now(), id, statusList.toList)
+        InstrumentStatus.log(is)
+      } catch {
+        case _: Throwable =>
+          Logger.error("Log instrument status failed")
+      }
+      nextLoggingStatusTime = getNextLoggingStatusTime
+    }
+  }
+
+  if (instrumentStatusTypesOpt.isEmpty) {
+    instrumentStatusTypesOpt = Some(Horiba370.InstrumentStatusTypeList)
+    Instrument.updateStatusType(id, Horiba370.InstrumentStatusTypeList)
+  } else {
+    val instrumentStatusTypes = instrumentStatusTypesOpt.get
+    if (instrumentStatusTypes.length != Horiba370.InstrumentStatusTypeList.length) {
+      Instrument.updateStatusType(id, Horiba370.InstrumentStatusTypeList)
+    }
+  }
+
+  val timerOpt: Option[Cancellable] = Some(Akka.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS),
     self, ReadData))
 
-  //  override def preStart() = {
-  //    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
-  //  }
+  val statusTimerOpt: Option[Cancellable] = Some(Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES),
+    self, CheckStatus))
 
   // override postRestart so we don't call preStart and schedule a new message
   override def postRestart(reason: Throwable) = {}
@@ -93,6 +138,26 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         Logger.info("Response from user span (A030)")
         Logger.info(prmStr)
 
+      case "R010" =>
+        val result = prmStr.split(",")
+        val value = result(1).toDouble
+        statusMap += (Horiba370.FlameStatus -> value)
+
+      case "R037" =>
+        val ret = prmStr.split(",")
+        if (ret.length == 31 && ret(0) == "00") {
+          for (idx <- 0 to 2) {
+            val cc = ret(1 + idx * 3)
+            val dp = ret(1 + idx * 3 + 1)
+            val value = ret(1 + idx * 3 + 2).toDouble
+            statusMap += (Horiba370.Press + idx -> value)
+          }
+        }
+      case "R038" =>
+        Logger.info("R038")
+        Logger.info(prmStr)
+        val ret = prmStr.split(",")
+        Logger.info("#=" + ret.length)
     }
   }
 
@@ -118,6 +183,33 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
   def reqData(connection: ActorRef) = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'R', '0', '0', '1', 0x2)
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val fcsStr = "%x".format(FCS.toByte)
+    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+
+  def reqFlameStatus(connection: ActorRef) = {
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'R', '0', '1', '0', 0x2)
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val fcsStr = "%x".format(FCS.toByte)
+    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+
+  def reqPressure(connection: ActorRef) = {
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'R', '0', '3', '7', 0x2)
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val fcsStr = "%x".format(FCS.toByte)
+    val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
+    connection ! UdpConnected.Send(ByteString(reqFrame))
+  }
+
+  def reqFlow(connection: ActorRef) = {
+    val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
+      'R', '0', '3', '8', 0x2)
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
     val fcsStr = "%x".format(FCS.toByte)
     val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
@@ -201,7 +293,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         collectorState = MonitorStatus.NormalStat
         reqNormal(connection)
         Instrument.setState(id, collectorState)
-        
+
         Some(purgeCalibrator)
       } else
         Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart))
@@ -239,6 +331,12 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
     case ReadData =>
       reqData(connection)
+      logStatus()
+
+    case CheckStatus =>
+      reqFlameStatus(connection)
+      reqPressure(connection)
+      reqFlow(connection)
 
     case SetState(id, state) =>
       Future {
@@ -299,6 +397,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
     case ReadData =>
       reqData(connection)
+      logStatus()
 
     case RaiseStart =>
       Future {
@@ -450,6 +549,9 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
   override def postStop() = {
     for (timer <- timerOpt) {
+      timer.cancel()
+    }
+    for (timer <- statusTimerOpt) {
       timer.cancel()
     }
   }

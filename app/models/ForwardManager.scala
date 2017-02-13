@@ -28,6 +28,7 @@ object ForwardManager {
   case object ForwardAlarm
   case object ForwardInstrumentStatus
   case object UpdateInstrumentStatusType
+  case object GetInstrumentCmd
 
   var managerOpt: Option[ActorRef] = None
   var count = 0
@@ -58,8 +59,8 @@ object ForwardManager {
   def forwardMinData = {
     managerOpt map { _ ! ForwardMin }
   }
-  
-  def forwardMinRecord(start: DateTime, end:DateTime) = {
+
+  def forwardMinRecord(start: DateTime, end: DateTime) = {
     managerOpt map { _ ! ForwardMinRecord(start, end) }
   }
 
@@ -107,6 +108,11 @@ class ForwardManager(server: String, monitor: String) extends Actor {
     Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
 
+  val timer4 = {
+    import scala.concurrent.duration._
+    Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, GetInstrumentCmd)
+  }
+
   def receive = handler
 
   import play.api.libs.ws._
@@ -119,10 +125,10 @@ class ForwardManager(server: String, monitor: String) extends Actor {
 
     case ForwardMin =>
       minRecordForwarder ! ForwardMin
-      
+
     case fmr: ForwardMinRecord =>
       minRecordForwarder ! fmr
-      
+
     case ForwardCalibration =>
       Logger.info("Forward Calibration")
       calibrationForwarder ! ForwardCalibration
@@ -135,11 +141,54 @@ class ForwardManager(server: String, monitor: String) extends Actor {
 
     case UpdateInstrumentStatusType =>
       statusTypeForwarder ! UpdateInstrumentStatusType
+
+    case GetInstrumentCmd =>
+      val url = s"http://$server/InstrumentCmd/$monitor"
+      val f = WS.url(url).get().map {
+        response =>
+          val result = response.json.validate[Seq[InstrumentCommand]]
+          result.fold(
+            error => {
+              Logger.error(JsError.toJson(error).toString())
+            },
+            cmdSeq => {
+              if (!cmdSeq.isEmpty) {
+                Logger.info("receive cmd from server=>")
+                Logger.info(cmdSeq.toString())
+                for (cmd <- cmdSeq) {
+                  cmd.cmd match {
+                    case InstrumentCommand.AutoCalibration.cmd =>
+                      DataCollectManager.autoCalibration(cmd.instId)
+
+                    case InstrumentCommand.ManualZeroCalibration.cmd =>
+                      DataCollectManager.zeroCalibration(cmd.instId)
+
+                    case InstrumentCommand.ManualSpanCalibration.cmd =>
+                      DataCollectManager.spanCalibration(cmd.instId)
+
+                    case InstrumentCommand.BackToNormal.cmd =>
+                      DataCollectManager.setInstrumentState(cmd.instId, MonitorStatus.NormalStat)
+                  }
+                }
+              }
+            })
+      }
+      f onFailure {
+        case ex: Throwable =>
+          ModelHelper.logException(ex)
+      }
+      f onComplete { x =>
+        {
+          import scala.concurrent.duration._
+          Akka.system.scheduler.scheduleOnce(Duration(10, SECONDS), self, GetInstrumentCmd)
+        }
+      }
   }
 
   override def postStop(): Unit = {
     timer.cancel
     timer2.cancel
     timer3.cancel
+    timer4.cancel
   }
 }
