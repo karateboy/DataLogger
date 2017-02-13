@@ -59,7 +59,7 @@ object InstrumentType extends Enumeration{
       InstrumentType(t700, "TAPI T700", List(tcp), TapiT700).infoPair,
 
       InstrumentType(verewa_f701, "Verewa F701-20", List(serial), VerewaF701_20).infoPair,
-      InstrumentType(moxaE1240, "MOXA E1240", List(tcp), MoxaE1240, true).infoPair,
+      InstrumentType(moxaE1240, "MOXA E1240", List(tcp), MoxaE1240).infoPair,
       InstrumentType(moxaE1212, "MOXA E1212", List(tcp), MoxaE1212).infoPair,
       InstrumentType(horiba370, "Horiba APXX-370", List(tcp), Horiba370).infoPair
   )

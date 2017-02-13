@@ -143,9 +143,11 @@ class ForwardManager(server: String, monitor: String) extends Actor {
       statusTypeForwarder ! UpdateInstrumentStatusType
 
     case GetInstrumentCmd =>
+                /*
       val url = s"http://$server/InstrumentCmd/$monitor"
       val f = WS.url(url).get().map {
         response =>
+
           val result = response.json.validate[Seq[InstrumentCommand]]
           result.fold(
             error => {
@@ -172,6 +174,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
                 }
               }
             })
+            
       }
       f onFailure {
         case ex: Throwable =>
@@ -183,6 +186,8 @@ class ForwardManager(server: String, monitor: String) extends Actor {
           Akka.system.scheduler.scheduleOnce(Duration(10, SECONDS), self, GetInstrumentCmd)
         }
       }
+      
+      */
   }
 
   override def postStop(): Unit = {

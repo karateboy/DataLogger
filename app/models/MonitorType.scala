@@ -108,7 +108,7 @@ object MonitorType extends Enumeration {
   val SMOKE = Value("SMOKE")
   val SMOKE_MTCASE = MonitorType("SMOKE", "煙霧", "N/A", None, 0, 1000)
   val FLOW = Value("FLOW")
-  val FLOW_MTCASE = MonitorType("SMOKE", "採樣流量", "N/A", None, 0, 1000)
+  val FLOW_MTCASE = MonitorType("FLOW", "採樣流量", "N/A", None, 0, 1000)
   
   val DI_TYPES = Seq(DOOR, SMOKE, FLOW)
   val DI_MTCASES = Seq(DOOR_MTCASE, SMOKE_MTCASE, FLOW_MTCASE)
