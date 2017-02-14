@@ -143,7 +143,6 @@ class ForwardManager(server: String, monitor: String) extends Actor {
       statusTypeForwarder ! UpdateInstrumentStatusType
 
     case GetInstrumentCmd =>
-                /*
       val url = s"http://$server/InstrumentCmd/$monitor"
       val f = WS.url(url).get().map {
         response =>
@@ -185,9 +184,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
           import scala.concurrent.duration._
           Akka.system.scheduler.scheduleOnce(Duration(10, SECONDS), self, GetInstrumentCmd)
         }
-      }
-      
-      */
+      }            
   }
 
   override def postStop(): Unit = {

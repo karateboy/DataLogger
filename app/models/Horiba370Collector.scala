@@ -153,6 +153,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
             statusMap += (Horiba370.Press + idx -> value)
           }
         }
+        
       case "R038" =>
         Logger.info("R038")
         Logger.info(prmStr)
@@ -527,6 +528,11 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         self ! SetState(id, MonitorStatus.NormalStat)
       }
 
+    case CheckStatus =>
+      reqFlameStatus(connection)
+      reqPressure(connection)
+      reqFlow(connection)
+      
     case SetState(id, state) =>
       Future {
         blocking {
