@@ -4,15 +4,6 @@ import play.api._
 object TapiT300 extends TapiTxx(ModelConfig("T300", List("CO"))) {
   lazy val modelReg = readModelSetting
 
-  val scaleOpt = Play.current.configuration.getDouble("T300.scale")
-  val offsetOpt = Play.current.configuration.getDouble("T300.offset")
-
-  if(scaleOpt.isDefined)
-    Logger.info(s"T300.scale=${scaleOpt.get}")
-  
-  if(offsetOpt.isDefined)
-    Logger.info(s"T300.offset=${offsetOpt.get}")
-  
   import Protocol.ProtocolParam
   import akka.actor._
   def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
@@ -37,18 +28,7 @@ class T300Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
       regIdxCO.get
     }))
 
-    val adjustedMeasure =
-      for {
-        scale <- TapiT300.scaleOpt
-        offset <- TapiT300.offsetOpt
-      } yield scale * (vCO._2.toDouble - offset)
-
-    val measure = if(adjustedMeasure.isEmpty)
-      vCO._2.toDouble
-    else
-      adjustedMeasure.get
-      
-    ReportData(List(MonitorTypeData(CO, measure, collectorState)))
+    ReportData(List(MonitorTypeData(CO, vCO._2.toDouble, collectorState)))
 
   }
 
