@@ -47,6 +47,11 @@ class T300Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
       vCO._2.toDouble
     else
       adjustedMeasure.get
+    
+    if(MonitorTypeCollectorStatus.map.get(CO).isEmpty ||
+        MonitorTypeCollectorStatus.map(CO) != collectorState){
+      MonitorTypeCollectorStatus.map = MonitorTypeCollectorStatus.map + (CO->collectorState) 
+    }
       
     ReportData(List(MonitorTypeData(CO, measure, collectorState)))
 

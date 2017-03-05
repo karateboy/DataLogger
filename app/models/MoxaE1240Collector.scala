@@ -44,7 +44,12 @@ class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         idx = cfg._2
       } yield {
         val v = chCfg.mtMin.get + (chCfg.mtMax.get - chCfg.mtMin.get) / (chCfg.max.get - chCfg.min.get) * (values(idx) - chCfg.min.get)
-        MonitorTypeData(chCfg.mt.get, v, "010")
+        val status = if(MonitorTypeCollectorStatus.map.contains(chCfg.mt.get))
+            MonitorTypeCollectorStatus.map(chCfg.mt.get)
+            else
+              MonitorStatus.NormalStat
+            
+        MonitorTypeData(chCfg.mt.get, v, status)
       }
     context.parent ! ReportData(dataList.toList)
   }
