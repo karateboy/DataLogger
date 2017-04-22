@@ -48,7 +48,10 @@ class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
             MonitorTypeCollectorStatus.map(chCfg.mt.get)
             else
               MonitorStatus.NormalStat
-            
+        
+        if (chCfg.mt.get == MonitorType.withName("CO")) {
+           TapiT300.vCO = Some(v)
+        }      
         MonitorTypeData(chCfg.mt.get, v, status)
       }
     context.parent ! ReportData(dataList.toList)

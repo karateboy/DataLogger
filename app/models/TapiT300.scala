@@ -11,6 +11,8 @@ object TapiT300 extends TapiTxx(ModelConfig("T300", List("CO"))) {
     val props = Props(classOf[T300Collector], id, modelReg, config)
     TapiTxxCollector.start(protocol, props)
   }
+  
+  var vCO:Option[Double] = None
 }
 
 import TapiTxx._
@@ -34,7 +36,10 @@ class T300Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
       MonitorTypeCollectorStatus.map = MonitorTypeCollectorStatus.map + (CO->collectorState) 
     }
       
-    ReportData(List(MonitorTypeData(CO, measure, collectorState)))
+    if(TapiT300.vCO.isDefined)
+      ReportData(List(MonitorTypeData(CO, TapiT300.vCO.get, collectorState)))
+    else
+      ReportData(List(MonitorTypeData(CO, measure, collectorState)))
   }
 
   import com.serotonin.modbus4j.locator.BaseLocator
