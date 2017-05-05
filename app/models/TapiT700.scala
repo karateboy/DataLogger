@@ -17,6 +17,11 @@ import TapiTxx._
 class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config) {
   import DataCollectManager._
   import TapiTxx._
+  import com.github.nscala_time.time.Imports._
+
+  var lastSeqNo = 0
+  var lastSeqOp = true
+  var lastSeqTime = DateTime.now
 
   override def reportData(regValue: ModelRegValue) = {
     ReportData(List.empty[MonitorTypeData])
@@ -24,18 +29,25 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
 
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType
-  override def executeSeq(seq: Int, on:Boolean) {
+  override def executeSeq(seq: Int, on: Boolean) {
     Logger.info(s"T700 execute $seq sequence.")
-    try {
-      val locator = BaseLocator.coilStatus(config.slaveID, seq)
-      masterOpt.get.setValue(locator, on)
-    } catch {
-      case ex: Exception =>
-        ModelHelper.logException(ex)
+    if ((seq == lastSeqNo && lastSeqOp == on) && (DateTime.now() < lastSeqTime + 5.second)) {
+      Logger.info(s"T700 in cold period, ignore same seq operation")
+    } else {
+      lastSeqTime = DateTime.now
+      lastSeqOp = on
+      lastSeqNo = seq
+      try {
+        val locator = BaseLocator.coilStatus(config.slaveID, seq)
+        masterOpt.get.setValue(locator, on)
+      } catch {
+        case ex: Exception =>
+          ModelHelper.logException(ex)
+      }
     }
   }
 
-  override  def triggerZeroCalibration(v: Boolean) {}
+  override def triggerZeroCalibration(v: Boolean) {}
 
   override def triggerSpanCalibration(v: Boolean) {}
 
