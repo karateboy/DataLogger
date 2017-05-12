@@ -44,7 +44,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
       scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
   }
 
-  def decodeDiCounter(values: Seq[Int]) = {
+  def decodeDiCounter(values: Seq[Int], collectorState:String) = {
     import DataCollectManager._
     val dataOptList =
       for {
@@ -55,7 +55,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
       } yield {
         val v = scale * values(idx)
         if (!MonitorType.DI_TYPES.contains(chCfg.mt.get))
-          Some(MonitorTypeData(chCfg.mt.get, v, "010"))
+          Some(MonitorTypeData(chCfg.mt.get, v, collectorState))
         else
           None
 
@@ -124,7 +124,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
               val result =
                 for (idx <- 0 to 7) yield rawResult.getIntValue(idx).toInt
 
-              decodeDiCounter(result.toSeq)
+              decodeDiCounter(result.toSeq, collectorState)
             }
             // DI Value ...
             {
@@ -178,6 +178,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
     case SetState(id, state) =>
       Logger.info(s"$self => $state")
+      Instrument.setState(id, state)
       context become handler(state, masterOpt)
 
     case ResetCounter =>
