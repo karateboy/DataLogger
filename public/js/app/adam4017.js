@@ -53,7 +53,11 @@ angular.module('adam4017View',[])
 				desc += "<br/>位址:" + paramList[idx].addr;
 				for(var i=0;i<8;i++){
 					if(paramList[idx].ch[i].enable){
-						desc += "<br/>CH"+i +":啟用";			
+						desc += "<br/>CH"+i +":啟用";	
+						
+						if(param.ch[i].repairMode)
+							desc += "<br/>維修模式:啟用";
+						
 						desc += "<br/><strong>測項:" + paramList[idx].ch[i].mt + "</strong>";
 						desc += "<br/>最大值:" + paramList[idx].ch[i].max;
 						desc += "<br/>測項最大值:" + paramList[idx].ch[i].mtMax;

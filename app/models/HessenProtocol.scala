@@ -35,7 +35,7 @@ object HessenProtocol {
       measureOffset = idx * 6
     } yield {
       def getValue(str: String): Double = {
-        val mantissa = Integer.parseInt(str.substring(0, 5)).toDouble / 1000
+        val mantissa = Integer.parseInt(str.substring(0, 5).filter(_!='+')).toDouble / 1000
         val exponent = Integer.parseInt(str.substring(5))
         mantissa * Math.pow(10, exponent)
       }

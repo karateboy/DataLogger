@@ -7,7 +7,7 @@ import akka.actor._
 
 object MoxaE1240 extends DriverOps {
   case class ChannelCfg(enable: Boolean, mt: Option[MonitorType.Value], max: Option[Double], mtMax: Option[Double],
-                        min: Option[Double], mtMin: Option[Double])
+                        min: Option[Double], mtMin: Option[Double], repairMode: Option[Boolean])
   case class MoxaE1240Param(addr:Int, ch: Seq[ChannelCfg])
 
   implicit val cfgReads = Json.reads[ChannelCfg]

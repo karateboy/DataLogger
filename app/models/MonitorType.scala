@@ -102,6 +102,8 @@ object MonitorType extends Enumeration {
   lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
   lazy val RAIN = MonitorType.withName("RAIN")
+  lazy val PM25 = MonitorType.withName("PM25")
+  lazy val PM10 = MonitorType.withName("PM10")
   
   val DOOR = Value("DOOR")
   val DOOR_MTCASE = MonitorType("DOOR", "門禁", "N/A", None, 0, 1000)

@@ -126,6 +126,8 @@ object DataCollectManager {
             }
           } else if (mt == MonitorType.RAIN) {
             values.max
+          } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
+            values.last
           } else {
             values.sum / values.length
           }

@@ -46,9 +46,12 @@ class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         val v = chCfg.mtMin.get + (chCfg.mtMax.get - chCfg.mtMin.get) / (chCfg.max.get - chCfg.min.get) * (values(idx) - chCfg.min.get)
         val status = if (MonitorTypeCollectorStatus.map.contains(chCfg.mt.get))
           MonitorTypeCollectorStatus.map(chCfg.mt.get)
-        else
-          collectorState
-
+        else {
+          if (chCfg.repairMode.isDefined && chCfg.repairMode.get)
+            MonitorStatus.MaintainStat
+          else
+            collectorState
+        }
         if (chCfg.mt.get == MonitorType.withName("CO")) {
           TapiT300.vCO = Some(v)
         }
