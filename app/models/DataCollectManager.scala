@@ -134,8 +134,53 @@ object DataCollectManager {
           (avg, statusKV._1)
         }
       mt -> minuteAvg
-    }
+    }    
+  }
 
+  def calculateHourAvgMap(mtMap: Map[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]) = {
+    for {
+      mt <- mtMap.keys
+      statusMap = mtMap(mt)
+      normalValueOpt = statusMap.get(MonitorStatus.NormalStat) if normalValueOpt.isDefined
+    } yield {
+      val minuteAvg =
+        {
+          val statusKV = {
+            val kv = statusMap.maxBy(kv => kv._2.length)
+            if (kv._1 == MonitorStatus.NormalStat &&
+              statusMap(kv._1).size < statusMap.size * effectivRatio) {
+              //return most status except normal
+              val noNormalStatusMap = statusMap - kv._1
+              noNormalStatusMap.maxBy(kv => kv._2.length)
+            } else
+              kv
+          }
+          val values = normalValueOpt.get.map { _._2}
+          val avg = if (mt == MonitorType.WIN_DIRECTION) {
+            val windDir = values
+            val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
+            import controllers.Query._
+            if (windSpeedStatusMap.isDefined) {
+              val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
+              val windSpeed = windSpeedMostStatus._2.map(_._2)
+              windAvg(windSpeed.toList, windDir.toList)
+            } else { //assume wind speed is all equal
+              val windSpeed =
+                for (r <- 1 to windDir.length)
+                  yield 1.0
+              windAvg(windSpeed.toList, windDir.toList)
+            }
+          } else if (mt == MonitorType.RAIN) {
+            values.max
+          } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
+            values.last
+          } else {
+            values.sum / values.length
+          }
+          (avg, statusKV._1)
+        }
+      mt -> minuteAvg
+    }    
   }
 
   def recalculateHourData(current: DateTime, forward: Boolean = true)(mtList: List[MonitorType.Value]) = {
@@ -166,7 +211,7 @@ object DataCollectManager {
       lb.append((r.time, r.value))
     }
 
-    val hourMtAvgList = calculateAvgMap(mtMap)
+    val hourMtAvgList = calculateHourAvgMap(mtMap)
     val f = Record.upsertRecord(Record.toDocument(current.minusHours(1), hourMtAvgList.toList))(Record.HourCollection)
     if (forward)
       f map { _ => ForwardManager.forwardHourData }
@@ -219,7 +264,7 @@ class DataCollectManager extends Actor {
       val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
       if (inst.instType == InstrumentType.t700) {
         calibratorOpt = Some(collector)
-      } else if (inst.instType == InstrumentType.moxaE1212) {
+      } else if (inst.instType == InstrumentType.moxaE1212 || inst.instType == InstrumentType.adam4068) {
         digitalOutputOpt = Some(collector)
       }
 

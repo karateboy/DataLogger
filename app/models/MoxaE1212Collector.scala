@@ -44,7 +44,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
       scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
   }
 
-  def decodeDiCounter(values: Seq[Int], collectorState:String) = {
+  def decodeDiCounter(values: Seq[Int], collectorState: String) = {
     import DataCollectManager._
     val dataOptList =
       for {
@@ -54,8 +54,13 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         scale = chCfg.scale.get
       } yield {
         val v = scale * values(idx)
+        val state = if (chCfg.repairMode.isDefined && chCfg.repairMode.get)
+          MonitorStatus.MaintainStat
+        else
+          collectorState
+
         if (!MonitorType.DI_TYPES.contains(chCfg.mt.get))
-          Some(MonitorTypeData(chCfg.mt.get, v, collectorState))
+          Some(MonitorTypeData(chCfg.mt.get, v, state))
         else
           None
 
@@ -154,12 +159,12 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
                   case MonitorType.SMOKE =>
                     if (v)
                       Alarm.log(Alarm.Src(), Alarm.Level.WARN, "煙霧偵測!", 1)
-                      
+
                   case MonitorType.FLOW =>
-                    if(v)
+                    if (v)
                       Alarm.log(Alarm.Src(), Alarm.Level.WARN, "採樣流量異常!", 1)
-                      
-                  case _=>
+
+                  case _ =>
                 }
               }
             }

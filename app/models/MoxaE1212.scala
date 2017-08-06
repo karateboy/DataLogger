@@ -6,7 +6,7 @@ import play.api.libs.functional.syntax._
 import akka.actor._
 
 object MoxaE1212 extends DriverOps {
-  case class ChannelCfg(enable: Boolean, mt: Option[MonitorType.Value], scale: Option[Double])
+  case class ChannelCfg(enable: Boolean, mt: Option[MonitorType.Value], scale: Option[Double], repairMode: Option[Boolean])
   case class MoxaE1212Param(addr:Int, ch: Seq[ChannelCfg])
 
   implicit val cfgReads = Json.reads[ChannelCfg]

@@ -25,7 +25,10 @@ angular.module('e1212View',[])
 			desc += "<br/>位址:" + param.addr;
 			for(var i=0;i<8;i++){
 				if(param.ch[i].enable){
-					desc += "<br/>CH"+i +":啟用";			
+					desc += "<br/>CH"+i +":啟用";		
+					if(param.ch[i].repairMode)
+						desc += "<br/>維修模式:啟用";
+
 					desc += "<br/><strong>測項:" + param.ch[i].mt + "</strong>";
 					desc += "<br/>單位刻度:" + param.ch[i].scale;
 				}	

@@ -13,6 +13,7 @@
 			<tr>
 				<th>通道</th>
 				<th>啟用</th>
+				<th>維修模式</th>
 				<th>測項</th>
 				<th>單位刻度</th>
 			</tr>
@@ -21,6 +22,7 @@
 			<tr ng-repeat="ch in channels">
 				<td>{{"CH"+ch}}</td>
 				<td><input type="checkbox" ng-model="param.ch[ch].enable" class="form-control"></td>
+				<td><input type="checkbox" ng-model="param.ch[ch].repairMode" class="form-control"></td>
 				<td><select class="form-control" ng-model="param.ch[ch].mt">
 					@for(mt<-MonitorType.mtvList){
 						<option value="@mt">@MonitorType.map(mt).desp</option>
