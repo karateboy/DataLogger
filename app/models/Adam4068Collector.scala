@@ -54,6 +54,7 @@ class Adam4068Collector(id: String, protocolParam: ProtocolParam, param: Adam406
 
     case EvtOperationOverThreshold =>
       if (handleEvtOperation == false) {
+        Logger.info("EvtOperationOverThreshold")
         handleEvtOperation = true
         for {
           ch_idx <- param.ch.zipWithIndex
@@ -69,6 +70,7 @@ class Adam4068Collector(id: String, protocolParam: ProtocolParam, param: Adam406
 
     case StopEvtOperationOverThreshold =>
       if (handleEvtOperation == true) {
+        Logger.info("Stop EvtOperationOverThreshold")
         handleEvtOperation = false
         for {
           ch_idx <- param.ch.zipWithIndex

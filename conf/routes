@@ -3,101 +3,103 @@
 # ~~~~
 
 # Home page
-GET     /                           controllers.Application.index
+GET      /                                                                        controllers.Application.index
 
 # Map static resources from the /public folder to the /assets URL path
-GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
-GET		/html/*file					controllers.Assets.at(path="/public/html", file)
+GET      /assets/*file                                                            controllers.Assets.versioned(path="/public", file: Asset)
+GET      /html/*file                                                              controllers.Assets.at(path="/public/html", file)
 
-GET		/login						controllers.Login.prompt
-GET		/logout						controllers.Login.logout
-POST	/authenticate				controllers.Login.authenticate
+GET      /login                                                                   controllers.Login.prompt
+GET      /logout                                                                  controllers.Login.logout
+POST     /authenticate                                                            controllers.Login.authenticate
 
-GET		/Dashboard			controllers.Application.dashboard
-GET		/UserManagement		controllers.Application.userManagement
-PUT		/User				controllers.Application.newUser
-GET		/User				controllers.Application.getAllUsers
-POST	/User/:id			controllers.Application.updateUser(id)
-DELETE  /User/:id			controllers.Application.deleteUser(id)	
+GET      /Dashboard                                                               controllers.Application.dashboard
+GET      /UserManagement                                                          controllers.Application.userManagement
+PUT      /User                                                                    controllers.Application.newUser
+GET      /User                                                                    controllers.Application.getAllUsers
+POST     /User/:id                                                                controllers.Application.updateUser(id)
+DELETE   /User/:id                                                                controllers.Application.deleteUser(id)	
 
-GET		/HistoryTrend				controllers.Query.historyTrend
-GET		/JSON/HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end		controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start, end, outputTypeStr="html")
-GET		/Excel/HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end	controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start, end, outputTypeStr="excel")
+GET      /HistoryTrend                                                            controllers.Query.historyTrend
+GET      /JSON/HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end    controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start, end, outputTypeStr="html")
+GET      /Excel/HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end   controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start, end, outputTypeStr="excel")
 
-GET		/History					controllers.Query.history
-GET		/HistoryReport/:monitorType/:tabType/:start/:end		controllers.Query.historyReport(monitorType, tabType, start, end)
+GET      /History                                                                 controllers.Query.history
+GET      /HistoryReport/:monitorType/:tabType/:start/:end                         controllers.Query.historyReport(monitorType, tabType, start, end)
 
-GET		/Calibration				controllers.Query.calibration
-GET		/CalibrationReport/:start/:end	controllers.Query.calibrationReport(start, end)
-GET		/Alarm						controllers.Query.alarm
-GET		/AlarmReport/:level/:start/:end	controllers.Query.alarmReport(level:Int, start, end)
+GET      /Calibration                                                             controllers.Query.calibration
+GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start, end)
+GET      /Alarm                                                                   controllers.Query.alarm
+GET      /AlarmReport/:level/:start/:end                                          controllers.Query.alarmReport(level:Int, start, end)
 
-GET		/MonitorTypeConfig			controllers.Application.monitorTypeConfig
-POST	/SaveMonitorTypeConfig		controllers.Application.saveMonitorTypeConfig
+GET      /MonitorTypeConfig                                                       controllers.Application.monitorTypeConfig
+POST     /SaveMonitorTypeConfig                                                   controllers.Application.saveMonitorTypeConfig
 
-GET		/InstrumentTypes			controllers.Application.getInstrumentTypes
-GET		/InstrumentTypeInfo			controllers.Application.getInstrumentTypes
-GET		/InstrumentTypeInfo/:id		controllers.Application.getInstrumentType(id)
-GET		/MaintainInstrument			controllers.Application.maintainInstrument
-GET		/ManageInstrument			controllers.Application.manageInstrument
-PUT		/Instrument					controllers.Application.newInstrument
-GET		/Instrument					controllers.Application.getInstrumentList
-GET		/Instrument/:id				controllers.Application.getInstrument(id)
-DELETE  /Instrument/:ids			controllers.Application.removeInstrument(ids)
-PUT		/DeactivateInstrument/:ids	controllers.Application.deactivateInstrument(ids)
-PUT		/ActivateInstrument/:ids	controllers.Application.activateInstrument(ids)
-PUT		/ToggleMaintainInstrument/:ids	controllers.Application.toggleMaintainInstrument(ids)
-PUT		/CalibrateInstrumentZero/:ids	controllers.Application.calibrateInstrument(ids, zeroCalibration="true")
-PUT		/CalibrateInstrumentSpan/:ids	controllers.Application.calibrateInstrument(ids, zeroCalibration="false")
-PUT		/CalibrateInstrument/:ids	controllers.Application.calibrateInstrumentFull(ids)
-PUT		/ResetInstrument/:ids		controllers.Application.resetInstrument(ids)
-GET		/ExecuteSeq/:ids/:seq		controllers.Application.getExecuteSeq(ids, seq:Int)
-PUT		/ExecuteSeq/:ids/:seq		controllers.Application.executeSeq(ids, seq:Int)
+GET      /InstrumentTypes                                                         controllers.Application.getInstrumentTypes
+GET      /InstrumentTypeInfo                                                      controllers.Application.getInstrumentTypes
+GET      /InstrumentTypeInfo/:id                                                  controllers.Application.getInstrumentType(id)
+GET      /MaintainInstrument                                                      controllers.Application.maintainInstrument
+GET      /ManageInstrument                                                        controllers.Application.manageInstrument
+PUT      /Instrument                                                              controllers.Application.newInstrument
+GET      /Instrument                                                              controllers.Application.getInstrumentList
+GET      /Instrument/:id                                                          controllers.Application.getInstrument(id)
+DELETE   /Instrument/:ids                                                         controllers.Application.removeInstrument(ids)
+PUT      /DeactivateInstrument/:ids                                               controllers.Application.deactivateInstrument(ids)
+PUT      /ActivateInstrument/:ids                                                 controllers.Application.activateInstrument(ids)
+PUT      /ToggleMaintainInstrument/:ids                                           controllers.Application.toggleMaintainInstrument(ids)
+PUT      /CalibrateInstrumentZero/:ids                                            controllers.Application.calibrateInstrument(ids, zeroCalibration="true")
+PUT      /CalibrateInstrumentSpan/:ids                                            controllers.Application.calibrateInstrument(ids, zeroCalibration="false")
+PUT      /CalibrateInstrument/:ids                                                controllers.Application.calibrateInstrumentFull(ids)
+PUT      /ResetInstrument/:ids                                                    controllers.Application.resetInstrument(ids)
+GET      /ExecuteSeq/:ids/:seq                                                    controllers.Application.getExecuteSeq(ids, seq:Int)
+PUT      /ExecuteSeq/:ids/:seq                                                    controllers.Application.executeSeq(ids, seq:Int)
 
-GET		/InstrumentStatus			controllers.Query.instrumentStatus()
-GET		/InstrumentStatusReport/:id/:start/:end		controllers.Query.instrumentStatusReport(id, start, end)
-GET		/ManualAudit			controllers.Query.manualAudit()
-GET		/ManualAuditHistory		controllers.Query.manualAuditHistory()
-GET		/ManualAuditHistory/:start/:end		controllers.Query.manualAuditHistoryReport(start:Long, end:Long)
+GET      /InstrumentStatus                                                        controllers.Query.instrumentStatus()
+GET      /InstrumentStatusReport/:id/:start/:end                                  controllers.Query.instrumentStatusReport(id, start, end)
+GET      /ManualAudit                                                             controllers.Query.manualAudit()
+GET      /ManualAuditHistory                                                      controllers.Query.manualAuditHistory()
+GET      /ManualAuditHistory/:start/:end                                          controllers.Query.manualAuditHistoryReport(start:Long, end:Long)
 
 #Data Management
-GET		/DataManagement				controllers.Application.dataManagement
-GET		/Recalculate/:start/:end	controllers.Application.recalculateHour(start, end)
-GET		/Upload/:tab/:start/:end	controllers.Application.uploadData(tab, start, end)
+GET      /DataManagement                                                          controllers.Application.dataManagement
+GET      /Recalculate/:start/:end                                                 controllers.Application.recalculateHour(start, end)
+GET      /Upload/:tab/:start/:end                                                 controllers.Application.uploadData(tab, start, end)
 
 #Realtime
-GET		/MonitorTypeStatusList		controllers.Realtime.MonitorTypeStatusList()
-GET		/RealtimeStatus			controllers.Realtime.realtimeStatus()
+GET      /MonitorTypeStatusList                                                   controllers.Realtime.MonitorTypeStatusList()
+GET      /RealtimeStatus                                                          controllers.Realtime.realtimeStatus()
 
 #Report
-GET		/Report					controllers.Report.monitorReport()
-GET		/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="html")
-GET		/PDF/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="pdf")
-GET		/Excel/monitorReport/:reportType/:reportDate	controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="excel")
+GET      /Report                                                                  controllers.Report.monitorReport()
+GET      /monitorReport/:reportType/:reportDate                                   controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="html")
+GET      /PDF/monitorReport/:reportType/:reportDate                               controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="pdf")
+GET      /Excel/monitorReport/:reportType/:reportDate                             controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="excel")
 
-GET		/MonitorMonthlyHourReport		controllers.Report.monitorMonthlyHourReport
-GET		/MonthlyHourReport/:monitorType/:reportDate	controllers.Report.monthlyHourReport(monitorType, reportDate, outputTypeStr="html")
+GET      /MonitorMonthlyHourReport                                                controllers.Report.monitorMonthlyHourReport
+GET      /MonthlyHourReport/:monitorType/:reportDate                              controllers.Report.monthlyHourReport(monitorType, reportDate, outputTypeStr="html")
 
 
 #JSON
-GET		/MonitorType			controllers.Application.monitorTypeList
-POST	/MonitorType/:id		controllers.Application.upsertMonitorType(id)
-PUT		/MonitorType/:id		controllers.Application.upsertMonitorType(id)
+GET      /MonitorType                                                             controllers.Application.monitorTypeList
+POST     /MonitorType/:id                                                         controllers.Application.upsertMonitorType(id)
+PUT      /MonitorType/:id                                                         controllers.Application.upsertMonitorType(id)
 
-GET		/Record/:monitorType/:start/:end		controllers.Query.recordList(monitorType, start:Long, end:Long)
-PUT		/Record/:monitorType					controllers.Query.updateRecord(monitorType)
+GET      /Record/:monitorType/:start/:end                                         controllers.Query.recordList(monitorType, start:Long, end:Long)
+PUT      /Record/:monitorType                                                     controllers.Query.updateRecord(monitorType)
 
-GET		/HourRecord/:start/:end			controllers.Query.hourRecordList(start:Long, end:Long)
-GET		/MinRecord/:start/:end			controllers.Query.minRecordList(start:Long, end:Long)
-GET 	/CalibrationRecord/:start/end 	controllers.Query.calibrationRecordList(start:Long, end:Long)
-GET 	/AlertRecord/:start/end 		controllers.Query.alertRecordList(start:Long, end:Long)
+GET      /HourRecord/:start/:end                                                  controllers.Query.hourRecordList(start:Long, end:Long)
+GET      /MinRecord/:start/:end                                                   controllers.Query.minRecordList(start:Long, end:Long)
+GET      /CalibrationRecord/:start/end                                            controllers.Query.calibrationRecordList(start:Long, end:Long)
+GET      /AlertRecord/:start/end                                                  controllers.Query.alertRecordList(start:Long, end:Long)
 	
+	
+GET      /EvtOptHigh                                                              controllers.Application.testEvtOptHigh
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)
 
 #import Data
-GET		/importEpaXLS			controllers.Application.importEpa103
-GET		/import					controllers.Application.importEpa
+GET      /importEpaXLS                                                            controllers.Application.importEpa103
+GET      /import                                                                  controllers.Application.importEpa
 # websockets
-GET		/MinMonthlyReportSocket		controllers.Report.getMinMonthlySocket
+GET      /MinMonthlyReportSocket                                                  controllers.Report.getMinMonthlySocket

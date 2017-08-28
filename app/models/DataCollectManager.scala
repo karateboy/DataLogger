@@ -36,7 +36,7 @@ object DataCollectManager {
   case object ResetCounter
 
   case object EvtOperationOverThreshold
-  
+
   var manager: ActorRef = _
   def startup() = {
     manager = Akka.system.actorOf(Props[DataCollectManager], name = "dataCollectManager")
@@ -81,6 +81,10 @@ object DataCollectManager {
     manager ! ExecuteSeq(seq, true)
   }
 
+  def evtOperationHighThreshold {
+    Alarm.log(Alarm.Src(), Level.INFO, "進行高值觸發事件行動..")
+    manager ! EvtOperationOverThreshold
+  }
   case object GetLatestData
   def getLatestData() = {
     import akka.pattern.ask
@@ -136,7 +140,7 @@ object DataCollectManager {
           (avg, statusKV._1)
         }
       mt -> minuteAvg
-    }    
+    }
   }
 
   def calculateHourAvgMap(mtMap: Map[MonitorType.Value, Map[String, ListBuffer[(DateTime, Double)]]]) = {
@@ -157,7 +161,7 @@ object DataCollectManager {
             } else
               kv
           }
-          val values = normalValueOpt.get.map { _._2}
+          val values = normalValueOpt.get.map { _._2 }
           val avg = if (mt == MonitorType.WIN_DIRECTION) {
             val windDir = values
             val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
@@ -182,9 +186,28 @@ object DataCollectManager {
           (avg, statusKV._1)
         }
       mt -> minuteAvg
-    }    
+    }
   }
 
+  def checkMinDataAlarm(minMtAvgList: Iterable[(MonitorType.Value, (Double, String))])={
+    var overThreshold = false
+    for{hourMtData <- minMtAvgList
+      mt = hourMtData._1
+      data = hourMtData._2
+      }{
+      val mtCase = MonitorType.map(mt)
+      if(mtCase.std_law.isDefined && MonitorStatus.isValid(data._2)){
+        if(data._1 > mtCase.std_law.get){
+          val msg = s"${mtCase.desp}: ${MonitorType.format(mt, Some(data._1))}超過分鐘高值 ${MonitorType.format(mt, mtCase.std_law)}"
+          Alarm.log(Alarm.Src(mt), Level.INFO, msg)
+          overThreshold = true
+        }
+      }
+    }
+    if(overThreshold){
+      DataCollectManager.evtOperationHighThreshold
+    }
+  }
   def recalculateHourData(current: DateTime, forward: Boolean = true)(mtList: List[MonitorType.Value]) = {
     Logger.debug("calculate hour data " + (current - 1.hour))
     val recordMap = Record.getRecordMap(Record.MinCollection)(mtList, current - 1.hour, current)
@@ -220,7 +243,6 @@ object DataCollectManager {
 
     f
   }
-
 }
 
 class DataCollectManager extends Actor {
@@ -440,6 +462,8 @@ class DataCollectManager extends Actor {
 
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
+        checkMinDataAlarm(minuteMtAvgList)
+        
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
         val f = Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
         f map { _ => ForwardManager.forwardMinData }
@@ -490,13 +514,13 @@ class DataCollectManager extends Actor {
         Logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
       }
 
-    case EvtOperationOverThreshold=>
+    case EvtOperationOverThreshold =>
       if (digitalOutputOpt.isDefined)
         digitalOutputOpt.get ! EvtOperationOverThreshold
       else {
         Logger.warn(s"DO is not online! Ignore EvtOperationOverThreshold.")
       }
-      
+
     case GetLatestData =>
       //Filter out older than 6 second
       val latestMap = latestDataMap.flatMap { kv =>

@@ -474,4 +474,9 @@ object Application extends Controller {
 
     Ok(Json.obj("ok" -> true))
   }
+  
+  def testEvtOptHigh = Security.Authenticated {
+    DataCollectManager.evtOperationHighThreshold
+    Ok("ok")
+  }
 }
