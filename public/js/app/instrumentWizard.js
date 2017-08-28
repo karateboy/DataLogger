@@ -134,6 +134,8 @@ angular.module('newInstrumentView',
 					return "baseline9000Cfg";
 				}else if($scope.param.selectedInstTypeId === "adam4017"){
 					return "adam4017Cfg";
+				}else if($scope.param.selectedInstTypeId === "adam4068"){
+					return "adam4068Cfg";
 				}else if($scope.param.selectedInstTypeId === "verewa_f701"){
 					return "verewaCfg";
 				}else if($scope.param.selectedInstTypeId === "moxaE1240"){

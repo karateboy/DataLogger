@@ -35,6 +35,8 @@ object DataCollectManager {
   case class WriteDO(bit: Int, on: Boolean)
   case object ResetCounter
 
+  case object EvtOperationOverThreshold
+  
   var manager: ActorRef = _
   def startup() = {
     manager = Akka.system.actorOf(Props[DataCollectManager], name = "dataCollectManager")
@@ -488,6 +490,13 @@ class DataCollectManager extends Actor {
         Logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
       }
 
+    case EvtOperationOverThreshold=>
+      if (digitalOutputOpt.isDefined)
+        digitalOutputOpt.get ! EvtOperationOverThreshold
+      else {
+        Logger.warn(s"DO is not online! Ignore EvtOperationOverThreshold.")
+      }
+      
     case GetLatestData =>
       //Filter out older than 6 second
       val latestMap = latestDataMap.flatMap { kv =>

@@ -6,8 +6,10 @@ import play.api.libs.functional.syntax._
 import akka.actor._
 
 object Adam4068 extends DriverOps {
-  case class Adam4068Param(addr: String)
+  case class ChannelCfg(enable: Boolean, evtOp: Option[EventOperation.Value], duration: Option[Int])
+  case class Adam4068Param(addr: String, ch: Seq[ChannelCfg])
 
+  implicit val cfgReads = Json.reads[ChannelCfg]
   implicit val reads = Json.reads[Adam4068Param]
 
   override def getMonitorTypes(param: String) = {
@@ -30,10 +32,6 @@ object Adam4068 extends DriverOps {
   override def start(id: String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
     val driverParam = Adam4068.validateParam(param)
     Adam4068Collector.start(id, protocolParam, driverParam)
-  }
-
-  def stop = {
-
   }
 
   def validateParam(json: String) = {

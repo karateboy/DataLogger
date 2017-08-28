@@ -11,16 +11,13 @@ object Adam4068Collector {
   import Adam4068._
   import Protocol.ProtocolParam
 
-  case class PrepareCollect(id: String, com: Int, param: Adam4068Param)
-  case object Collect
+  case object StopEvtOperationOverThreshold
 
   var count = 0
   def start(id: String, protocolParam: ProtocolParam, param: Adam4068Param)(implicit context: ActorContext) = {
-    val collector = context.actorOf(Props[Adam4068Collector], name = "Adam4067Collector" + count)
+    val prop = Props(classOf[Adam4068Collector], id, protocolParam, param)
+    val collector = context.actorOf(prop, name = "Adam4068_" + count)
     count += 1
-    assert(protocolParam.protocol == Protocol.serial)
-    val com = protocolParam.comPort.get
-    collector ! PrepareCollect(id, com, param)
     collector
   }
 }
@@ -30,8 +27,11 @@ import Protocol.ProtocolParam
 
 class Adam4068Collector(id: String, protocolParam: ProtocolParam, param: Adam4068Param) extends Actor with ActorLogging {
   var comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
+  var handleEvtOperation = false
 
   import DataCollectManager._
+  import Adam4068Collector._
+
   import scala.concurrent.Future
   import scala.concurrent.blocking
 
@@ -45,13 +45,41 @@ class Adam4068Collector(id: String, protocolParam: ProtocolParam, param: Adam406
       val os = comm.os
       val is = comm.is
       Logger.info(s"Output DO $bit to $on")
-      val writeCmd = if(on) 
+      val writeCmd = if (on)
         s"#${param.addr}0001\r"
       else
         s"#${param.addr}0000\r"
-      
+
       os.write(writeCmd.getBytes)
 
+    case EvtOperationOverThreshold =>
+      if (handleEvtOperation == false) {
+        handleEvtOperation = true
+        for {
+          ch_idx <- param.ch.zipWithIndex
+          ch = ch_idx._1
+          idx = ch_idx._2
+        } {
+          if (ch.enable && ch.evtOp == Some(EventOperation.OverThreshold)) {
+            self ! WriteDO(idx, true)
+            Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(ch.duration.get, SECONDS), self, StopEvtOperationOverThreshold)
+          }
+        }
+      }
+
+    case StopEvtOperationOverThreshold =>
+      if (handleEvtOperation == true) {
+        handleEvtOperation = false
+        for {
+          ch_idx <- param.ch.zipWithIndex
+          ch = ch_idx._1
+          idx = ch_idx._2
+        } {
+          if (ch.enable && ch.evtOp == Some(EventOperation.OverThreshold)) {
+            self ! WriteDO(idx, false)
+          }
+        }
+      }
   }
 
   override def postStop(): Unit = {
