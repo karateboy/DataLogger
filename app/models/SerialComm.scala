@@ -3,6 +3,8 @@ package models
 import java.io.InputStream
 import java.io.OutputStream
 import jssc.SerialPort
+import play.api._
+
 case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputStream) {
   var readBuffer = Array.empty[Byte]
   def getLine = {
@@ -104,6 +106,10 @@ class SerialOutputStream(port: SerialPort) extends OutputStream {
 
 class SerialInputStream(serialPort: jssc.SerialPort) extends InputStream {
   override def read() = {
-    serialPort.readBytes(1)(0)
+    val retArray = serialPort.readBytes(1)
+    if(retArray.length == 0)
+      -1
+    else
+      retArray(0)
   }
 }

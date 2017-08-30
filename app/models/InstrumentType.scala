@@ -45,6 +45,7 @@ object InstrumentType extends Enumeration {
   val moxaE1212 = Value
 
   val horiba370 = Value
+  val gps = Value
 
   def getInstInfoPair(instType: InstrumentType) = {
     instType.id -> instType
@@ -64,6 +65,7 @@ object InstrumentType extends Enumeration {
     InstrumentType(verewa_f701, "Verewa F701-20", List(serial), VerewaF701_20).infoPair,
     InstrumentType(moxaE1240, "MOXA E1240", List(tcp), MoxaE1240).infoPair,
     InstrumentType(moxaE1212, "MOXA E1212", List(tcp), MoxaE1212).infoPair,
-    InstrumentType(horiba370, "Horiba APXX-370", List(tcp), Horiba370).infoPair)
+    InstrumentType(horiba370, "Horiba APXX-370", List(tcp), Horiba370).infoPair,
+    InstrumentType(gps, "GPS", List(serial), GPS).infoPair)
 }
 

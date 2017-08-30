@@ -97,25 +97,29 @@ object MonitorType extends Enumeration {
     MonitorType("TEMP", "溫度", "℃", None, 1, 18),
     MonitorType("HUMID", "濕度", "%", None, 1, 19),
     MonitorType("PRESS", "氣壓", "hPa", None, 1, 20),
-    MonitorType("RAIN", "雨量", "mm/h", None, 1, 21))
+    MonitorType("RAIN", "雨量", "mm/h", None, 1, 21),
+    MonitorType("LAT", "緯度", "度", None, 4, 22),
+    MonitorType("LNG", "經度", "度", None, 4, 23))
 
   lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
   lazy val RAIN = MonitorType.withName("RAIN")
   lazy val PM25 = MonitorType.withName("PM25")
   lazy val PM10 = MonitorType.withName("PM10")
-  
+  lazy val LAT = MonitorType.withName("LAT")
+  lazy val LNG = MonitorType.withName("LNG")
+
   val DOOR = Value("DOOR")
   val DOOR_MTCASE = MonitorType("DOOR", "門禁", "N/A", None, 0, 1000)
   val SMOKE = Value("SMOKE")
   val SMOKE_MTCASE = MonitorType("SMOKE", "煙霧", "N/A", None, 0, 1000)
   val FLOW = Value("FLOW")
   val FLOW_MTCASE = MonitorType("FLOW", "採樣流量", "N/A", None, 0, 1000)
-  
+
   val DI_TYPES = Seq(DOOR, SMOKE, FLOW)
   val DI_MTCASES = Seq(DOOR_MTCASE, SMOKE_MTCASE, FLOW_MTCASE)
-  val DI_MAP = Map(DOOR-> DOOR_MTCASE, SMOKE->SMOKE_MTCASE, FLOW->FLOW_MTCASE)
-  
+  val DI_MAP = Map(DOOR -> DOOR_MTCASE, SMOKE -> SMOKE_MTCASE, FLOW -> FLOW_MTCASE)
+
   def init(colNames: Seq[String]) = {
     def insertMt = {
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
@@ -127,16 +131,22 @@ object MonitorType extends Enumeration {
       f.mapTo[Unit]
     }
 
-    if (!colNames.contains(colName)) {
+    if (!colNames.contains(colName)) { // New
       val f = MongoDB.database.createCollection(colName).toFuture()
       f.onFailure(errorHandler)
       f.onSuccess({
         case _: Seq[t] =>
           insertMt
       })
-      Some(f.mapTo[Unit])
-    } else
-      None
+    } else { //Upgrade
+      val f = MongoDB.database.getCollection(colName).find().toFuture()
+      val mtList = waitReadyResult(f).map {toMonitorType}
+      val newMtList = defaultMonitorTypes.filter { mt => !mtList.exists { _._id == mt._id } }
+      if(!newMtList.isEmpty){
+        Logger.info("Add new Mt " +newMtList.toString())
+        newMtList.map{newMonitorType(_)}
+      }
+    }
   }
 
   def BFName(mt: MonitorType.Value) = {
@@ -194,9 +204,9 @@ object MonitorType extends Enumeration {
     mtvList = list.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   }
 
-  var map: Map[Value, MonitorType] = 
+  var map: Map[Value, MonitorType] =
     Map(mtList.map { e => Value(e._id) -> e }: _*) ++ DI_MAP
-    
+
   var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   def activeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
   def realtimeMtvList = mtvList.filter { mt =>

@@ -526,10 +526,15 @@ class DataCollectManager extends Actor {
       val latestMap = latestDataMap.flatMap { kv =>
         val mt = kv._1
         val instRecordMap = kv._2
+        val timeout = if(mt == MonitorType.LAT || mt == MonitorType.LNG)
+          1.minute
+        else
+          6.second
+          
         val filteredRecordMap = instRecordMap.filter {
           kv =>
             val r = kv._2
-            r.time >= DateTime.now() - 6.second
+            r.time >= DateTime.now() - timeout
         }
 
         val measuringList = MonitorType.map(mt).measuringBy.get
