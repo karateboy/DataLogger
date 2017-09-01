@@ -52,6 +52,20 @@ class Adam4068Collector(id: String, protocolParam: ProtocolParam, param: Adam406
 
       os.write(writeCmd.getBytes)
 
+      {
+        // Read response
+        import com.github.nscala_time.time.Imports._
+        var strList = comm.getLine
+        val startTime = DateTime.now
+        while (strList.length == 0) {
+          val elapsedTime = new Duration(startTime, DateTime.now)
+          if (elapsedTime.getStandardSeconds > 1) {
+            throw new Exception("Read timeout!")
+          }
+          strList = comm.getLine
+        }
+      }
+
     case EvtOperationOverThreshold =>
       if (handleEvtOperation == false) {
         Logger.info("EvtOperationOverThreshold")

@@ -196,8 +196,8 @@ object DataCollectManager {
       data = hourMtData._2
       }{
       val mtCase = MonitorType.map(mt)
-      if(mtCase.std_law.isDefined && MonitorStatus.isValid(data._2)){
-        if(data._1 > mtCase.std_law.get){
+      if(mtCase.std_internal.isDefined && MonitorStatus.isValid(data._2)){
+        if(data._1 > mtCase.std_internal.get){
           val msg = s"${mtCase.desp}: ${MonitorType.format(mt, Some(data._1))}超過分鐘高值 ${MonitorType.format(mt, mtCase.std_law)}"
           Alarm.log(Alarm.Src(mt), Level.INFO, msg)
           overThreshold = true
