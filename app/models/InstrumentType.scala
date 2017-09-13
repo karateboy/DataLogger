@@ -29,6 +29,7 @@ object InstrumentType extends Enumeration {
   val baseline9000 = Value
   val adam4017 = Value
   val adam4068 = Value
+  val adam5000 = Value
   
   val t100 = Value
   val t200 = Value
@@ -55,6 +56,7 @@ object InstrumentType extends Enumeration {
     InstrumentType(baseline9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000).infoPair,
     InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017, true).infoPair,
     InstrumentType(adam4068, "Adam 4068", List(serial), Adam4068, true).infoPair,
+    InstrumentType(adam5000, "Adam 5000L", List(tcp), Adam5000, true).infoPair,
     InstrumentType(t100, "TAPI T100", List(tcp), TapiT100).infoPair,
     InstrumentType(t200, "TAPI T200", List(tcp), TapiT200).infoPair,
     InstrumentType(t300, "TAPI T300", List(tcp), TapiT300).infoPair,

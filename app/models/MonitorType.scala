@@ -120,6 +120,24 @@ object MonitorType extends Enumeration {
   val DI_MTCASES = Seq(DOOR_MTCASE, SMOKE_MTCASE, FLOW_MTCASE)
   val DI_MAP = Map(DOOR -> DOOR_MTCASE, SMOKE -> SMOKE_MTCASE, FLOW -> FLOW_MTCASE)
 
+  def logDiMonitorType(mt: MonitorType.Value, v: Boolean) = {
+    mt match {
+      case MonitorType.DOOR =>
+        if (!v)
+          Alarm.log(Alarm.Src(), Alarm.Level.INFO, "門開啟", 1)
+
+      case MonitorType.SMOKE =>
+        if (v)
+          Alarm.log(Alarm.Src(), Alarm.Level.WARN, "煙霧偵測!", 1)
+
+      case MonitorType.FLOW =>
+        if (v)
+          Alarm.log(Alarm.Src(), Alarm.Level.WARN, "採樣流量異常!", 1)
+
+      case _ =>
+    }
+  }
+  
   def init(colNames: Seq[String]) = {
     def insertMt = {
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
@@ -140,11 +158,11 @@ object MonitorType extends Enumeration {
       })
     } else { //Upgrade
       val f = MongoDB.database.getCollection(colName).find().toFuture()
-      val mtList = waitReadyResult(f).map {toMonitorType}
+      val mtList = waitReadyResult(f).map { toMonitorType }
       val newMtList = defaultMonitorTypes.filter { mt => !mtList.exists { _._id == mt._id } }
-      if(!newMtList.isEmpty){
-        Logger.info("Add new Mt " +newMtList.toString())
-        newMtList.map{newMonitorType(_)}
+      if (!newMtList.isEmpty) {
+        Logger.info("Add new Mt " + newMtList.toString())
+        newMtList.map { newMonitorType(_) }
       }
     }
   }

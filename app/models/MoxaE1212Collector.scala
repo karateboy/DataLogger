@@ -147,25 +147,11 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
               for {
                 cfg <- param.ch.zipWithIndex
-                chCfg = cfg._1 if chCfg.enable
+                chCfg = cfg._1 if chCfg.enable &chCfg.mt.isDefined
                 idx = cfg._2
                 v = result(idx)
               } yield {
-                chCfg.mt.get match {
-                  case MonitorType.DOOR =>
-                    if (!v)
-                      Alarm.log(Alarm.Src(), Alarm.Level.INFO, "門開啟", 1)
-
-                  case MonitorType.SMOKE =>
-                    if (v)
-                      Alarm.log(Alarm.Src(), Alarm.Level.WARN, "煙霧偵測!", 1)
-
-                  case MonitorType.FLOW =>
-                    if (v)
-                      Alarm.log(Alarm.Src(), Alarm.Level.WARN, "採樣流量異常!", 1)
-
-                  case _ =>
-                }
+                MonitorType.logDiMonitorType(chCfg.mt.get, v)
               }
             }
 

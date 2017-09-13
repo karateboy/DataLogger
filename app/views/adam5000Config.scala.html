@@ -1,0 +1,90 @@
+@* adam4017Config Template File *@
+<div ng-controller="adam5000Ctrl">
+	<div class="form-group">
+		<label class="col-lg-2 control-label">模組</label>
+	   	<div class="col-lg-10">
+	    	<div class="btn-group">	            				            				
+	        	<label class="btn btn-outline btn-primary" ng-model="param.moduleID" ng-repeat="module in supportedModule"  uib-btn-radio="module.id">
+	            	{{module.desp}}</label>	            			
+	        </div>
+	    </div>	            			            		
+	</div>
+	<div class="form-group">
+		<label class="col-lg-2 control-label">位址</label>
+	   	<div class="col-lg-2">
+	    	<input type="text" ng-model="param.addr" class="form-control" maxlength="2" required>
+	    </div>
+	    <div class="col-lg-offset-5 col-lg-2">
+	    	<input class="btn btn-default" type="button" value="<" ng-click="prevDevice()">
+	    	<input class="btn btn-default" type="button" value="+" ng-click="moreDevice()">
+	    	<input class="btn btn-default" type="button" value=">" ng-click="nextDevice()">
+	    </div>	            		
+	</div>
+	<div ng-switch="param.moduleID">
+		<div ng-switch-when="5017">
+			<div class="form-group">
+			<table class="table table-bordered table-condensed">
+			<thead>
+			<tr>
+				<th>通道</th>
+				<th>啟用</th>
+				<th>維修模式</th>				
+				<th>測項</th>
+				<th>最大值</th>
+				<th>測項最大測</th>
+				<th>最小值</th>
+				<th>測項最小測</th>
+			</tr>
+			</thead>
+			<tbody>
+			<tr ng-repeat="ch in channels()">
+				<td>{{"CH"+ch}}</td>
+				<td><input type="checkbox" ng-model="param.ch[ch].enable" class="form-control"></td>
+				<td><input type="checkbox" ng-model="param.ch[ch].repairMode" class="form-control"></td>				
+				<td><select class="form-control" ng-model="param.ch[ch].mt">
+					@for(mt<-MonitorType.mtvList){
+						<option value="@mt">@MonitorType.map(mt).desp</option>
+					}
+  					</select>
+				</td>
+				<td><input type="text" ng-model="param.ch[ch].max" class="form-control"></td>
+				<td><input type="text" ng-model="param.ch[ch].mtMax" class="form-control"></td>
+				<td><input type="text" ng-model="param.ch[ch].min"  class="form-control"></td>
+				<td><input type="text" ng-model="param.ch[ch].mtMin"  class="form-control"></td>
+			</tr>
+			</tbody>
+			</table>
+			</div>
+		</div> 
+		<div ng-switch-when="5051">
+			<div class="form-group">
+			<table class="table table-bordered table-condensed">
+			<thead>
+			<tr>
+				<th>通道</th>
+				<th>啟用</th>
+				<th>維修模式</th>
+				<th>測項</th>
+			</tr>
+			</thead>
+			<tbody>
+			<tr ng-repeat="ch in channels()">
+				<td>{{"CH"+ch}}</td>
+				<td><input type="checkbox" ng-model="param.ch[ch].enable" class="form-control"></td>
+				<td><input type="checkbox" ng-model="param.ch[ch].repairMode" class="form-control"></td>
+				<td><select class="form-control" ng-model="param.ch[ch].mt">
+					@for(mt<-MonitorType.DI_TYPES){
+						<option value="@mt">@MonitorType.map(mt).desp</option>
+					}
+  					</select>
+				</td>
+			</tr>
+			</tbody>
+			</table>
+			</div>
+		</div>
+		<div ng-switch-when="5056">
+			DO 5056 無額外設定
+		</div>
+	</div>
+</div>
