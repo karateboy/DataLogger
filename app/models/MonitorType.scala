@@ -7,24 +7,10 @@ import play.api.libs.functional.syntax._
 import models.ModelHelper._
 import com.github.nscala_time.time.Imports._
 import scala.concurrent.ExecutionContext.Implicits.global
-case class MonitorTypeV1(_id: String, desp: String, unit: String, std_law: Option[Double],
-                         prec: Int, order: Int, std_internal: Option[Double] = None,
-                         zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
-                         span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
-                         measuredBy: Option[String] = None, measuringBy: Option[String] = None) {
-  def toMonitorType = {
-    val newMeasuringBy = measuringBy map { List(_) }
-
-    MonitorType(_id, desp, unit, std_law,
-      prec, order, std_internal,
-      zd_internal, zd_law,
-      span, span_dev_internal, span_dev_law,
-      newMeasuringBy)
-  }
-}
 
 case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[Double],
-                       prec: Int, order: Int, std_internal: Option[Double] = None,
+                       prec: Int, order: Int, signalType: Option[Boolean] = Some(false),
+                       std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
                        span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
                        measuringBy: Option[List[String]] = None) {
@@ -39,7 +25,7 @@ case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[
           instrumentId :: measuringBy.get
       }
     MonitorType(_id, desp, unit, std_law,
-      prec, order, std_internal,
+      prec, order, signalType, std_internal,
       zd_internal, zd_law,
       span, span_dev_internal, span_dev_law,
       Some(newMeasuringBy))
@@ -53,7 +39,7 @@ case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[
         Some(measuringBy.get.filter { id => id != instrumentId })
 
     MonitorType(_id, desp, unit, std_law,
-      prec, order, std_internal,
+      prec, order, signalType, std_internal,
       zd_internal, zd_law,
       span, span_dev_internal, span_dev_law,
       newMeasuringBy)
@@ -76,30 +62,49 @@ object MonitorType extends Enumeration {
   }
   val colName = "monitorTypes"
   val collection = MongoDB.database.getCollection(colName)
+
+  var rangeOrder = 0
+  def rangeType(_id: String, desp: String, unit: String, prec: Int) = {
+    rangeOrder += 1
+    MonitorType(_id, desp, unit, None, prec, rangeOrder)
+  }
+
+  var signalOrder = 1000
+  def signalType(_id: String, desp: String) = {
+    signalOrder += 1
+    MonitorType(_id, desp, "N/A", None, 0, signalOrder, Some(false), None,
+      None, None,
+      None, None, None, None)
+  }
+
   val defaultMonitorTypes = List(
-    MonitorType("SO2", "二氧化硫", "ppb", None, 1, 1),
-    MonitorType("NOx", "氮氧化物", "ppb", None, 1, 2),
-    MonitorType("NO2", "二氧化氮", "ppb", None, 1, 3),
-    MonitorType("NO", "一氧化氮", "ppb", None, 1, 4),
-    MonitorType("CO", "一氧化碳", "ppm", None, 1, 5),
-    MonitorType("CO2", "二氧化碳", "ppm", None, 1, 6),
-    MonitorType("O3", "臭氧", "ppb", None, 1, 7),
-    MonitorType("THC", "總碳氫化合物", "ppm", None, 1, 8),
-    MonitorType("TS", "總硫", "ppb", None, 1, 9),
-    MonitorType("CH4", "甲烷", "ppm", None, 1, 10),
-    MonitorType("NMHC", "非甲烷碳氫化合物", "ppm", None, 1, 11),
-    MonitorType("NH3", "氨", "ppb", None, 1, 12),
-    MonitorType("TSP", "TSP", "μg/m3", None, 1, 13),
-    MonitorType("PM10", "PM10懸浮微粒", "μg/m3", None, 1, 14),
-    MonitorType("PM25", "PM2.5細懸浮微粒", "μg/m3", None, 1, 15),
-    MonitorType("WD_SPEED", "風速", "m/sec", None, 1, 16),
-    MonitorType("WD_DIR", "風向", "degrees", None, 1, 17),
-    MonitorType("TEMP", "溫度", "℃", None, 1, 18),
-    MonitorType("HUMID", "濕度", "%", None, 1, 19),
-    MonitorType("PRESS", "氣壓", "hPa", None, 1, 20),
-    MonitorType("RAIN", "雨量", "mm/h", None, 1, 21),
-    MonitorType("LAT", "緯度", "度", None, 4, 22),
-    MonitorType("LNG", "經度", "度", None, 4, 23))
+    rangeType("SO2", "二氧化硫", "ppb", 1),
+    rangeType("NOx", "氮氧化物", "ppb", 1),
+    rangeType("NO2", "二氧化氮", "ppb", 1),
+    rangeType("NO", "一氧化氮", "ppb", 1),
+    rangeType("CO", "一氧化碳", "ppm", 1),
+    rangeType("CO2", "二氧化碳", "ppm", 1),
+    rangeType("O3", "臭氧", "ppb", 1),
+    rangeType("THC", "總碳氫化合物", "ppm", 1),
+    rangeType("TS", "總硫", "ppb", 1),
+    rangeType("CH4", "甲烷", "ppm", 1),
+    rangeType("NMHC", "非甲烷碳氫化合物", "ppm", 1),
+    rangeType("NH3", "氨", "ppb", 1),
+    rangeType("TSP", "TSP", "μg/m3", 1),
+    rangeType("PM10", "PM10懸浮微粒", "μg/m3", 1),
+    rangeType("PM25", "PM2.5細懸浮微粒", "μg/m3", 1),
+    rangeType("WD_SPEED", "風速", "m/sec", 1),
+    rangeType("WD_DIR", "風向", "degrees", 1),
+    rangeType("TEMP", "溫度", "℃", 1),
+    rangeType("HUMID", "濕度", "%", 1),
+    rangeType("PRESS", "氣壓", "hPa", 1),
+    rangeType("RAIN", "雨量", "mm/h", 1),
+    rangeType("LAT", "緯度", "度", 4),
+    rangeType("LNG", "經度", "度", 4),
+    /////////////////////////////////////////////////////
+    signalType("DOOR", "門禁"),
+    signalType("SMOKE", "煙霧"),
+    signalType("FLOW", "採樣流量"))
 
   lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
@@ -110,34 +115,18 @@ object MonitorType extends Enumeration {
   lazy val LNG = MonitorType.withName("LNG")
 
   val DOOR = Value("DOOR")
-  val DOOR_MTCASE = MonitorType("DOOR", "門禁", "N/A", None, 0, 1000)
   val SMOKE = Value("SMOKE")
-  val SMOKE_MTCASE = MonitorType("SMOKE", "煙霧", "N/A", None, 0, 1000)
   val FLOW = Value("FLOW")
-  val FLOW_MTCASE = MonitorType("FLOW", "採樣流量", "N/A", None, 0, 1000)
-
-  val DI_TYPES = Seq(DOOR, SMOKE, FLOW)
-  val DI_MTCASES = Seq(DOOR_MTCASE, SMOKE_MTCASE, FLOW_MTCASE)
-  val DI_MAP = Map(DOOR -> DOOR_MTCASE, SMOKE -> SMOKE_MTCASE, FLOW -> FLOW_MTCASE)
 
   def logDiMonitorType(mt: MonitorType.Value, v: Boolean) = {
-    mt match {
-      case MonitorType.DOOR =>
-        if (!v)
-          Alarm.log(Alarm.Src(), Alarm.Level.INFO, "門開啟", 1)
+    if (!signalMtvList.contains(mt))
+      Logger.warn(s"None signal ${mt} is mixed!")
 
-      case MonitorType.SMOKE =>
-        if (v)
-          Alarm.log(Alarm.Src(), Alarm.Level.WARN, "煙霧偵測!", 1)
-
-      case MonitorType.FLOW =>
-        if (v)
-          Alarm.log(Alarm.Src(), Alarm.Level.WARN, "採樣流量異常!", 1)
-
-      case _ =>
-    }
+    val mtCase = MonitorType.map(mt)
+    if (v)
+      Alarm.log(Alarm.Src(), Alarm.Level.WARN, s"${mtCase.desp}=>觸發", 1)
   }
-  
+
   def init(colNames: Seq[String]) = {
     def insertMt = {
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
@@ -179,24 +168,10 @@ object MonitorType extends Enumeration {
 
   def toMonitorType(d: Document) = {
     val ret = Json.parse(d.toJson()).validate[MonitorType]
-    implicit val v1Reader = Json.reads[MonitorTypeV1]
-    ret.fold(error => {
-      val ret2 = Json.parse(d.toJson()).validate[MonitorTypeV1]
-      ret2.fold(err => {
-        Logger.error(JsError.toJson(error).toString())
-        throw new Exception(JsError.toJson(error).toString)
-      }, mt => {
-        Logger.info("Upgrade MonitorTypeV1")
-        if (mt.measuredBy.isDefined) {
-          val measuringList = if (mt.measuringBy.isDefined)
-            List(mt.measuringBy.get)
-          else
-            List.empty[String]
-          setMeasuringBy(mt._id, measuringList)
-        }
-        mt.toMonitorType
-      })
 
+    ret.fold(error => {
+      Logger.error(JsError.toJson(error).toString())
+      throw new Exception(JsError.toJson(error).toString)
     },
       mt =>
         mt)
@@ -206,26 +181,31 @@ object MonitorType extends Enumeration {
     {
       val f = MongoDB.database.getCollection(colName).find().toFuture()
       val r = waitReadyResult(f)
-      r.map { toMonitorType }.toList ++ DI_MTCASES
+      r.map { toMonitorType }.toList
     }
 
-  def refreshMtv = {
-    val list = mtList
+  def refreshMtv: (List[MonitorType.Value], List[MonitorType.Value], Map[MonitorType.Value, MonitorType]) = {
+    val list = mtList.sortBy { _.order }
+    map = Map.empty[MonitorType.Value, MonitorType]
     for (mt <- list) {
       try {
-        MonitorType.withName(mt._id)
+        val mtv = MonitorType.withName(mt._id)
+        map = map + (mtv -> mt)
       } catch {
         case _: NoSuchElementException =>
           map = map + (Value(mt._id) -> mt)
       }
     }
-    mtvList = list.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
+
+    mtvList = list.filter { mt => mt.signalType != Some(true) }.map(mt => MonitorType.withName(mt._id))
+    val signalList = list.filter { mt => mt.signalType == Some(true) }
+    signalMtvList = signalList.map(mt => MonitorType.withName(mt._id))
+    (mtvList, signalMtvList, map)
   }
 
-  var map: Map[Value, MonitorType] =
-    Map(mtList.map { e => Value(e._id) -> e }: _*) ++ DI_MAP
+  var (mtvList, signalMtvList, map) = refreshMtv
+  def allMtvList = mtvList ++ signalMtvList
 
-  var mtvList = mtList.sortBy { _.order }.map(mt => MonitorType.withName(mt._id))
   def activeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
   def realtimeMtvList = mtvList.filter { mt =>
     val measuringBy = map(mt).measuringBy

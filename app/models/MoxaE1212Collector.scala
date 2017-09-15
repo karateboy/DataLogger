@@ -59,7 +59,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         else
           collectorState
 
-        if (!MonitorType.DI_TYPES.contains(chCfg.mt.get))
+        if (!MonitorType.mtvList.contains(chCfg.mt.get))
           Some(MonitorTypeData(chCfg.mt.get, v, state))
         else
           None
