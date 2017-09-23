@@ -14,7 +14,8 @@ object MongoDB {
     val f = database.listCollectionNames().toFuture()
     val colFuture = f.map { colNames =>
       //MonitorType => 
-      val mtFutureOpt = MonitorType.init(colNames)
+      val mtFuture = MonitorType.init(colNames)
+      ModelHelper.waitReadyResult(mtFuture)
       Instrument.init(colNames)
       Record.init(colNames)
       User.init(colNames)

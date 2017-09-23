@@ -58,7 +58,6 @@ object Adam5000 extends DriverOps {
   }
 
   def validateParam(json: String) = {
-    Logger.debug(json)
     val ret = Json.parse(json).validate[Adam5000Param]
     ret.fold(
       error => {

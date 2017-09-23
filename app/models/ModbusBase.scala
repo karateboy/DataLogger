@@ -6,7 +6,7 @@ import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
-case class ModbusConfig(slaveID: Int, monitorTypes: Option[List[MonitorType.Value]])
+case class ModbusConfig(slaveID: Option[Int], monitorTypes: Option[List[MonitorType.Value]])
 case class ModelConfig(model: String, monitorTypeIDs: List[String])
 case class ModbusModelConfig(model: String, mtAddrMap: Map[MonitorType.Value, Int])
 case class InputReg(addr: Int, desc: String, unit: String)
@@ -91,8 +91,9 @@ abstract class ModbusBase(modelConfig: ModbusModelConfig) extends DriverOps {
   override def verifyParam(json: String) = {
     val param = validateParam(json)
     //Append monitor Type into config
+    val slaveID = param.slaveID.getOrElse(1)
     val mt = modelConfig.mtAddrMap.keys.toList
-    val newParam = ModbusConfig(param.slaveID, Some(mt))
+    val newParam = ModbusConfig(Some(slaveID), Some(mt))
     Json.toJson(newParam).toString()
   }
 

@@ -9,7 +9,7 @@ import com.github.nscala_time.time.Imports._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[Double],
-                       prec: Int, order: Int, signalType: Option[Boolean] = Some(false),
+                       prec: Int, order: Int, signalType: Boolean = false,
                        std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
                        span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
@@ -72,7 +72,7 @@ object MonitorType extends Enumeration {
   var signalOrder = 1000
   def signalType(_id: String, desp: String) = {
     signalOrder += 1
-    MonitorType(_id, desp, "N/A", None, 0, signalOrder, Some(false), None,
+    MonitorType(_id, desp, "N/A", None, 0, signalOrder, true, None,
       None, None,
       None, None, None, None)
   }
@@ -101,6 +101,8 @@ object MonitorType extends Enumeration {
     rangeType("RAIN", "雨量", "mm/h", 1),
     rangeType("LAT", "緯度", "度", 4),
     rangeType("LNG", "經度", "度", 4),
+    rangeType("HCl", "氯化氫", "ppm", 1),
+    rangeType("H2O", "水", "ppm", 1),
     /////////////////////////////////////////////////////
     signalType("DOOR", "門禁"),
     signalType("SMOKE", "煙霧"),
@@ -127,31 +129,33 @@ object MonitorType extends Enumeration {
       Alarm.log(Alarm.Src(), Alarm.Level.WARN, s"${mtCase.desp}=>觸發", 1)
   }
 
-  def init(colNames: Seq[String]) = {
+  def init(colNames: Seq[String]): Future[Any] = {
     def insertMt = {
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
       f.onFailure(errorHandler)
-      f.onSuccess({
-        case _: Seq[t] =>
-          refreshMtv
-      })
-      f.mapTo[Unit]
+      for (ret <- f) yield {
+        refreshMtv
+      }
     }
 
     if (!colNames.contains(colName)) { // New
       val f = MongoDB.database.createCollection(colName).toFuture()
       f.onFailure(errorHandler)
-      f.onSuccess({
-        case _: Seq[t] =>
-          insertMt
-      })
+      val f2 =
+        for (ret <- f) yield insertMt
+
+      f2.flatMap { x => x }
     } else { //Upgrade
       val f = MongoDB.database.getCollection(colName).find().toFuture()
-      val mtList = waitReadyResult(f).map { toMonitorType }
-      val newMtList = defaultMonitorTypes.filter { mt => !mtList.exists { _._id == mt._id } }
-      if (!newMtList.isEmpty) {
-        Logger.info("Add new Mt " + newMtList.toString())
-        newMtList.map { newMonitorType(_) }
+      for {
+        ret <- f
+        mtList = ret map { toMonitorType }
+      } yield {
+        val newMtList = defaultMonitorTypes.filter { mt => !mtList.exists { _._id == mt._id } }
+        if (!newMtList.isEmpty) {
+          Logger.info("Add new Mt " + newMtList.toString())
+          newMtList.map { newMonitorType(_) }
+        }
       }
     }
   }
@@ -197,8 +201,8 @@ object MonitorType extends Enumeration {
       }
     }
 
-    mtvList = list.filter { mt => mt.signalType != Some(true) }.map(mt => MonitorType.withName(mt._id))
-    val signalList = list.filter { mt => mt.signalType == Some(true) }
+    mtvList = list.filter { mt => mt.signalType == false }.map(mt => MonitorType.withName(mt._id))
+    val signalList = list.filter { mt => mt.signalType }
     signalMtvList = signalList.map(mt => MonitorType.withName(mt._id))
     (mtvList, signalMtvList, map)
   }
