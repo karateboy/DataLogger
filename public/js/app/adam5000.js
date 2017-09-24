@@ -17,8 +17,8 @@ angular.module('adam5000View', [])
 				}
 				paramList.push($scope.param);
 			} else {
-				$scope.param = config.param[0];
-				paramList = config.param;
+				$scope.param = config.param.moduleList[0];
+				paramList = config.param.moduleList;
 			}
 
 			$scope.supportedModule = [{
