@@ -6,32 +6,32 @@ import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
-case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[MonitorType.Value]], 
-    raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int], 
-    calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int], 
-    calibratorPurgeSeq:Option[Int], calibratorPurgeTime:Option[Int],
-    calibrateZeoDO:Option[Int], calibrateSpanDO:Option[Int], skipInternalVault:Option[Boolean])
-    
+case class ModbusConfig(slaveID: Option[Int], monitorTypes: Option[List[MonitorType.Value]])
+case class ModelConfig(model: String, monitorTypeIDs: List[String])
+case class ModbusModelConfig(model: String, mtAddrMap: Map[MonitorType.Value, Int])
+case class InputReg(addr: Int, desc: String, unit: String)
+case class HoldingReg(addr: Int, desc: String, unit: String)
+case class DiscreteInputReg(addr: Int, desc: String)
+case class CoilReg(addr: Int, desc: String)
+case class ModelReg(inputRegs: List[InputReg], holdingRegs: List[HoldingReg],
+                    modeRegs: List[DiscreteInputReg], warnRegs: List[DiscreteInputReg], coilRegs: List[CoilReg])
+case class ModelRegValue(inputRegs: List[(InstrumentStatusType, Float)], holdingRegs: List[(InstrumentStatusType, Float)],
+                         modeRegs: List[(InstrumentStatusType, Boolean)], warnRegs: List[(InstrumentStatusType, Boolean)])
 
-object TapiTxx {
-  val T700_PURGE_SEQ = 100      
-  val T700_STANDBY_SEQ = 99
-}
-
-abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
-  implicit val cfgReads = Json.reads[TapiConfig]
-  implicit val cfgWrites = Json.writes[TapiConfig]
+abstract class ModbusBase(modelConfig: ModbusModelConfig) extends DriverOps {
+  implicit val cfgReads = Json.reads[ModbusConfig]
+  implicit val cfgWrites = Json.writes[ModbusConfig]
   import Protocol.ProtocolParam
-  import TapiTxx._
-  
+
   def getModel = modelConfig.model
+  def getModelConfig = modelConfig
   def readModelSetting = {
     val model = modelConfig.model
     val driverConfig = ConfigFactory.load(model)
     import java.util.ArrayList
 
     val inputRegList = {
-      val inputRegAnyList = driverConfig.getAnyRefList(s"TAPI.$model.Input.reg")
+      val inputRegAnyList = driverConfig.getAnyRefList(s"$model.Input.reg")
       for {
         i <- 0 to inputRegAnyList.size() - 1
         reg = inputRegAnyList.get(i)
@@ -42,7 +42,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
     }
 
     val holdingRegList = {
-      val holdingRegAnyList = driverConfig.getAnyRefList(s"TAPI.$model.Holding.reg")
+      val holdingRegAnyList = driverConfig.getAnyRefList(s"$model.Holding.reg")
       for {
         i <- 0 to holdingRegAnyList.size() - 1
         reg = holdingRegAnyList.get(i)
@@ -51,9 +51,9 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         HoldingReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String])
       }
     }
-    
+
     val modeRegList = {
-      val modeRegAnyList = driverConfig.getAnyRefList(s"TAPI.$model.DiscreteInput.mode")
+      val modeRegAnyList = driverConfig.getAnyRefList(s"$model.DiscreteInput.mode")
       for {
         i <- 0 to modeRegAnyList.size() - 1
         reg = modeRegAnyList.get(i)
@@ -64,7 +64,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
     }
 
     val warnRegList = {
-      val warnRegAnyList = driverConfig.getAnyRefList(s"TAPI.$model.DiscreteInput.warning")
+      val warnRegAnyList = driverConfig.getAnyRefList(s"$model.DiscreteInput.warning")
       for {
         i <- 0 to warnRegAnyList.size() - 1
         reg = warnRegAnyList.get(i)
@@ -73,9 +73,9 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         DiscreteInputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
     }
-        
+
     val coilRegList = {
-      val coilRegAnyList = driverConfig.getAnyRefList(s"TAPI.$model.Coil.reg")
+      val coilRegAnyList = driverConfig.getAnyRefList(s"$model.Coil.reg")
       for {
         i <- 0 to coilRegAnyList.size() - 1
         reg = coilRegAnyList.get(i)
@@ -83,30 +83,18 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
       } yield {
         CoilReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
-    }    
-    
-    ModelReg(inputRegList.toList, holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList) 
+    }
+
+    ModelReg(inputRegList.toList, holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList)
   }
 
   override def verifyParam(json: String) = {
-    val ret = Json.parse(json).validate[TapiConfig]
-    ret.fold(
-      error => {
-        Logger.error(JsError.toJson(error).toString())
-        throw new Exception(JsError.toJson(error).toString())
-      },
-      param => {
-        //Append monitor Type into config
-        val mt = modelConfig.monitorTypeIDs.map { MonitorType.withName(_) }
-        val newParam = TapiConfig(param.slaveID, param.calibrationTime, Some(mt), 
-            param.raiseTime, param.downTime, param.holdTime,
-            param.calibrateZeoSeq, param.calibrateSpanSeq,
-            param.calibratorPurgeSeq, param.calibratorPurgeTime,
-            param.calibrateZeoDO, param.calibrateSpanDO,
-            param.skipInternalVault)
-
-        Json.toJson(newParam).toString()
-      })
+    val param = validateParam(json)
+    //Append monitor Type into config
+    val slaveID = param.slaveID.getOrElse(1)
+    val mt = modelConfig.mtAddrMap.keys.toList
+    val newParam = ModbusConfig(Some(slaveID), Some(mt))
+    Json.toJson(newParam).toString()
   }
 
   override def getMonitorTypes(param: String): List[MonitorType.Value] = {
@@ -118,7 +106,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
   }
 
   def validateParam(json: String) = {
-    val ret = Json.parse(json).validate[TapiConfig]
+    val ret = Json.parse(json).validate[ModbusConfig]
     ret.fold(
       error => {
         Logger.error(JsError.toJson(error).toString())
@@ -127,8 +115,8 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
       param => param)
   }
 
+  //Seperate calibration from modbus...
   override def getCalibrationTime(param: String) = {
-    val config = validateParam(param)
-    config.calibrationTime
+    None
   }
 }

@@ -7,10 +7,10 @@ import ModelHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
 import Protocol.ProtocolParam
 
+import ModbusBaseCollector._
+
 object Adam5000Collector {
   import Adam5000._
-  case class ConnectHost(host: String)
-  case object ReadRegister
 
   var count = 0
   def start(instID: String, protocolParam: ProtocolParam, config: Adam5000Param)(implicit context: ActorContext) = {
@@ -33,7 +33,6 @@ import Adam5000Collector._
 class Adam5000Collector(instID: String, protocolParam: ProtocolParam, config: Adam5000Param) extends Actor with ActorLogging {
   var timerOpt: Option[Cancellable] = None
   import DataCollectManager._
-  import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
 
@@ -55,17 +54,16 @@ class Adam5000Collector(instID: String, protocolParam: ProtocolParam, config: Ad
 
     def diModuleReader(moduleInfo: ModuleInfo, moduleCfg: ModuleCfg) = {
       val batch = new BatchRead[Integer]
-      for (idx <- 0 to moduleInfo.channelNumber)
-        batch.addLocator(idx, BaseLocator.inputStatus(moduleCfg.addr + idx, idx))
+      for (idx <- 0 to moduleInfo.channelNumber - 1)
+        batch.addLocator(idx, BaseLocator.inputStatus(1, idx))
 
       batch.setContiguousRequests(true)
-
       val rawResult = masterOpt.get.send(batch)
       val result =
-        for (idx <- 0 to moduleInfo.channelNumber) yield rawResult.getValue(idx).asInstanceOf[Boolean]
+        for (idx <- 0 to moduleInfo.channelNumber - 1) yield rawResult.getValue(idx).asInstanceOf[Boolean]
 
       for {
-        idx <- 0 to moduleInfo.channelNumber
+        idx <- 0 to moduleInfo.channelNumber - 1
         channelCfg = moduleCfg.ch(idx) if channelCfg.enable && channelCfg.mt.isDefined
         mt = channelCfg.mt.get
         v = result(idx)
@@ -120,6 +118,8 @@ class Adam5000Collector(instID: String, protocolParam: ProtocolParam, config: Ad
           aiModuleReader(moduleInfo, module)
         case ModuleType.DiModule =>
           diModuleReader(moduleInfo, module)
+        case ModuleType.DoModule =>
+
       }
     }
   }
@@ -143,7 +143,7 @@ class Adam5000Collector(instID: String, protocolParam: ProtocolParam, config: Ad
             connected = false
         } finally {
           import scala.concurrent.duration._
-          timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+          timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
         }
       }
     }
@@ -166,7 +166,6 @@ class Adam5000Collector(instID: String, protocolParam: ProtocolParam, config: Ad
 
             masterOpt.get.init();
             connected = true
-
             import scala.concurrent.duration._
             timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
           } catch {

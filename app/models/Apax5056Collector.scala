@@ -15,7 +15,7 @@ object Apax5056Collector {
 
   var count = 0
   def start(id: String, protocolParam: ProtocolParam, param: List[Adam5056Param])(implicit context: ActorContext) = {
-    val collector = context.actorOf(Props[Adam4017Collector], name = "Apax5056Collector" + count)
+    val collector = context.actorOf(Props[Apax5056Collector], name = "Apax5056Collector" + count)
     count += 1
     assert(protocolParam.protocol == Protocol.serial)
     val com = protocolParam.comPort.get
@@ -23,14 +23,13 @@ object Apax5056Collector {
   }
 }
 
-class Apax50564017Collector extends Actor {
+class Apax5056Collector extends Actor {
   import Adam4017Collector._
   import Adam4017._
   import java.io.BufferedReader
   import java.io._
 
   var instId: String = _
-  var comm: SerialComm = _
 
   import DataCollectManager._
   import scala.concurrent.Future
@@ -44,7 +43,5 @@ class Apax50564017Collector extends Actor {
   }
 
   override def postStop(): Unit = {
-    if (comm != null)
-      SerialComm.close(comm)
   }
 }

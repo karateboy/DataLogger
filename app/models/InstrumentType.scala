@@ -30,7 +30,7 @@ object InstrumentType extends Enumeration {
   val adam4017 = Value
   val adam4068 = Value
   val adam5000 = Value
-  val eki1222 = Value
+  val mc3 = Value
   
   val t100 = Value
   val t200 = Value

@@ -18,6 +18,7 @@ object DataCollectManager {
   case class AddInstrument(inst: Instrument)
   case class RemoveInstrument(id: String)
   case class SetState(instId: String, state: String)
+  case class SetMonitorTypeState(instId: String, mt: MonitorType.Value, state: String)
   case class MonitorTypeData(mt: MonitorType.Value, value: Double, status: String)
   case class ReportData(dataList: List[MonitorTypeData])
   case class ExecuteSeq(seq: Int, on: Boolean)
@@ -189,22 +190,23 @@ object DataCollectManager {
     }
   }
 
-  def checkMinDataAlarm(minMtAvgList: Iterable[(MonitorType.Value, (Double, String))])={
+  def checkMinDataAlarm(minMtAvgList: Iterable[(MonitorType.Value, (Double, String))]) = {
     var overThreshold = false
-    for{hourMtData <- minMtAvgList
+    for {
+      hourMtData <- minMtAvgList
       mt = hourMtData._1
       data = hourMtData._2
-      }{
+    } {
       val mtCase = MonitorType.map(mt)
-      if(mtCase.std_internal.isDefined && MonitorStatus.isValid(data._2)){
-        if(data._1 > mtCase.std_internal.get){
+      if (mtCase.std_internal.isDefined && MonitorStatus.isValid(data._2)) {
+        if (data._1 > mtCase.std_internal.get) {
           val msg = s"${mtCase.desp}: ${MonitorType.format(mt, Some(data._1))}超過分鐘高值 ${MonitorType.format(mt, mtCase.std_law)}"
           Alarm.log(Alarm.Src(mt), Level.INFO, msg)
           overThreshold = true
         }
       }
     }
-    if(overThreshold){
+    if (overThreshold) {
       DataCollectManager.evtOperationHighThreshold
     }
   }
@@ -463,7 +465,7 @@ class DataCollectManager extends Actor {
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
         checkMinDataAlarm(minuteMtAvgList)
-        
+
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
         val f = Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
         f map { _ => ForwardManager.forwardMinData }
@@ -526,11 +528,11 @@ class DataCollectManager extends Actor {
       val latestMap = latestDataMap.flatMap { kv =>
         val mt = kv._1
         val instRecordMap = kv._2
-        val timeout = if(mt == MonitorType.LAT || mt == MonitorType.LNG)
+        val timeout = if (mt == MonitorType.LAT || mt == MonitorType.LNG)
           1.minute
         else
           6.second
-          
+
         val filteredRecordMap = instRecordMap.filter {
           kv =>
             val r = kv._2
