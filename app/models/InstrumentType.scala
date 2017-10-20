@@ -34,12 +34,13 @@ object InstrumentType extends Enumeration {
   
   val t100 = Value
   val t200 = Value
+  val t201 = Value
   val t300 = Value
   val t360 = Value
   val t400 = Value
   val t700 = Value
 
-  val TapiTypes = List(t100, t200, t300, t360, t400, t700)
+  val TapiTypes = List(t100, t200, t201, t300, t360, t400, t700)
 
   val verewa_f701 = Value
 
@@ -58,9 +59,9 @@ object InstrumentType extends Enumeration {
     InstrumentType(adam4017, "Adam 4017", List(serial), Adam4017, true).infoPair,
     InstrumentType(adam4068, "Adam 4068", List(serial), Adam4068, true).infoPair,
     InstrumentType(adam5000, "Adam 5000L", List(tcp), Adam5000, true).infoPair,
-    InstrumentType(eki1222, "EKI 1222", List(tcp), Eki1222, true).infoPair,
     InstrumentType(t100, "TAPI T100", List(tcp), TapiT100).infoPair,
     InstrumentType(t200, "TAPI T200", List(tcp), TapiT200).infoPair,
+    InstrumentType(t201, "TAPI T201", List(tcp), TapiT201).infoPair,
     InstrumentType(t300, "TAPI T300", List(tcp), TapiT300).infoPair,
     InstrumentType(t360, "TAPI T360", List(tcp), TapiT360).infoPair,
     InstrumentType(t400, "TAPI T400", List(tcp), TapiT400).infoPair,
