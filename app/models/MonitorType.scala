@@ -1,6 +1,5 @@
 package models
-import scala.collection.Map
-import play.api.Logger
+import play.api._
 import EnumUtils._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
@@ -19,11 +18,17 @@ case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[
       if (measuringBy.isEmpty)
         List(instrumentId)
       else {
-        if (append)
-          measuringBy.get ++ List(instrumentId)
-        else
-          instrumentId :: measuringBy.get
+        val currentMeasuring = measuringBy.get
+        if (currentMeasuring.contains(instrumentId))
+          currentMeasuring
+        else {
+          if (append)
+            measuringBy.get ++ List(instrumentId)
+          else
+            instrumentId :: measuringBy.get
+        }
       }
+    
     MonitorType(_id, desp, unit, std_law,
       prec, order, signalType, std_internal,
       zd_internal, zd_law,
@@ -52,6 +57,7 @@ object MonitorType extends Enumeration {
   import org.mongodb.scala.bson._
   import scala.concurrent._
   import scala.concurrent.duration._
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   implicit val mtvRead: Reads[MonitorType.Value] = EnumUtils.enumReads(MonitorType)
   implicit val mtvWrite: Writes[MonitorType.Value] = EnumUtils.enumWrites
@@ -62,6 +68,9 @@ object MonitorType extends Enumeration {
   }
   val colName = "monitorTypes"
   val collection = MongoDB.database.getCollection(colName)
+
+  val mtUpgrade = Play.current.configuration.getBoolean("monitorType.upgrade").getOrElse(true)
+  Logger.info(s"MonitorType upgrade = $mtUpgrade")
 
   var rangeOrder = 0
   def rangeType(_id: String, desp: String, unit: String, prec: Int) = {
@@ -103,6 +112,7 @@ object MonitorType extends Enumeration {
     rangeType("LNG", "經度", "度", 4),
     rangeType("HCl", "氯化氫", "ppm", 1),
     rangeType("H2O", "水", "ppm", 1),
+    rangeType("RT", "室內溫度", "℃", 1),
     /////////////////////////////////////////////////////
     signalType("DOOR", "門禁"),
     signalType("SMOKE", "煙霧"),
@@ -120,22 +130,27 @@ object MonitorType extends Enumeration {
   val SMOKE = Value("SMOKE")
   val FLOW = Value("FLOW")
 
+  var signalMtOldValue = Map.empty[MonitorType.Value, Boolean]
+
   def logDiMonitorType(mt: MonitorType.Value, v: Boolean) = {
     if (!signalMtvList.contains(mt))
-      Logger.warn(s"None signal ${mt} is mixed!")
+      Logger.warn(s"${mt} is not DI monitor type!")
 
-    val mtCase = MonitorType.map(mt)
-    if (v)
+    if (v) {
+      val mtCase = MonitorType.map(mt)
       Alarm.log(Alarm.Src(), Alarm.Level.WARN, s"${mtCase.desp}=>觸發", 1)
+    }
+
   }
 
   def init(colNames: Seq[String]): Future[Any] = {
     def insertMt = {
       val f = collection.insertMany(defaultMonitorTypes.map { toDocument }).toFuture()
       f.onFailure(errorHandler)
-      for (ret <- f) yield {
+      f.onComplete { x =>
         refreshMtv
       }
+      f
     }
 
     if (!colNames.contains(colName)) { // New
@@ -145,6 +160,22 @@ object MonitorType extends Enumeration {
         for (ret <- f) yield insertMt
 
       f2.flatMap { x => x }
+    } else if (mtUpgrade) {
+      val upgradeFutureList = defaultMonitorTypes.map { mt => upsertMonitorTypeFuture(mt) }
+      val upgradeF = Future.sequence(upgradeFutureList)
+      for (upgrade <- upgradeF) yield {
+        val instrumentListFuture = Instrument.getAllInstrumentFuture
+
+        for (instList <- instrumentListFuture) {
+          for (inst <- instList) {
+            val instType = InstrumentType.map(inst.instType)
+            val mtList = instType.driver.getMonitorTypes(inst.param)
+            for (mt <- mtList) {
+              MonitorType.addMeasuring(mt, inst._id, instType.analog)
+            }
+          }
+        }
+      }
     } else { //Upgrade
       val f = MongoDB.database.getCollection(colName).find().toFuture()
       for {
@@ -190,25 +221,30 @@ object MonitorType extends Enumeration {
 
   def refreshMtv: (List[MonitorType.Value], List[MonitorType.Value], Map[MonitorType.Value, MonitorType]) = {
     val list = mtList.sortBy { _.order }
-    map = Map.empty[MonitorType.Value, MonitorType]
-    for (mt <- list) {
-      try {
-        val mtv = MonitorType.withName(mt._id)
-        map = map + (mtv -> mt)
-      } catch {
-        case _: NoSuchElementException =>
-          map = map + (Value(mt._id) -> mt)
+    val mtPair =
+      for (mt <- list) yield {
+        try {
+          val mtv = MonitorType.withName(mt._id)
+          (mtv -> mt)
+        } catch {
+          case _: NoSuchElementException =>
+            (Value(mt._id) -> mt)
+        }
       }
-    }
 
-    mtvList = list.filter { mt => mt.signalType == false }.map(mt => MonitorType.withName(mt._id))
+    val rangeList = list.filter { mt => mt.signalType == false }
+    val rangeMtvList = rangeList.map(mt => MonitorType.withName(mt._id))
     val signalList = list.filter { mt => mt.signalType }
-    signalMtvList = signalList.map(mt => MonitorType.withName(mt._id))
-    (mtvList, signalMtvList, map)
+    val signalMvList = signalList.map(mt => MonitorType.withName(mt._id))
+    mtvList = rangeMtvList
+    signalMtvList = signalMvList
+    map = mtPair.toMap
+    (rangeMtvList, signalMvList, mtPair.toMap)
   }
 
   var (mtvList, signalMtvList, map) = refreshMtv
   def allMtvList = mtvList ++ signalMtvList
+  def diMtvList = List(RAIN) ++ signalMtvList
 
   def activeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
   def realtimeMtvList = mtvList.filter { mt =>
@@ -271,6 +307,14 @@ object MonitorType extends Enumeration {
     val f = collection.replaceOne(equal("_id", mt._id), toDocument(mt), UpdateOptions().upsert(true)).toFuture()
     waitReadyResult(f)
     true
+  }
+
+  def upsertMonitorTypeFuture(mt: MonitorType) = {
+    import org.mongodb.scala.model.UpdateOptions
+    import org.mongodb.scala.bson.BsonString
+    val f = collection.replaceOne(equal("_id", mt._id), toDocument(mt), UpdateOptions().upsert(true)).toFuture()
+    f.onFailure(errorHandler)
+    f
   }
 
   def updateMonitorType(mt: MonitorType.Value, colname: String, newValue: String) = {

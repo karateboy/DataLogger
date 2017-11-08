@@ -37,40 +37,26 @@ class T201Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   var regIdxNO: Option[Int] = None //58
   var regIdxNO2: Option[Int] = None //62
 
-  override def reportData(regValue: ModelRegValue) = {
-    def findIdx = findDataRegIdx(regValue)(_)
-    val vTNX = regValue.inputRegs(regIdxTNX.getOrElse({
-      regIdxTNX = Some(findIdx(46))
-      regIdxTNX.get
-    }))
-
-    val vNH3 = regValue.inputRegs(regIdxNH3.getOrElse({
-      regIdxNH3 = Some(findIdx(50))
-      regIdxNH3.get
-    }))
-
-    val vNOx = regValue.inputRegs(regIdxNOx.getOrElse({
-      regIdxNOx = Some(findIdx(54))
-      regIdxNOx.get
-    }))
-
-    val vNO = regValue.inputRegs(regIdxNO.getOrElse({
-      regIdxNO = Some(findIdx(58))
-      regIdxNO.get
-    }))
-
-    val vNO2 = regValue.inputRegs(regIdxNO2.getOrElse({
-      regIdxNO2 = Some(findIdx(62))
-      regIdxNO2.get
-    }))
-
-    ReportData(List(
-      MonitorTypeData(TNX, vTNX._2.toDouble, collectorState),
-      MonitorTypeData(NH3, vNH3._2.toDouble, collectorState),
-      MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
-      MonitorTypeData(NO, vNO._2.toDouble, collectorState),
-      MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
-  }
+  override def reportData(regValue: ModelRegValue) =
+    for {
+      idxTNX <- findDataRegIdx(regValue)(46)
+      idxNH3 <- findDataRegIdx(regValue)(50)
+      idxNOx <- findDataRegIdx(regValue)(54)
+      idxNO <- findDataRegIdx(regValue)(58)
+      idxNO2 <- findDataRegIdx(regValue)(62)
+      vTNX = regValue.inputRegs(idxTNX)
+      vNH3 = regValue.inputRegs(idxNH3)
+      vNOx = regValue.inputRegs(idxNOx)
+      vNO = regValue.inputRegs(idxNO)
+      vNO2 = regValue.inputRegs(idxNO2)
+    } yield {
+      ReportData(List(
+        MonitorTypeData(TNX, vTNX._2.toDouble, collectorState),
+        MonitorTypeData(NH3, vNH3._2.toDouble, collectorState),
+        MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
+        MonitorTypeData(NO, vNO._2.toDouble, collectorState),
+        MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
+    }
 
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType

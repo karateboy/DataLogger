@@ -68,7 +68,8 @@ class Adam5000Collector(instID: String, protocolParam: ProtocolParam, config: Ad
         mt = channelCfg.mt.get
         v = result(idx)
       } {
-        MonitorType.logDiMonitorType(mt, v)
+        if (MonitorType.signalMtvList.contains(mt))
+          MonitorType.logDiMonitorType(mt, v)
       }
     }
 

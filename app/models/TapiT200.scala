@@ -21,40 +21,21 @@ class T200Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   val NO2 = MonitorType.withName("NO2")
   val NOx = MonitorType.withName("NOx")
 
-  def findIdx(regValue: ModelRegValue, addr: Int) = {
-    val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
-    if (dataReg.isEmpty)
-      throw new Exception("No data register!")
+  override def reportData(regValue: ModelRegValue) =
+    for {
+      idxNox <- findDataRegIdx(regValue)(30)
+      idxNo <- findDataRegIdx(regValue)(34)
+      idxNo2 <- findDataRegIdx(regValue)(38)
+      vNOx = regValue.inputRegs(idxNox)
+      vNO = regValue.inputRegs(idxNo)
+      vNO2 = regValue.inputRegs(idxNo2)
+    } yield {
+      ReportData(List(
+        MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
+        MonitorTypeData(NO, vNO._2.toDouble, collectorState),
+        MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
 
-    dataReg.get._2
-  }
-
-  var regIdxNox: Option[Int] = None //30
-  var regIdxNo: Option[Int] = None //34
-  var regIdxNo2: Option[Int] = None //38
-
-  override def reportData(regValue: ModelRegValue) = {
-    def findIdx = findDataRegIdx(regValue)(_)
-    val vNOx = regValue.inputRegs(regIdxNox.getOrElse({
-      regIdxNox = Some(findIdx(30))
-      regIdxNox.get
-    }))
-
-    val vNO = regValue.inputRegs(regIdxNo.getOrElse({
-      regIdxNo = Some(findIdx(34))
-      regIdxNo.get
-    }))
-
-    val vNO2 = regValue.inputRegs(regIdxNo2.getOrElse({
-      regIdxNo2 = Some(findIdx(38))
-      regIdxNo2.get
-    }))
-
-    ReportData(List(
-      MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
-      MonitorTypeData(NO, vNO._2.toDouble, collectorState),
-      MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
-  }
+    }
 
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType

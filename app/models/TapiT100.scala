@@ -19,16 +19,12 @@ class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType
 
-  var so2Idx: Option[Int] = None
-
   override def reportData(regValue: ModelRegValue) = {
-    val idx = so2Idx.getOrElse({
-      so2Idx = Some(findDataRegIdx(regValue)(22))
-      so2Idx.get
-    })
+    for (idx <- findDataRegIdx(regValue)(22)) yield {
+        val v = regValue.inputRegs(idx)
+        ReportData(List(MonitorTypeData(MonitorType.withName("SO2"), v._2.toDouble, collectorState)))
+    }
 
-    val v = regValue.inputRegs(idx)
-    ReportData(List(MonitorTypeData(MonitorType.withName("SO2"), v._2.toDouble, collectorState)))
   }
 
   override def triggerZeroCalibration(v: Boolean) {

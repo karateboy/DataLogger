@@ -539,10 +539,15 @@ class DataCollectManager extends Actor {
             r.time >= DateTime.now() - timeout
         }
 
-        val measuringList = MonitorType.map(mt).measuringBy.get
-        val instrumentIdOpt = measuringList.find { instrumentId => filteredRecordMap.contains(instrumentId) }
-        instrumentIdOpt map {
-          mt -> filteredRecordMap(_)
+        if (MonitorType.map(mt).measuringBy.isEmpty) {
+          Logger.warn(s"$mt has not measuring instrument!")
+          None
+        } else {
+          val measuringList = MonitorType.map(mt).measuringBy.get
+          val instrumentIdOpt = measuringList.find { instrumentId => filteredRecordMap.contains(instrumentId) }
+          instrumentIdOpt map {
+            mt -> filteredRecordMap(_)
+          }
         }
       }
 

@@ -19,17 +19,11 @@ class T360Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType
 
-  var co2RegIdx: Option[Int] = None
-
-  override def reportData(regValue: ModelRegValue) = {
-    def findIdx = findDataRegIdx(regValue)(_)
-    val v = regValue.inputRegs(co2RegIdx.getOrElse({
-      co2RegIdx = Some(findIdx(18))
-      co2RegIdx.get
-    }))
-
-    ReportData(List(MonitorTypeData(MonitorType.withName("CO2"), v._2.toDouble, collectorState)))
-  }
+  override def reportData(regValue: ModelRegValue) =
+    for (idx <- findDataRegIdx(regValue)(18)) yield {
+      val v = regValue.inputRegs(idx)
+      ReportData(List(MonitorTypeData(MonitorType.withName("CO2"), v._2.toDouble, collectorState)))
+    }
 
   override def triggerZeroCalibration(v: Boolean) {
     try {

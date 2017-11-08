@@ -21,17 +21,11 @@ class T400Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
 
   var regIdxO3: Option[Int] = None
 
-  override def reportData(regValue: ModelRegValue) = {
-    def findIdx = findDataRegIdx(regValue)(_)
-
-    val vO3 = regValue.inputRegs(regIdxO3.getOrElse({
-      regIdxO3 = Some(findIdx(18))
-      regIdxO3.get
-    }))
-
-    ReportData(List(MonitorTypeData(O3, vO3._2.toDouble, collectorState)))
-
-  }
+  override def reportData(regValue: ModelRegValue) =
+    for (idx <- findDataRegIdx(regValue)(18)) yield {
+      val v = regValue.inputRegs(idx)
+      ReportData(List(MonitorTypeData(O3, v._2.toDouble, collectorState)))
+    }
 
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType

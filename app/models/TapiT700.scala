@@ -23,9 +23,7 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   var lastSeqOp = true
   var lastSeqTime = DateTime.now
 
-  override def reportData(regValue: ModelRegValue) = {
-    ReportData(List.empty[MonitorTypeData])
-  }
+  override def reportData(regValue: ModelRegValue) = None
 
   import com.serotonin.modbus4j.locator.BaseLocator
   import com.serotonin.modbus4j.code.DataType

@@ -24,7 +24,7 @@
 				<td><input type="checkbox" ng-model="param.ch[ch].enable" class="form-control"></td>
 				<td><input type="checkbox" ng-model="param.ch[ch].repairMode" class="form-control"></td>
 				<td><select class="form-control" ng-model="param.ch[ch].mt">
-					@for(mt<-MonitorType.signalMtvList){
+					@for(mt<-MonitorType.diMtvList){
 						<option value="@mt">@MonitorType.map(mt).desp</option>
 					}
   					</select>

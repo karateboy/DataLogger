@@ -49,8 +49,9 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
     val dataOptList =
       for {
         cfg <- param.ch.zipWithIndex
-        chCfg = cfg._1 if chCfg.enable
+        chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
         idx = cfg._2
+        mt = chCfg.mt.get
         scale = chCfg.scale.get
       } yield {
         val v = scale * values(idx)
@@ -58,12 +59,8 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
           MonitorStatus.MaintainStat
         else
           collectorState
-
-        if (!MonitorType.mtvList.contains(chCfg.mt.get))
-          Some(MonitorTypeData(chCfg.mt.get, v, state))
-        else
-          None
-
+          
+        Some(MonitorTypeData(mt, v, state))
       }
     val dataList = dataOptList.flatMap { d => d }
     context.parent ! ReportData(dataList.toList)
@@ -147,11 +144,13 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
               for {
                 cfg <- param.ch.zipWithIndex
-                chCfg = cfg._1 if chCfg.enable &chCfg.mt.isDefined
+                chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
+                mt = chCfg.mt.get
                 idx = cfg._2
                 v = result(idx)
               } yield {
-                MonitorType.logDiMonitorType(chCfg.mt.get, v)
+                if(MonitorType.signalMtvList.contains(mt))
+                  MonitorType.logDiMonitorType(mt, v)
               }
             }
 
