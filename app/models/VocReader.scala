@@ -49,7 +49,7 @@ object VocReader {
     }
   }
 
-  def parser(file: File, month: Int): Boolean = {
+  def parser(file: File, month: Int): Future[Any] = {
     import scala.io.Source
     import com.github.tototoshi.csv._
 
@@ -62,11 +62,9 @@ object VocReader {
       val dateTime = localDate.toDateTime(localTime)
 
       val reader = CSVReader.open(file)
-      val dataList = reader.all().dropWhile { col => !col(0).startsWith("------") }.drop(1).takeWhile { col => !col(0).isEmpty() }
-      //val src = Source.fromFile(file)
-      //val dataList = src.getLines().toList.dropWhile { x => !x.startsWith("------") }.drop(1).takeWhile { x => !x.startsWith("\"\"") }
-      val data =
-        for (line <- dataList) yield {
+      val recordList = reader.all().dropWhile { col => !col(0).startsWith("------") }.drop(1).takeWhile { col => !col(0).isEmpty() }
+      val dataList =
+        for (line <- recordList) yield {
           val mtName = line(2)
           val mtID = "_" + mtName.replace(",", "_").replace("-", "_")
           val mtCase = MonitorType.rangeType(mtID, mtName, "ppb", 2)
@@ -75,22 +73,21 @@ object VocReader {
             MonitorType.upsertMonitorType(mtCase)
             MonitorType.refreshMtv
           }
-          val value =
-            try {
-              Some(line(5).toDouble)
-            } catch {
-              case ex: Throwable =>
-                None
-            }
 
-          Logger.info(s"${mtName}: ${value}")
+          try {
+            val v = line(5).toDouble
+            Some((MonitorType.withName(mtID), (v, MonitorStatus.NormalStat)))
+          } catch {
+            case ex: Throwable =>
+              None
+          }
         }
       reader.close()
-      Logger.debug(s"lines=${dataList.length}")
+      Record.findAndUpdate(dateTime, dataList.flatMap(x => x))(Record.HourCollection)
     } else {
       Logger.info(s"skip ${file.getName}")
+      Future {}
     }
-    true
   }
 
   def parseAllTx0(dir: String) = {

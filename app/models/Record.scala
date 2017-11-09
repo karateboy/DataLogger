@@ -17,7 +17,7 @@ object Record {
   val HourCollection = "hour_data"
   val MinCollection = "min_data"
   val SecCollection = "sec_data"
-  
+
   def init(colNames: Seq[String]) {
     if (!colNames.contains(HourCollection)) {
       val f = MongoDB.database.createCollection(HourCollection).toFuture()
@@ -28,7 +28,7 @@ object Record {
       val f = MongoDB.database.createCollection(MinCollection).toFuture()
       f.onFailure(errorHandler)
     }
-    
+
     if (!colNames.contains(SecCollection)) {
       val f = MongoDB.database.createCollection(SecCollection).toFuture()
       f.onFailure(errorHandler)
@@ -59,7 +59,7 @@ object Record {
     })
     f
   }
-  
+
   def insertManyRecord(docs: Seq[Document])(colName: String) = {
     val col = MongoDB.database.getCollection(colName)
     val f = col.insertMany(docs).toFuture()
@@ -68,9 +68,32 @@ object Record {
     })
     f
   }
-  
+
+  def findAndUpdate(dt: DateTime, dataList: List[(MonitorType.Value, (Double, String))])(colName: String) = {
+    import org.mongodb.scala.bson._
+    import org.mongodb.scala.model._
+
+    val bdt: BsonDateTime = dt
+
+    val updates =
+      for {
+        data <- dataList
+        mt = data._1
+        (v, s) = data._2
+      } yield {
+        Updates.set(MonitorType.BFName(mt), Document("v" -> v, "s" -> s))
+      }
+    Updates.combine(updates: _*)
+
+    val col = MongoDB.database.getCollection(colName)
+    val f = col.findOneAndUpdate(Filters.equal("_id", bdt), Updates.combine(updates: _*),
+      FindOneAndUpdateOptions().upsert(true)).toFuture()
+    f.onFailure(errorHandler)
+    f
+  }
+
   import org.mongodb.scala.model.Filters._
-  def upsertRecord(doc: Document)(colName: String) = {    
+  def upsertRecord(doc: Document)(colName: String) = {
     import org.mongodb.scala.model.UpdateOptions
     import org.mongodb.scala.bson.BsonString
     val col = MongoDB.database.getCollection(colName)
@@ -81,7 +104,7 @@ object Record {
     })
     f
   }
-  
+
   def updateRecordStatus(dt: Long, mt: MonitorType.Value, status: String)(colName: String) = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._
@@ -138,7 +161,7 @@ object Record {
 
   implicit val mtRecordWrite = Json.writes[MtRecord]
   implicit val recordListWrite = Json.writes[RecordList]
-  
+
   def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime) = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._
@@ -176,8 +199,8 @@ object Record {
       }
     }
   }
-  
-  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit:Int) = {
+
+  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int) = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
@@ -214,19 +237,18 @@ object Record {
       }
     }
   }
-  
-  def updateMtRecord(colName: String)(mt:MonitorType.Value, updateList:Seq[(DateTime, Double)])={
+
+  def updateMtRecord(colName: String)(mt: MonitorType.Value, updateList: Seq[(DateTime, Double)]) = {
     import org.mongodb.scala.model._
     import org.mongodb.scala.bson._
     val col = MongoDB.database.getCollection(colName)
     val mtName = mt.toString()
     val seqF =
-    for(update<-updateList)
-      yield{
-      val btime:BsonDateTime = update._1            
-      col.updateOne(equal("_id", btime) , and(Updates.set(mtName +".v", update._2), Updates.setOnInsert(mtName +".s", "010")), UpdateOptions().upsert(true)).toFuture()
-    }
- 
+      for (update <- updateList) yield {
+        val btime: BsonDateTime = update._1
+        col.updateOne(equal("_id", btime), and(Updates.set(mtName + ".v", update._2), Updates.setOnInsert(mtName + ".s", "010")), UpdateOptions().upsert(true)).toFuture()
+      }
+
     import scala.concurrent._
     Future.sequence(seqF)
   }
