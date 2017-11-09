@@ -19,7 +19,6 @@ server.pid
 .cache-*
 /.settings
 /.sbtserver
-/conf/application.conf
 /conf/server.conf
 /node_modules
 .idea

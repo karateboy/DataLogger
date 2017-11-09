@@ -4,12 +4,13 @@ version := "1.1.25"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.11.11"
 
 libraryDependencies ++= Seq(
   ws,
   "com.github.nscala-time" %% "nscala-time" % "2.16.0",
   "org.mongodb.scala" %% "mongo-scala-driver" % "1.2.1",
+  "com.github.tototoshi" %% "scala-csv" % "1.3.5",
   "net.sf.marineapi" % "marineapi" % "0.10.0"
 )
 

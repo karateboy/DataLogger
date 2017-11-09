@@ -13,6 +13,12 @@ object Global extends GlobalSettings {
     MongoDB.init()
     DataCollectManager.startup
     ForwardManager.startup
+    
+    val vocReader = Play.current.configuration.getBoolean("voc.reader").getOrElse(false)
+    if(vocReader){
+      val dir = Play.current.configuration.getString("voc.path").getOrElse("")
+      VocReader.startup(dir)  
+    }
   }
 
   override def onStop(app: Application) {
