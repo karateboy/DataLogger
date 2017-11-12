@@ -93,7 +93,6 @@ object VocReader {
   def parseAllTx0(dir: String) = {
     val today = DateTime.now().toLocalDate
     val monthFolder = dir + File.separator + s"${today.getYear - 1911}${"%02d".format(today.getMonthOfYear)}"
-    Logger.debug(s"readFiles=>$monthFolder")
 
     def listTx0Files = {
       //import java.io.FileFilter
@@ -111,6 +110,7 @@ object VocReader {
           Logger.debug(s"parse ${f.getName}")
           parser(f, today.getMonthOfYear)
           appendToParsedFileList(f.getName)
+          ForwardManager.forwardHourData
         } catch {
           case ex: Throwable =>
             Logger.error("skip buggy file", ex)

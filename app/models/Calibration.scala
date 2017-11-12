@@ -18,7 +18,7 @@ case class Calibration(monitorType: MonitorType.Value, startTime: DateTime, endT
       yield Math.abs(span_val.get - span_std.get)
 
   def span_dev_ratio = for (s_dev <- span_dev; std <- span_std)
-    yield s_dev / std
+    yield s_dev / std *100
 
   def toJSON = {
     CalibrationJSON(monitorType.toString, startTime.getMillis, endTime.getMillis, zero_val,
@@ -181,9 +181,9 @@ object Calibration {
         span_dev_ratio <- cal.span_dev_ratio
         span_dev_internal <- MonitorType.map(cal.monitorType).span_dev_internal
         span_dev_law <- MonitorType.map(cal.monitorType).span_dev_law
-      } yield if (span_dev_ratio * 100 > span_dev_law)
+      } yield if (span_dev_ratio > span_dev_law)
         "danger"
-      else if (span_dev_ratio * 100 > span_dev_internal)
+      else if (span_dev_ratio > span_dev_internal)
         "info"
       else
         ""
@@ -216,7 +216,7 @@ object Calibration {
         span_dev_ratio <- cal.span_dev_ratio
         span_dev_internal <- MonitorType.map(cal.monitorType).span_dev_internal
         span_dev_law <- MonitorType.map(cal.monitorType).span_dev_law
-      } yield if (span_dev_ratio * 100 > span_dev_law)
+      } yield if (span_dev_ratio > span_dev_law)
         false
       else
         true

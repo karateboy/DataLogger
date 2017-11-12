@@ -400,7 +400,7 @@ object MonitorType extends Enumeration {
     if (mtCase.measuringBy.isDefined) {
       val instrumentList = mtCase.measuringBy.get
       if (instrumentList.isEmpty)
-        "停用"
+        "外部儀器"
       else
         instrumentList.mkString(",")
     } else
