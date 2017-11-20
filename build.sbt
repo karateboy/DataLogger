@@ -1,6 +1,6 @@
 name := """DataLogger"""
 
-version := "1.1.28"
+version := "1.1.30"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
@@ -22,6 +22,11 @@ mappings in Universal ++=
 (baseDirectory.value / "importEPA" * "*" get) map
     (x => x -> ("importEPA/" + x.getName))
 	
+mappings in Universal ++= 
+ List(file("public/css/bootstrap.min.css") -> "public/css/bootstrap.min.css",
+ 	file("public/css/aqm.css") -> "public/css/aqm.css"
+ )
+ 	
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"

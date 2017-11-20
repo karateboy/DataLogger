@@ -56,7 +56,7 @@ object VocReader {
     val dayHour = file.getName.takeWhile { x => x != '.' }.dropWhile { x => !x.isDigit }
     if (dayHour.forall { x => x.isDigit }) {
       val day = dayHour.take(2).toInt
-      val hour = dayHour.drop(2).toInt - 1
+      val hour = dayHour.drop(2).toInt % 24
       val localDate = new LocalDate(2017, month, day)
       val localTime = new LocalTime(hour, 0)
       val dateTime = localDate.toDateTime(localTime)
