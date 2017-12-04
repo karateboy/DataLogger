@@ -24,12 +24,12 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
           latest => {
             Logger.info(s"server latest min: ${new DateTime(latest.time).toString}")
             val serverLatest =
-              if(latest.time == 0){
+              if (latest.time == 0) {
                 DateTime.now() - 1.day
-              }else{
+              } else {
                 new DateTime(latest.time)
               }
-            
+
             context become handler(Some(serverLatest.getMillis))
             uploadRecord(serverLatest.getMillis)
           })
@@ -43,7 +43,7 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
   def uploadRecord(latestRecordTime: Long) {
     val serverRecordStart = new DateTime(latestRecordTime + 1)
     val recordFuture =
-        Record.getRecordWithLimitFuture(Record.MinCollection)(serverRecordStart, DateTime.now, 60)
+      Record.getRecordWithLimitFuture(Record.MinCollection)(serverRecordStart, DateTime.now, 60)
 
     for (record <- recordFuture) {
       if (!record.isEmpty) {
@@ -77,13 +77,8 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         Logger.info(s"Total ${record.length} records")
-        uploadSmallRecord(record)
 
-        def uploadSmallRecord(recs: Seq[Record.RecordList]) {
-          val (chunk, remain) = (recs.take(60), recs.drop(60))
-          if (!remain.isEmpty)
-            uploadSmallRecord(remain)
-
+        for (chunk <- record.grouped(60)) {
           val url = s"http://$server/MinRecord/$monitor"
           val f = WS.url(url).put(Json.toJson(chunk))
 
@@ -97,9 +92,8 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
               ModelHelper.logException(ex)
           }
         }
-      } else {
+      } else
         Logger.error("No min record!")
-      }
 
     }
   }

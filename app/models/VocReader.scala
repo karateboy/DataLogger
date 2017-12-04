@@ -49,45 +49,45 @@ object VocReader {
     }
   }
 
-  def parser(file: File, month: Int): Future[Any] = {
+  def getFileDateTime(fileName: String, year: Int, month: Int) = {
+    val dayHour = fileName.takeWhile { x => x != '.' }.dropWhile { x => !x.isDigit }
+    if (dayHour.forall { x => x.isDigit }) {
+      val day = dayHour.take(2).toInt + dayHour.drop(2).toInt / 24
+      val hour = dayHour.drop(2).toInt % 24
+      val localDate = new LocalDate(year, month, day)
+      val localTime = new LocalTime(hour, 0)
+      Some(localDate.toDateTime(localTime))
+    } else
+      None
+  }
+
+  def parser(file: File, dateTime: DateTime): Future[Any] = {
     import scala.io.Source
     import com.github.tototoshi.csv._
 
-    val dayHour = file.getName.takeWhile { x => x != '.' }.dropWhile { x => !x.isDigit }
-    if (dayHour.forall { x => x.isDigit }) {
-      val day = dayHour.take(2).toInt + dayHour.drop(2).toInt/24
-      val hour = dayHour.drop(2).toInt % 24
-      val localDate = new LocalDate(2017, month, day)
-      val localTime = new LocalTime(hour, 0)
-      val dateTime = localDate.toDateTime(localTime)
-
-      val reader = CSVReader.open(file)
-      val recordList = reader.all().dropWhile { col => !col(0).startsWith("------") }.drop(1).takeWhile { col => !col(0).isEmpty() }
-      val dataList =
-        for (line <- recordList) yield {
-          val mtName = line(2)
-          val mtID = "_" + mtName.replace(",", "_").replace("-", "_")
-          val mtCase = MonitorType.rangeType(mtID, mtName, "ppb", 2)
-          mtCase.measuringBy = Some(List.empty[String])
-          if (!MonitorType.exist(mtCase)) {
-            MonitorType.upsertMonitorType(mtCase)
-            MonitorType.refreshMtv
-          }
-
-          try {
-            val v = line(5).toDouble
-            Some((MonitorType.withName(mtID), (v, MonitorStatus.NormalStat)))
-          } catch {
-            case ex: Throwable =>
-              None
-          }
+    val reader = CSVReader.open(file)
+    val recordList = reader.all().dropWhile { col => !col(0).startsWith("------") }.drop(1).takeWhile { col => !col(0).isEmpty() }
+    val dataList =
+      for (line <- recordList) yield {
+        val mtName = line(2)
+        val mtID = "_" + mtName.replace(",", "_").replace("-", "_")
+        val mtCase = MonitorType.rangeType(mtID, mtName, "ppb", 2)
+        mtCase.measuringBy = Some(List.empty[String])
+        if (!MonitorType.exist(mtCase)) {
+          MonitorType.upsertMonitorType(mtCase)
+          MonitorType.refreshMtv
         }
-      reader.close()
-      Record.findAndUpdate(dateTime, dataList.flatMap(x => x))(Record.HourCollection)
-    } else {
-      Logger.info(s"skip ${file.getName}")
-      Future {}
-    }
+
+        try {
+          val v = line(5).toDouble
+          Some((MonitorType.withName(mtID), (v, MonitorStatus.NormalStat)))
+        } catch {
+          case ex: Throwable =>
+            None
+        }
+      }
+    reader.close()
+    Record.findAndUpdate(dateTime, dataList.flatMap(x => x))(Record.HourCollection)
   }
 
   def parseAllTx0(dir: String) = {
@@ -100,17 +100,19 @@ object VocReader {
       val PlotFiles = new java.io.File(monthFolder + File.separator + "Plot").listFiles().toList
       val allFiles = BP1Files ++ PlotFiles
       allFiles.filter(p =>
-        p != null && !parsedFileList.contains(p.getName))
+        p != null && !parsedFileList.contains(p.getAbsolutePath))
     }
 
     val files = listTx0Files
     for (f <- files) {
       if (f.getName.toLowerCase().endsWith("tx0")) {
         try {
-          Logger.debug(s"parse ${f.getName}")
-          parser(f, today.getMonthOfYear)
-          appendToParsedFileList(f.getName)
-          ForwardManager.forwardHourData
+          Logger.info(s"parse ${f.getAbsolutePath}")
+          for(dateTime <- getFileDateTime(f.getName, today.getYear, today.getMonthOfYear)){
+            parser(f, dateTime)
+            appendToParsedFileList(f.getAbsolutePath)
+            ForwardManager.forwardHourRecord(dateTime, dateTime + 1.hour)
+          }
         } catch {
           case ex: Throwable =>
             Logger.error("skip buggy file", ex)
@@ -124,7 +126,7 @@ class VocReader(dir: String) extends Actor {
   import VocReader._
   def resetTimer = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.scheduleOnce(Duration(10, SECONDS), self, ReadFile)
+    Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ReadFile)
   }
 
   var timer = resetTimer

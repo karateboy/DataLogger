@@ -43,21 +43,21 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
 
   def uploadRecord(latestRecordTime: Long) = {
     import com.github.nscala_time.time.Imports._
-    val recordFuture = 
+    val recordFuture =
       Record.getRecordWithLimitFuture(Record.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 60)
-      
+
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         val url = s"http://$server/HourRecord/$monitor"
         val f = WS.url(url).put(Json.toJson(record))
         f onSuccess {
           case response =>
-            if (response.status == 200){
+            if (response.status == 200) {
               context become handler(Some(record.last.time))
-              
+
               // This shall stop when there is no more records...
-              self ! ForwardHour 
-            }else {
+              self ! ForwardHour
+            } else {
               Logger.error(s"${response.status}:${response.statusText}")
               context become handler(None)
               delayForward
@@ -81,11 +81,11 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
     }
     import scala.concurrent.duration._
     import play.api.libs.concurrent.Akka
-    
-    if(currentMin < 58)
+
+    if (currentMin < 58)
       Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ForwardHour)
   }
-  
+
   import com.github.nscala_time.time.Imports._
   def uploadRecord(start: DateTime, end: DateTime) = {
     Logger.info(s"upload hour ${start.toString()} => ${end.toString}")
@@ -93,22 +93,23 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
     val recordFuture = Record.getRecordListFuture(Record.HourCollection)(start, end)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
-        val url = s"http://$server/HourRecord/$monitor"
-        val f = WS.url(url).put(Json.toJson(record))
-        f onSuccess {
-          case response =>
-            if (response.status == 200)
-              Logger.info("Success upload!")
-            else
-              Logger.error(s"${response.status}:${response.statusText}")
+        for (chunk <- record.grouped(24)) {
+          val url = s"http://$server/HourRecord/$monitor"
+          val f = WS.url(url).put(Json.toJson(chunk))
+          f onSuccess {
+            case response =>
+              if (response.status == 200)
+                Logger.info("Success upload!")
+              else
+                Logger.error(s"${response.status}:${response.statusText}")
+          }
+          f onFailure {
+            case ex: Throwable =>
+              ModelHelper.logException(ex)
+          }
         }
-        f onFailure {
-          case ex: Throwable =>
-            ModelHelper.logException(ex)
-        }
-      } else {
+      } else
         Logger.info("No more hour record")
-      }
     }
   }
   def handler(latestRecordTimeOpt: Option[Long]): Receive = {

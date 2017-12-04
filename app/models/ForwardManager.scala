@@ -15,10 +15,11 @@ object ForwardManager {
   import com.typesafe.config.ConfigFactory
   implicit val latestRecordTimeRead = Json.reads[LatestRecordTime]
 
-  val serverConfig = ConfigFactory.load("server")
-  val disable = serverConfig.getBoolean("disable")
-  val server = serverConfig.getString("server")
-  val monitor = serverConfig.getString("monitor")
+  val serverConfig = Play.current.configuration.getConfig("server").getOrElse(Configuration.empty)
+  
+  val enable = serverConfig.getBoolean("enable").getOrElse(false)
+  val server = serverConfig.getString("host").getOrElse("localhost")
+  val monitor = serverConfig.getString("monitor").getOrElse("A01")
 
   case object ForwardHour
   case class ForwardHourRecord(start: DateTime, end: DateTime)
@@ -34,11 +35,10 @@ object ForwardManager {
   var count = 0
   def startup() = {
     val props = Props(classOf[ForwardManager], server, monitor)
-    if (disable)
+    if (!enable)
       Logger.info("forwarding is disabled.")
-
-    if (!disable) {
-      Logger.info(s"create forwarder $server")
+    else{
+      Logger.info(s"create forwarder to $server/$monitor")
       managerOpt = Some(Akka.system.actorOf(props, name = s"forward_$count"))
       count += 1
     }

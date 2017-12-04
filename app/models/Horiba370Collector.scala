@@ -155,10 +155,10 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         }
         
       case "R038" =>
-        Logger.info("R038")
-        Logger.info(prmStr)
-        val ret = prmStr.split(",")
-        Logger.info("#=" + ret.length)
+        //Logger.info("R038")
+        //Logger.info(prmStr)
+        //val ret = prmStr.split(",")
+        //Logger.info("#=" + ret.length)
     }
   }
 
