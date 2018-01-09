@@ -15,7 +15,13 @@ object Adam4017 extends DriverOps {
 
   override def getMonitorTypes(param: String) = {
     val paramList = Adam4017.validateParam(param)
-    paramList.flatMap { p => p.ch.filter { _.enable }.flatMap { _.mt }.toList }
+    val mtList = paramList.flatMap { p => p.ch.filter { _.enable }.flatMap { _.mt }.toList }
+    val rawMtList = mtList map { mt =>
+      val mtCase = MonitorType.map(mt)
+      val rawID = MonitorType.rawMonitorTypeID(mtCase._id)
+      MonitorType.withName(rawID)
+    }
+    mtList ++ rawMtList
   }
 
   override def verifyParam(json: String) = {
@@ -34,6 +40,7 @@ object Adam4017 extends DriverOps {
               assert(cfg.mt.isDefined)
               assert(cfg.max.get > cfg.min.get)
               assert(cfg.mtMax.get > cfg.mtMin.get)
+              MonitorType.ensureRawMonitorType(cfg.mt.get, "V")
             }
           }
         }
@@ -52,7 +59,6 @@ object Adam4017 extends DriverOps {
 
   }
 
-  
   def validateParam(json: String) = {
     val ret = Json.parse(json).validate[List[Adam4017Param]]
     ret.fold(

@@ -219,6 +219,20 @@ object MonitorType extends Enumeration {
     }
   }
 
+  def rawMonitorTypeID(_id: String) = s"${_id}_raw"
+
+  def ensureRawMonitorType(mt: MonitorType.Value, unit: String) {
+    val mtCase = MonitorType.map(mt)
+    try {
+      MonitorType.withName(s"${mtCase._id}_raw")
+    } catch {
+      case _: NoSuchElementException =>
+        val rawMonitorType = rangeType(rawMonitorTypeID(mtCase._id),
+          s"${mtCase.desp}(原始)", unit, 3)
+        newMonitorType(rawMonitorType)
+    }
+  }
+
   def refreshMtv: (List[MonitorType.Value], List[MonitorType.Value], Map[MonitorType.Value, MonitorType]) = {
     val list = mtList.sortBy { _.order }
     val mtPair =
