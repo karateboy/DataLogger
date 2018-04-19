@@ -12,6 +12,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object VocReader {
   case object ReadFile
+  case class ReparseDir(year: Int, month: Int)
+
   var managerOpt: Option[ActorRef] = None
   var count = 0
   def startup(dir: String) = {
@@ -22,6 +24,11 @@ object VocReader {
     count += 1
   }
 
+  def reparse(year: Int, month: Int) = {
+    for (manager <- managerOpt) {
+      manager ! ReparseDir(year, month)
+    }
+  }
   import java.nio.file.{ Paths, Files, StandardOpenOption }
   import java.nio.charset.{ StandardCharsets }
   import scala.collection.JavaConverters._
@@ -90,9 +97,9 @@ object VocReader {
     Record.findAndUpdate(dateTime, dataList.flatMap(x => x))(Record.HourCollection)
   }
 
-  def parseAllTx0(dir: String) = {
-    val today = DateTime.now().toLocalDate
-    val monthFolder = dir + File.separator + s"${today.getYear - 1911}${"%02d".format(today.getMonthOfYear)}"
+  def parseAllTx0(dir: String, year: Int, month: Int) = {
+    //val today = DateTime.now().toLocalDate
+    val monthFolder = dir + File.separator + s"${year - 1911}${"%02d".format(month)}"
 
     def listTx0Files = {
       //import java.io.FileFilter
@@ -108,7 +115,7 @@ object VocReader {
       if (f.getName.toLowerCase().endsWith("tx0")) {
         try {
           Logger.info(s"parse ${f.getAbsolutePath}")
-          for(dateTime <- getFileDateTime(f.getName, today.getYear, today.getMonthOfYear)){
+          for (dateTime <- getFileDateTime(f.getName, year, month)) {
             parser(f, dateTime)
             appendToParsedFileList(f.getAbsolutePath)
             ForwardManager.forwardHourRecord(dateTime, dateTime + 1.hour)
@@ -135,8 +142,12 @@ class VocReader(dir: String) extends Actor {
 
   def handler: Receive = {
     case ReadFile =>
-      parseAllTx0(dir)
+      val today = DateTime.now().toLocalDate
+      parseAllTx0(dir, today.getYear, today.getMonthOfYear)
       timer = resetTimer
+
+    case ReparseDir(year: Int, month: Int) =>
+      parseAllTx0(dir, year, month)
   }
 
   override def postStop(): Unit = {

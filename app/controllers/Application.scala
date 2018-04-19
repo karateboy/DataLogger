@@ -15,7 +15,6 @@ import com.github.nscala_time.time.Imports._
 import Highchart._
 import models._
 
-
 object Application extends Controller {
 
   val title = "資料擷取器"
@@ -436,10 +435,11 @@ object Application extends Controller {
     implicit request =>
       val mtResult = request.body.validate[MonitorType]
 
-      mtResult.fold(error => {
-        Logger.error(JsError.toJson(error).toString())
-        BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
-      },
+      mtResult.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
         mt => {
           MonitorType.upsertMonitorType(mt)
           Ok(Json.obj("ok" -> true))
@@ -474,9 +474,14 @@ object Application extends Controller {
 
     Ok(Json.obj("ok" -> true))
   }
-  
+
   def testEvtOptHigh = Security.Authenticated {
     DataCollectManager.evtOperationHighThreshold
     Ok("ok")
+  }
+
+  def reparseVOC(year: Int, month: Int) = Security.Authenticated {
+    VocReader.reparse(year, month)
+    Ok(s"重新匯入VOC $year/$month")
   }
 }
