@@ -1,6 +1,6 @@
 name := """DataLogger"""
 
-version := "1.1.34voc"
+version := "1.1.35"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 

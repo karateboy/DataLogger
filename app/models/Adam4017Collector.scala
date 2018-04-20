@@ -44,11 +44,12 @@ class Adam4017Collector extends Actor {
     import DataCollectManager._
     import java.lang._
     val values = ch.map { Double.valueOf(_) }
-    val dataList =
+    val dataPairList =
       for {
         cfg <- param.ch.zipWithIndex
-        chCfg = cfg._1 if chCfg.enable
-        idx = cfg._2
+        (chCfg, idx) = cfg if chCfg.enable
+        mt = chCfg.mt.get
+        rawValue = values(idx)
       } yield {
         val v = chCfg.mtMin.get + (chCfg.mtMax.get - chCfg.mtMin.get) / (chCfg.max.get - chCfg.min.get) * (values(idx) - chCfg.min.get)
         val status = if (MonitorTypeCollectorStatus.map.contains(chCfg.mt.get))
@@ -59,8 +60,10 @@ class Adam4017Collector extends Actor {
           else
             collectorState
         }
-        MonitorTypeData(chCfg.mt.get, v, status)
+        val rawMt = MonitorType.getRawMonitorType(mt)
+        List(MonitorTypeData(mt, v, status), MonitorTypeData(rawMt, rawValue, status))
       }
+    val dataList = dataPairList.flatMap { x => x }
     context.parent ! ReportData(dataList.toList)
   }
 

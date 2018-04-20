@@ -16,10 +16,8 @@ object Adam4017 extends DriverOps {
   override def getMonitorTypes(param: String) = {
     val paramList = Adam4017.validateParam(param)
     val mtList = paramList.flatMap { p => p.ch.filter { _.enable }.flatMap { _.mt }.toList }
-    val rawMtList = mtList map { mt =>
-      val mtCase = MonitorType.map(mt)
-      val rawID = MonitorType.rawMonitorTypeID(mtCase._id)
-      MonitorType.withName(rawID)
+    val rawMtList = mtList map {
+      MonitorType.getRawMonitorType(_)
     }
     mtList ++ rawMtList
   }

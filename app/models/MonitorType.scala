@@ -221,6 +221,10 @@ object MonitorType extends Enumeration {
 
   def rawMonitorTypeID(_id: String) = s"${_id}_raw"
 
+  def getRawMonitorType(mt:MonitorType.Value) = 
+    MonitorType.withName(rawMonitorTypeID(mt.toString()))
+
+  
   def ensureRawMonitorType(mt: MonitorType.Value, unit: String) {
     val mtCase = MonitorType.map(mt)
     try {
@@ -228,7 +232,7 @@ object MonitorType extends Enumeration {
     } catch {
       case _: NoSuchElementException =>
         val rawMonitorType = rangeType(rawMonitorTypeID(mtCase._id),
-          s"${mtCase.desp}(原始)", unit, 3)
+          s"${mtCase.desp}(原始值)", unit, 3)
         newMonitorType(rawMonitorType)
     }
   }
@@ -267,14 +271,11 @@ object MonitorType extends Enumeration {
   }
 
   def newMonitorType(mt: MonitorType) = {
-    val doc = toDocument(mt)
-    import org.mongodb.scala._
-    collection.insertOne(doc).subscribe((doOnNext: Completed) => {},
-      (ex: Throwable) => {
-        Logger.error(ex.getMessage, ex)
-        throw ex
-      })
-    map = map + (Value(mt._id) -> mt)
+    val f = collection.insertOne(toDocument(mt)).toFuture()
+    f.onSuccess({
+      case x =>
+        refreshMtv
+    })
   }
 
   def addMeasuring(mt: MonitorType.Value, instrumentId: String, append: Boolean) = {

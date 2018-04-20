@@ -8,14 +8,19 @@ import akka.actor._
 object MoxaE1240 extends DriverOps {
   case class ChannelCfg(enable: Boolean, mt: Option[MonitorType.Value], max: Option[Double], mtMax: Option[Double],
                         min: Option[Double], mtMin: Option[Double], repairMode: Option[Boolean])
-  case class MoxaE1240Param(addr:Int, ch: Seq[ChannelCfg])
+  case class MoxaE1240Param(addr: Int, ch: Seq[ChannelCfg])
 
   implicit val cfgReads = Json.reads[ChannelCfg]
   implicit val reads = Json.reads[MoxaE1240Param]
 
   override def getMonitorTypes(param: String) = {
     val e1240Param = MoxaE1240.validateParam(param)
-    e1240Param.ch.filter { _.enable }.flatMap { _.mt }.toList
+    val mtList = e1240Param.ch.filter { _.enable }.flatMap { _.mt }.toList
+    val rawMtList = mtList map {
+      MonitorType.getRawMonitorType(_)
+    }
+    
+    mtList ++ rawMtList
   }
 
   override def verifyParam(json: String) = {
@@ -25,17 +30,18 @@ object MoxaE1240 extends DriverOps {
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
-          if (param.ch.length != 8) {
-            throw new Exception("ch # shall be 8")
+        if (param.ch.length != 8) {
+          throw new Exception("ch # shall be 8")
+        }
+
+        for (cfg <- param.ch) {
+          if (cfg.enable) {
+            assert(cfg.mt.isDefined)
+            assert(cfg.max.get > cfg.min.get)
+            assert(cfg.mtMax.get > cfg.mtMin.get)
+            MonitorType.ensureRawMonitorType(cfg.mt.get, "V")
           }
-          
-          for (cfg <- param.ch) {
-            if (cfg.enable) {
-              assert(cfg.mt.isDefined)
-              assert(cfg.max.get > cfg.min.get)
-              assert(cfg.mtMax.get > cfg.mtMin.get)
-            }
-          }
+        }
         json
       })
   }
@@ -52,7 +58,6 @@ object MoxaE1240 extends DriverOps {
 
   }
 
-  
   def validateParam(json: String) = {
     val ret = Json.parse(json).validate[MoxaE1240Param]
     ret.fold(
