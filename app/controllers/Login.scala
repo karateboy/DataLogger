@@ -22,11 +22,10 @@ object Login extends Controller {
             BadRequest(Json.obj("ok"->false, "msg"->JsError.toJson(error)))
           }, 
           crd=>{
-            val optUser = User.getUserByEmail(crd.account)
-            if(optUser.isEmpty || optUser.get.password != crd.password)
+            val user = User.getUserByEmail(crd.account)
+            if(user.password != crd.password)
               Ok(Json.obj("ok"->false, "msg"->"密碼或帳戶錯誤"))
             else {
-              val user = optUser.get
               import Security._
               val userInfo = UserInfo(user.email, user.name, user.isAdmin)
               Ok(Json.obj("ok"->true)).withSession(Security.setUserinfo(request, userInfo))              

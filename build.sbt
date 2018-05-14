@@ -1,15 +1,15 @@
 name := """DataLogger"""
 
-version := "1.1.35"
+version := "1.1.36"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
-scalaVersion := "2.11.11"
+scalaVersion := "2.11.12"
 
 libraryDependencies ++= Seq(
   ws,
   "com.github.nscala-time" %% "nscala-time" % "2.16.0",
-  "org.mongodb.scala" %% "mongo-scala-driver" % "1.2.1",
+  "org.mongodb.scala" %% "mongo-scala-driver" % "2.2.1",
   "com.github.tototoshi" %% "scala-csv" % "1.3.5",
   "net.sf.marineapi" % "marineapi" % "0.10.0"
 )

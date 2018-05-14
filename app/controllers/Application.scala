@@ -109,7 +109,7 @@ object Application extends Controller {
         Forbidden("No such user!")
       else {
         val userInfo = userInfoOpt.get
-        val user = User.getUserByEmail(userInfo.id).get
+        val user = User.getUserByEmail(userInfo.id)
         val userList =
           if (!user.isAdmin)
             List.empty[User]
