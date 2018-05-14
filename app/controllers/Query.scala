@@ -16,12 +16,12 @@ import Highchart._
 import models._
 
 case class Stat(
-    avg: Option[Double],
-    min: Option[Double],
-    max: Option[Double],
-    count: Int,
-    total: Int,
-    overCount: Int) {
+  avg:       Option[Double],
+  min:       Option[Double],
+  max:       Option[Double],
+  count:     Int,
+  total:     Int,
+  overCount: Int) {
   val effectPercent = {
     if (total > 0)
       Some(count.toDouble * 100 / total)
@@ -200,6 +200,10 @@ object Query extends Controller {
           1.second
         case ReportUnit.Min =>
           1.minute
+        case ReportUnit.SixMin =>
+          6.minute
+        case ReportUnit.FifteenMin =>
+          15.minute
         case ReportUnit.TenMin =>
           10.minute
         case ReportUnit.Hour =>
@@ -261,11 +265,17 @@ object Query extends Controller {
     val title =
       reportUnit match {
         case ReportUnit.Sec =>
-          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"      
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Min =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+        case ReportUnit.SixMin =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+
         case ReportUnit.TenMin =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+        case ReportUnit.FifteenMin =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+
         case ReportUnit.Hour =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Day =>
@@ -333,13 +343,16 @@ object Query extends Controller {
             if (monitorTypes.length == 2) {
               val mt = monitorTypes.filter { _ != windMtv }(0)
               val mtCase = MonitorType.map(monitorTypes.filter { MonitorType.WIN_DIRECTION != _ }(0))
-              Seq(YAxis(None,
-                AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))),
-                getAxisLines(mt),
-                gridLineWidth = Some(0)),
+              Seq(
+                YAxis(
+                  None,
+                  AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))),
+                  getAxisLines(mt),
+                  gridLineWidth = Some(0)),
                 windYaxis)
             } else {
-              Seq(YAxis(None, AxisTitle(Some(None)), None, gridLineWidth = Some(0)),
+              Seq(
+                YAxis(None, AxisTitle(Some(None)), None, gridLineWidth = Some(0)),
                 windYaxis)
             }
           } else {
@@ -367,11 +380,11 @@ object Query extends Controller {
       val reportUnit = ReportUnit.withName(reportUnitStr)
       val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
       val (tabType, start, end) =
-        if (reportUnit == ReportUnit.Hour || reportUnit == ReportUnit.Min 
-            || reportUnit == ReportUnit.TenMin || reportUnit == ReportUnit.Sec) {
+        if (reportUnit == ReportUnit.Hour || reportUnit == ReportUnit.Min
+          || reportUnit == ReportUnit.TenMin || reportUnit == ReportUnit.Sec) {
           val tab = if (reportUnit == ReportUnit.Hour)
             TableType.hour
-          else if(reportUnit == ReportUnit.Sec)
+          else if (reportUnit == ReportUnit.Sec)
             TableType.second
           else
             TableType.min
@@ -500,7 +513,8 @@ object Query extends Controller {
 
   def instrumentStatusReport(id: String, startStr: String, endStr: String) = Security.Authenticated {
     val (start, end) =
-      (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
+      (
+        DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
 
     val report = InstrumentStatus.query(id, start, end + 1.day)
@@ -544,10 +558,11 @@ object Query extends Controller {
 
       val monitorType = MonitorType.withName(monitorTypeStr)
 
-      result.fold(err => {
-        Logger.error(JsError.toJson(err).toString())
-        BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(err).toString()))
-      },
+      result.fold(
+        err => {
+          Logger.error(JsError.toJson(err).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(err).toString()))
+        },
         maParam => {
           for (param <- maParam.updateList) {
             Record.updateRecordStatus(param.time, monitorType, param.status)(Record.HourCollection)

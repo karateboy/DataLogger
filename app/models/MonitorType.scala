@@ -9,12 +9,24 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala.model._
 import org.mongodb.scala.bson._
 
-case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[Double],
-                       prec: Int, order: Int, signalType: Boolean = false,
+case class MonitorType(_id: String, desp: String, unit: String,
+                       prec: Int, order: Int,
+                       signalType:   Boolean        = false,
+                       std_law:      Option[Double] = None,
                        std_internal: Option[Double] = None,
                        zd_internal:  Option[Double] = None, zd_law: Option[Double] = None,
                        span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
                        var measuringBy: Option[List[String]] = None) {
+  def defaultUpdate = {
+    Updates.combine(
+      Updates.setOnInsert("_id", _id),
+      Updates.setOnInsert("desp", desp),
+      Updates.setOnInsert("unit", unit),
+      Updates.setOnInsert("prec", prec),
+      Updates.setOnInsert("order", order),
+      Updates.setOnInsert("signalType", signalType))
+  }
+
   def addMeasuring(instrumentId: String, append: Boolean) = {
     val newMeasuringBy =
       if (measuringBy.isEmpty)
@@ -31,8 +43,8 @@ case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[
         }
       }
 
-    MonitorType(_id, desp, unit, std_law,
-      prec, order, signalType, std_internal,
+    MonitorType(_id, desp, unit,
+      prec, order, signalType, std_law, std_internal,
       zd_internal, zd_law,
       span, span_dev_internal, span_dev_law,
       Some(newMeasuringBy))
@@ -45,8 +57,8 @@ case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[
       else
         Some(measuringBy.get.filter { id => id != instrumentId })
 
-    MonitorType(_id, desp, unit, std_law,
-      prec, order, signalType, std_internal,
+    MonitorType(_id, desp, unit,
+      prec, order, signalType, std_law, std_internal,
       zd_internal, zd_law,
       span, span_dev_internal, span_dev_law,
       newMeasuringBy)
@@ -83,15 +95,13 @@ object MonitorType extends Enumeration {
   var rangeOrder = 0
   def rangeType(_id: String, desp: String, unit: String, prec: Int) = {
     rangeOrder += 1
-    MonitorType(_id, desp, unit, None, prec, rangeOrder)
+    MonitorType(_id, desp, unit, prec, rangeOrder)
   }
 
   var signalOrder = 1000
   def signalType(_id: String, desp: String) = {
     signalOrder += 1
-    MonitorType(_id, desp, "N/A", None, 0, signalOrder, true, None,
-      None, None,
-      None, None, None, None)
+    MonitorType(_id, desp, "N/A", 0, signalOrder, true)
   }
 
   val defaultMonitorTypes = List(
@@ -156,13 +166,13 @@ object MonitorType extends Enumeration {
   }
 
   def init(colNames: Seq[String]): Future[Any] = {
-    def insertMt = {
+    def updateMt = {
       val updateModels =
         for (mt <- defaultMonitorTypes) yield {
-          val filter = Filters.and(Filters.eq("_id", mt._id), Filters.eq("order", 0))
-          ReplaceOneModel(
-            Filters.and(Filters.eq("_id", mt._id), Filters.eq("order", 0)),
-            mt, UpdateOptions().upsert(true))
+          val filter = Filters.eq("_id", mt._id)
+          UpdateOneModel(
+            Filters.eq("_id", mt._id),
+            mt.defaultUpdate, UpdateOptions().upsert(true))
         }
 
       val f = collection.bulkWrite(updateModels.toList, BulkWriteOptions().ordered(false)).toFuture()
@@ -177,10 +187,6 @@ object MonitorType extends Enumeration {
     if (!colNames.contains(colName)) { // New
       val f = MongoDB.database.createCollection(colName).toFuture()
       f.onFailure(errorHandler)
-      val f2 =
-        for (ret <- f) yield insertMt
-
-      f2.flatMap { x => x }
     } else if (mtUpgrade) {
       val upgradeFutureList = defaultMonitorTypes.map { mt => upsertMonitorTypeFuture(mt) }
       val upgradeF = Future.sequence(upgradeFutureList)
@@ -200,6 +206,7 @@ object MonitorType extends Enumeration {
     } else
       Future {}
 
+    updateMt
   }
 
   def BFName(mt: MonitorType.Value) = {
@@ -217,9 +224,9 @@ object MonitorType extends Enumeration {
 
     ret.fold(
       error => {
-      Logger.error(JsError.toJson(error).toString())
-      throw new Exception(JsError.toJson(error).toString)
-    },
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString)
+      },
       mt =>
         mt)
   }
