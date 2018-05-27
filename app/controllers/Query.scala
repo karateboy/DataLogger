@@ -379,9 +379,9 @@ object Query extends Controller {
       val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
       val reportUnit = ReportUnit.withName(reportUnitStr)
       val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
+      
       val (tabType, start, end) =
-        if (reportUnit == ReportUnit.Hour || reportUnit == ReportUnit.Min
-          || reportUnit == ReportUnit.TenMin || reportUnit == ReportUnit.Sec) {
+        if (reportUnit.id <= ReportUnit.Hour.id) {
           val tab = if (reportUnit == ReportUnit.Hour)
             TableType.hour
           else if (reportUnit == ReportUnit.Sec)
@@ -391,7 +391,7 @@ object Query extends Controller {
 
           (tab, DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
-        } else if (reportUnit == ReportUnit.Day) {
+        } else if (reportUnit.id <= ReportUnit.Day.id) {
           (TableType.hour, DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
             DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
         } else {

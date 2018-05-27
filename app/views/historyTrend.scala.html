@@ -140,7 +140,7 @@ $( document ).ready(function() {
     $("input[name='reportUnit']").change(function(){
 		var me = $(this)
 		if(me.attr('id') == 'Hour'||me.attr('id') == 'Min'||me.attr('id')=='SixMin'
-			||me.attr('id') == 'TenMin' ||me.attr('FifteenMin')|| me.attr('id') == 'Sec'){
+			||me.attr('id') == 'TenMin' ||me.attr('id')=='FifteenMin'|| me.attr('id') == 'Sec'){
 			$('#reportStart').data("DateTimePicker").format("YYYY-M-D HH:mm");
 			$('#reportEnd').data("DateTimePicker").format("YYYY-M-D HH:mm");
 			$('#reportStart').data("DateTimePicker").daysOfWeekDisabled([]);
