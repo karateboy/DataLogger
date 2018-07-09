@@ -11,10 +11,10 @@ object SysConfig extends Enumeration {
   val collection = MongoDB.database.getCollection(ColName)
 
   val valueKey = "value"
-  val ImportDumpSite = Value
+  val MonitorTypeVer = Value
 
   val defaultConfig = Map(
-    ImportDumpSite -> Document(valueKey -> true))
+    MonitorTypeVer -> Document(valueKey -> 1))
 
   def init(colNames: Seq[String]) {
     if (!colNames.contains(ColName)) {

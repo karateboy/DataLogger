@@ -13,6 +13,7 @@ object MongoDB {
   def init(){
     val f = database.listCollectionNames().toFuture()
     val colFuture = f.map { colNames =>
+      SysConfig.init(colNames)
       //MonitorType => 
       val mtFuture = MonitorType.init(colNames)
       ModelHelper.waitReadyResult(mtFuture)

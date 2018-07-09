@@ -89,8 +89,9 @@ object MonitorType extends Enumeration {
   val colName = "monitorTypes"
   val collection = MongoDB.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
 
-  val mtUpgrade = Play.current.configuration.getBoolean("monitorType.upgrade").getOrElse(true)
-  Logger.info(s"MonitorType upgrade = $mtUpgrade")
+  val MonitorTypeVer = 2
+
+  //Logger.info(s"MonitorType upgrade = $mtUpgrade")
 
   var rangeOrder = 0
   def rangeType(_id: String, desp: String, unit: String, prec: Int) = {
@@ -187,22 +188,21 @@ object MonitorType extends Enumeration {
     if (!colNames.contains(colName)) { // New
       val f = MongoDB.database.createCollection(colName).toFuture()
       f.onFailure(errorHandler)
-    } else if (mtUpgrade) {
-      val upgradeFutureList = defaultMonitorTypes.map { mt => upsertMonitorTypeFuture(mt) }
-      val upgradeF = Future.sequence(upgradeFutureList)
-      for (upgrade <- upgradeF) yield {
-        val instrumentListFuture = Instrument.getAllInstrumentFuture
+      waitReadyResult(f)
+    }
+    val currentMtVer = waitReadyResult(SysConfig.get(SysConfig.MonitorTypeVer)).asInt32().getValue
 
-        for (instList <- instrumentListFuture) {
-          for (inst <- instList) {
-            val instType = InstrumentType.map(inst.instType)
-            val mtList = instType.driver.getMonitorTypes(inst.param)
-            for (mt <- mtList) {
-              MonitorType.addMeasuring(mt, inst._id, instType.analog)
-            }
-          }
-        }
+    if (currentMtVer != MonitorTypeVer) {
+      Logger.info(s"Current monitorType ver=$currentMtVer upgrade to $MonitorTypeVer")
+      val instrumentListFuture = Instrument.getAllInstrumentFuture
+
+      val instList = waitReadyResult(instrumentListFuture)
+      for (inst <- instList) {
+        val instType = InstrumentType.map(inst.instType)
+        instType.driver.verifyParam(inst.param)
       }
+      
+      SysConfig.set(SysConfig.MonitorTypeVer, new org.bson.BsonInt32(MonitorTypeVer))
     } else
       Future {}
 
@@ -340,6 +340,17 @@ object MonitorType extends Enumeration {
     f.onFailure(errorHandler)
     f
   }
+
+  //  def insertNewMonitorTypeFuture(mt: MonitorType) = {
+  //    import org.mongodb.scala.model.UpdateOptions
+  //    import org.mongodb.scala.bson.BsonString
+  //    import org.mongodb.scala.model.Updates
+  //    //Updates.setOnInsert(fieldName, value)
+  //
+  //    val f = collection.updateOne(equal("_id", mt._id), update, UpdateOptions().upsert(true)).toFuture()
+  //    f.onFailure(errorHandler)
+  //    f
+  //  }
 
   def updateMonitorType(mt: MonitorType.Value, colname: String, newValue: String) = {
     import org.mongodb.scala._

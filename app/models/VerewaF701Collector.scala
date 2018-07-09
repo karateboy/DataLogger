@@ -99,7 +99,8 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
     if (channel == 0)
       checkErrorStatus(error)
     else {
-      val msgMap = Map(1 -> "Sampled volume: Volume sensor defective.",
+      val msgMap = Map(
+        1 -> "Sampled volume: Volume sensor defective.",
         2 -> "Sampled mass: GM tube or amplifier defective.",
         3 -> "Filter adapter temperature: Temperature measurement defective.",
         4 -> "Temperature ambient air: Air pressure measurement defective (sensor not connected, parametrization).",
@@ -111,8 +112,8 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
         10 -> "M rate: GM tube or amplifier defective")
 
       if ((error & 0x1) != 0) {
-        if (msgMap.contains(channel)){
-          //FIXME disable error alarm 
+        if (msgMap.contains(channel)) {
+          //FIXME disable error alarm
           //log(instStr(id), Level.ERR, msgMap(channel))
         }
       }
@@ -160,6 +161,8 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
 
     case SetState(id, state) =>
       Logger.info(s"SetState(${MonitorStatus.map(state).desp})")
+      collectorStatus = state
+      Instrument.setState(id, state)
   }
 
   override def postStop(): Unit = {
