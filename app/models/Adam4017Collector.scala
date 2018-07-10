@@ -48,14 +48,18 @@ class Adam4017Collector extends Actor {
       for {
         cfg <- param.ch.zipWithIndex
         (chCfg, idx) = cfg if chCfg.enable
-        mt = chCfg.mt.get
         rawValue = values(idx)
+        mt <- chCfg.mt
+        mtMin <- chCfg.mtMin
+        mtMax <- chCfg.mtMax
+        max <- chCfg.max
+        min <- chCfg.min
       } yield {
-        val v = chCfg.mtMin.get + (chCfg.mtMax.get - chCfg.mtMin.get) / (chCfg.max.get - chCfg.min.get) * (values(idx) - chCfg.min.get)
-        val status = if (MonitorTypeCollectorStatus.map.contains(chCfg.mt.get))
-          MonitorTypeCollectorStatus.map(chCfg.mt.get)
+        val v = mtMin + (mtMax - mtMin) / (max - min) * (values(idx) - min)
+        val status = if (MonitorTypeCollectorStatus.map.contains(mt))
+          MonitorTypeCollectorStatus.map(mt)
         else {
-          if (chCfg.repairMode.isDefined && chCfg.repairMode.get)
+          if (chCfg.repairMode.getOrElse(false))
             MonitorStatus.MaintainStat
           else
             collectorState

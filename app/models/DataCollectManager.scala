@@ -439,7 +439,7 @@ class DataCollectManager extends Actor {
                 status_lb <- statusMap
                 status = status_lb._1
                 lb = status_lb._2
-                measuringInstrumentList = MonitorType.map(mt).measuringBy.get
+                measuringInstrumentList <- MonitorType.map(mt).measuringBy
               } yield {
                 val winOutInstrumentOpt = measuringInstrumentList.find { instrumentId =>
                   lb.exists { id_value =>
