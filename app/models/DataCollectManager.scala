@@ -10,6 +10,7 @@ import ModelHelper._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.language.postfixOps
 
 object DataCollectManager {
   val effectivRatio = 0.75
@@ -106,10 +107,11 @@ object DataCollectManager {
     } yield {
       val minuteAvg =
         {
+          val totalSize = statusMap map { _._2.length } sum
           val statusKV = {
             val kv = statusMap.maxBy(kv => kv._2.length)
             if (kv._1 == MonitorStatus.NormalStat &&
-              statusMap(kv._1).size < statusMap.size * effectivRatio) {
+              statusMap(kv._1).size < totalSize * effectivRatio) {
               //return most status except normal
               val noNormalStatusMap = statusMap - kv._1
               noNormalStatusMap.maxBy(kv => kv._2.length)
@@ -152,10 +154,11 @@ object DataCollectManager {
     } yield {
       val minuteAvg =
         {
+          val totalSize = statusMap map { _._2.length } sum
           val statusKV = {
             val kv = statusMap.maxBy(kv => kv._2.length)
             if (kv._1 == MonitorStatus.NormalStat &&
-              statusMap(kv._1).size < statusMap.size * effectivRatio) {
+              statusMap(kv._1).size < totalSize * effectivRatio) {
               //return most status except normal
               val noNormalStatusMap = statusMap - kv._1
               noNormalStatusMap.maxBy(kv => kv._2.length)
@@ -266,10 +269,11 @@ class DataCollectManager extends Actor {
   def receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
     Map.empty[MonitorType.Value, Map[String, Record]], List.empty[(DateTime, String, List[MonitorTypeData])])
 
-  def handler(instrumentMap: Map[String, InstrumentParam],
-              collectorInstrumentMap: Map[ActorRef, String],
-              latestDataMap: Map[MonitorType.Value, Map[String, Record]],
-              mtDataList: List[(DateTime, String, List[MonitorTypeData])]): Receive = {
+  def handler(
+    instrumentMap:          Map[String, InstrumentParam],
+    collectorInstrumentMap: Map[ActorRef, String],
+    latestDataMap:          Map[MonitorType.Value, Map[String, Record]],
+    mtDataList:             List[(DateTime, String, List[MonitorTypeData])]): Receive = {
     case AddInstrument(inst) =>
       val instType = InstrumentType.map(inst.instType)
       val collector = instType.driver.start(inst._id, inst.protocol, inst.param)
@@ -283,7 +287,8 @@ class DataCollectManager extends Actor {
           new Duration(DateTime.now(), calibrationTime + 1.day)
 
         import scala.concurrent.duration._
-        Akka.system.scheduler.schedule(Duration(duration.getStandardSeconds + 1, SECONDS),
+        Akka.system.scheduler.schedule(
+          Duration(duration.getStandardSeconds + 1, SECONDS),
           Duration(1, DAYS), self, AutoCalibration(inst._id))
       }
 
@@ -294,7 +299,8 @@ class DataCollectManager extends Actor {
         digitalOutputOpt = Some(collector)
       }
 
-      context become handler(instrumentMap + (inst._id -> instrumentParam),
+      context become handler(
+        instrumentMap + (inst._id -> instrumentParam),
         collectorInstrumentMap + (collector -> inst._id),
         latestDataMap, mtDataList)
 
