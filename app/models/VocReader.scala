@@ -97,17 +97,18 @@ object VocReader {
     Record.findAndUpdate(dateTime, dataList.flatMap(x => x))(Record.HourCollection)
   }
 
-  def parseAllTx0(dir: String, year: Int, month: Int) = {
+  def parseAllTx0(dir: String, year: Int, month: Int, ignoreParsed: Boolean = false) = {
     //val today = DateTime.now().toLocalDate
     val monthFolder = dir + File.separator + s"${year - 1911}${"%02d".format(month)}"
 
     def listTx0Files = {
-      //import java.io.FileFilter
-      val BP1Files = new java.io.File(monthFolder + File.separator + "BP1").listFiles().toList
-      val PlotFiles = new java.io.File(monthFolder + File.separator + "Plot").listFiles().toList
+      val BP1Files = Option(new java.io.File(monthFolder + File.separator + "BP1").listFiles())
+        .getOrElse(Array.empty[File])
+      val PlotFiles = Option(new java.io.File(monthFolder + File.separator + "Plot").listFiles())
+        .getOrElse(Array.empty[File])
       val allFiles = BP1Files ++ PlotFiles
       allFiles.filter(p =>
-        p != null && !parsedFileList.contains(p.getAbsolutePath))
+        p != null && (ignoreParsed || !parsedFileList.contains(p.getAbsolutePath)))
     }
 
     val files = listTx0Files
@@ -142,12 +143,12 @@ class VocReader(dir: String) extends Actor {
 
   def handler: Receive = {
     case ReadFile =>
-      val today = DateTime.now().toLocalDate
+      val today = (DateTime.now() - 2.hour).toLocalDate
       parseAllTx0(dir, today.getYear, today.getMonthOfYear)
       timer = resetTimer
 
     case ReparseDir(year: Int, month: Int) =>
-      parseAllTx0(dir, year, month)
+      parseAllTx0(dir, year, month, true)
   }
 
   override def postStop(): Unit = {
