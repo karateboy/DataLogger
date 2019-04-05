@@ -59,8 +59,8 @@ object VocReader {
   def getFileDateTime(fileName: String, year: Int, month: Int) = {
     val dayHour = fileName.takeWhile { x => x != '.' }.dropWhile { x => !x.isDigit }
     if (dayHour.forall { x => x.isDigit }) {
-      val day = dayHour.take(2).toInt + dayHour.drop(2).toInt / 24
-      val hour = dayHour.drop(2).toInt % 24
+      val day = dayHour.take(2).toInt
+      val hour = dayHour.drop(2).toInt - 1
       val localDate = new LocalDate(year, month, day)
       val localTime = new LocalTime(hour, 0)
       Some(localDate.toDateTime(localTime))
