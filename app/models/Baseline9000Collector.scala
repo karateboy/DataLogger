@@ -1,21 +1,24 @@
 package models
-import play.api._
 import akka.actor._
+import models.Protocol.ProtocolParam
 import play.api.Play.current
+import play.api._
 import play.api.libs.concurrent.Akka
-import Protocol.ProtocolParam
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import akka.actor.{ Actor, ActorRef, Props }
-import akka.io.{ IO, Tcp }
-import akka.util.ByteString
+
 
 object Baseline9000Collector {
   case object OpenComPort
   case object ReadData
 
+  val ch4Offset = Play.current.configuration.getDouble("baseline.offset.ch4").getOrElse(0d)
+  val nmhcOffset = Play.current.configuration.getDouble("baseline.offset.nmhc").getOrElse(0d)
+  Logger.info(s"CH4 offset=$ch4Offset")
+  Logger.info(s"NMHC offset=$nmhcOffset")
+
   var count = 0
   def start(id: String, protocolParam: ProtocolParam, config: Baseline9000Config)(implicit context: ActorContext) = {
-    import Protocol.ProtocolParam
     val actorName = s"Baseline_${count}"
     count += 1
     val collector = context.actorOf(Props(classOf[Baseline9000Collector], id, protocolParam, config), name = actorName)
@@ -28,12 +31,12 @@ object Baseline9000Collector {
 
 class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Baseline9000Config) extends Actor {
   import Baseline9000Collector._
-  import scala.concurrent.duration._
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
-  import ModelHelper._
   import DataCollectManager._
+  import ModelHelper._
   import TapiTxx._
+
+  import scala.concurrent.{Future, blocking}
+  import scala.concurrent.duration._
 
   var collectorState = {
     val instrument = Instrument.getInstrument(id)
@@ -97,7 +100,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
   var calibrateRecordStart = false
 
-  def readData = {
+  def readData(calibratingMt:Option[MonitorType.Value]) = {
     Future {
       blocking {
         for (serial <- serialCommOpt) {
@@ -105,11 +108,16 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           for (line <- lines) {
             val parts = line.split('\t')
             if (parts.length >= 4) {
-              val ch4Value = parts(2).toDouble
+              val ch4Value = if(calibratingMt.contains(mtTHC))
+                0d
+              else
+                parts(2).toDouble
+
               val nmhcValue = parts(4).toDouble
               val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
               val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
-              val thc = MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
+              val thc =
+                MonitorTypeData(mtTHC, (ch4Value + nmhcValue), collectorState)
 
               if (calibrateRecordStart)
                 self ! ReportData(List(ch4, nmhc, thc))
@@ -130,7 +138,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
   def comPortOpened: Receive = {
     case ReadData =>
-      readData
+      readData(None)
 
     case SetState(id, state) =>
       Future {
@@ -174,7 +182,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
   def calibrationHandler(calibrationType: CalibrationType, mt: MonitorType.Value, startTime: com.github.nscala_time.time.Imports.DateTime,
                          calibrationDataList: List[MonitorTypeData], zeroValue: Option[Double]): Receive = {
     case ReadData =>
-      readData
+      readData(Some(mt))
 
     case RaiseStart =>
       Future {
