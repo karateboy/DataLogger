@@ -37,6 +37,8 @@
             				<th>校正全幅值</th>
             				<th>全幅偏移內控值</th>
             				<th>全幅偏移法規值</th>
+							<th>M</th>
+							<th>B</th>
             			</tr>
             		</thead>
             		<tbody>
@@ -53,7 +55,9 @@
             					<td col="zd_law">@MonitorType.format(mt, map(mt).zd_law) </td>
             					<td col="span">@MonitorType.format(mt, map(mt).span)</td>
             					<td col="span_dev_internal">@MonitorType.format(mt, map(mt).span_dev_internal)</td>
-            					<td col="span_dev_law">@MonitorType.format(mt, map(mt).span_dev_law)</td> 
+            					<td col="span_dev_law">@MonitorType.format(mt, map(mt).span_dev_law)</td>
+								<td col="m">@MonitorType.format(mt, map(mt).m)</td>
+								<td col="b">@MonitorType.format(mt, map(mt).b)</td>
             				</tr>
             			}
             		</tbody>
@@ -90,6 +94,7 @@ $(document).ready(function() {
                 console.log("callback");
                 console.log(sValue);
                 console.log(y);
+                window.location.reload(true);
             },           
             submitdata: function ( value, settings ) {
                 var $me = $(this);

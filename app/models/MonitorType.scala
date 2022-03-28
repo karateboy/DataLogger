@@ -26,8 +26,10 @@ case class MonitorTypeV1(_id: String, desp: String, unit: String, std_law: Optio
 case class MonitorType(_id: String, desp: String, unit: String, std_law: Option[Double],
                        prec: Int, order: Int, std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
-                       span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
-                       measuringBy: Option[List[String]] = None) {
+                       span: Option[Double] = None, span_dev_internal: Option[Double] = None,
+                       span_dev_law: Option[Double] = None,
+                       measuringBy: Option[List[String]] = None,
+                       m:Option[Double]=None, b:Option[Double]=None) {
   def addMeasuring(instrumentId: String, append: Boolean) = {
     val newMeasuringBy =
       if (measuringBy.isEmpty)
@@ -159,7 +161,7 @@ object MonitorType extends Enumeration {
     Document(json.toString())
   }
 
-  def toMonitorType(d: Document) = {
+  def toMonitorType(d: Document): MonitorType = {
     val ret = Json.parse(d.toJson()).validate[MonitorType]
     implicit val v1Reader = Json.reads[MonitorTypeV1]
     ret.fold(error => {

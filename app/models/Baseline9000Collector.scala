@@ -1,4 +1,5 @@
 package models
+
 import akka.actor._
 import models.Protocol.ProtocolParam
 import play.api.Play.current
@@ -9,15 +10,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 object Baseline9000Collector {
-  case object OpenComPort
-  case object ReadData
-
   val ch4Offset = Play.current.configuration.getDouble("baseline.offset.ch4").getOrElse(0d)
   val nmhcOffset = Play.current.configuration.getDouble("baseline.offset.nmhc").getOrElse(0d)
-  Logger.info(s"CH4 offset=$ch4Offset")
-  Logger.info(s"NMHC offset=$nmhcOffset")
-
   var count = 0
+
   def start(id: String, protocolParam: ProtocolParam, config: Baseline9000Config)(implicit context: ActorContext) = {
     val actorName = s"Baseline_${count}"
     count += 1
@@ -26,34 +22,24 @@ object Baseline9000Collector {
 
     collector
   }
+  Logger.info(s"CH4 offset=$ch4Offset")
+  Logger.info(s"NMHC offset=$nmhcOffset")
+
+  case object OpenComPort
+
+  case object ReadData
 
 }
 
 class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Baseline9000Config) extends Actor {
+
   import Baseline9000Collector._
   import DataCollectManager._
   import ModelHelper._
   import TapiTxx._
 
-  import scala.concurrent.{Future, blocking}
   import scala.concurrent.duration._
-
-  var collectorState = {
-    val instrument = Instrument.getInstrument(id)
-    instrument(0).state
-  }
-
-  var serialCommOpt: Option[SerialComm] = None
-  var timerOpt: Option[Cancellable] = None
-
-  override def preStart() = {
-    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
-  }
-
-  // override postRestart so we don't call preStart and schedule a new message
-  override def postRestart(reason: Throwable) = {}
-
-  def receive = openComPort
+  import scala.concurrent.{Future, blocking}
 
   val StartShippingDataByte: Byte = 0x11
   val StopShippingDataByte: Byte = 0x13
@@ -63,6 +49,26 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
   val ActivateMethaneSpanByte: Byte = 0x0C
   val ActivateNonMethaneZeroByte: Byte = 0xE
   val ActivateNonMethaneSpanByte: Byte = 0xF
+  val mtCH4 = MonitorType.withName("CH4")
+  val mtNMHC = MonitorType.withName("NMHC")
+  val mtTHC = MonitorType.withName("THC")
+  var collectorState = {
+    val instrument = Instrument.getInstrument(id)
+    instrument(0).state
+  }
+  var serialCommOpt: Option[SerialComm] = None
+  var timerOpt: Option[Cancellable] = None
+  var calibrateRecordStart = false
+  var calibrateTimerOpt: Option[Cancellable] = None
+
+  override def preStart() = {
+    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
+  }
+
+  // override postRestart so we don't call preStart and schedule a new message
+  override def postRestart(reason: Throwable) = {}
+
+  def receive = openComPort
 
   def openComPort: Receive = {
     case OpenComPort =>
@@ -94,26 +100,20 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort))
   }
 
-  val mtCH4 = MonitorType.withName("CH4")
-  val mtNMHC = MonitorType.withName("NMHC")
-  val mtTHC = MonitorType.withName("THC")
-
-  var calibrateRecordStart = false
-
-  def readData(calibratingMt:Option[MonitorType.Value]) = {
+  def readData(calibratingMt: Option[MonitorType.Value]) = {
     Future {
       blocking {
         for (serial <- serialCommOpt) {
           val lines = serial.getLine2(timeout = 3)
           for (line <- lines) {
             val parts = line.split('\t')
-            if (parts.length >= 4) {
-              val ch4Value = if(calibratingMt.contains(mtTHC))
-                0d
-              else
-                parts(2).toDouble
 
-              val nmhcValue = parts(4).toDouble
+            def calibrate(v: Double, m: Option[Double], b: Option[Double]) =
+              v * m.getOrElse(1d) + b.getOrElse(0d)
+
+            if (parts.length >= 4) {
+              val ch4Value = calibrate(parts(2).toDouble, MonitorType.map(mtCH4).m, MonitorType.map(mtCH4).b)
+              val nmhcValue = calibrate(parts(4).toDouble, MonitorType.map(mtNMHC).m, MonitorType.map(mtNMHC).b)
               val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
               val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
               val thc =
@@ -130,11 +130,6 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       }
     } onFailure serialErrorHandler
   }
-
-  case object RaiseStart
-  case object HoldStart
-  case object DownStart
-  case object CalibrateEnd
 
   def comPortOpened: Receive = {
     case ReadData =>
@@ -176,8 +171,6 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       context become calibrationHandler(ManualSpan, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
   }
-
-  var calibrateTimerOpt: Option[Cancellable] = None
 
   def calibrationHandler(calibrationType: CalibrationType, mt: MonitorType.Value, startTime: com.github.nscala_time.time.Imports.DateTime,
                          calibrationDataList: List[MonitorTypeData], zeroValue: Option[Double]): Receive = {
@@ -259,7 +252,9 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       } onFailure serialErrorHandler
 
     case CalibrateEnd =>
-      val values = calibrationDataList.map { _.value }
+      val values = calibrationDataList.map {
+        _.value
+      }
       val avg = if (values.length == 0)
         None
       else
@@ -344,4 +339,12 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       serialCommOpt = None
     }
   }
+
+  case object RaiseStart
+
+  case object HoldStart
+
+  case object DownStart
+
+  case object CalibrateEnd
 }
