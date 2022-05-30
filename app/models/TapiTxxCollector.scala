@@ -390,11 +390,6 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
         blocking {
           Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
           import scala.concurrent.duration._
-          if (calibrationType.zero) {
-            triggerZeroCalibration(false)
-          } else {
-            triggerSpanCalibration(false)
-          }
 
           val calibrationTimer =
             if (calibrationType.auto && calibrationType.zero) {
@@ -407,6 +402,11 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
             }
           context become calibration(calibrationType, startTime, false, calibrationReadingList,
             zeroReading, endState, calibrationTimer)
+          if (calibrationType.zero) {
+            triggerZeroCalibration(false)
+          } else {
+            triggerSpanCalibration(false)
+          }
         }
       } onFailure (calibrationErrorHandler(instId, timer, endState))
 
