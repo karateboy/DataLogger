@@ -287,10 +287,11 @@ class DataCollectManager extends Actor {
           new Duration(DateTime.now(), calibrationTime + 1.day)
 
         import scala.concurrent.duration._
-        Akka.system.scheduler.schedule(
-          Duration(duration.getStandardSeconds + 1, SECONDS),
-          Duration(1, DAYS), self, AutoCalibration(inst._id))
+        context.system.scheduler.schedule(
+          FiniteDuration(duration.getMillis, MILLISECONDS),
+          FiniteDuration(1, DAYS), self, AutoCalibration(inst._id))
       }
+
 
       val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
       if (inst.instType == InstrumentType.t700) {
