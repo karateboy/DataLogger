@@ -312,7 +312,7 @@ abstract class TapiTxxCollector(instId: String, modelReg: ModelReg, tapiConfig: 
       tapiConfig.calibratorPurgeTime.isDefined && tapiConfig.calibratorPurgeTime.get != 0)
       purgeCalibrator
     else
-      Akka.system.scheduler.scheduleOnce(Duration(0, SECONDS), self, RaiseStart)
+      context.system.scheduler.scheduleOnce(Duration(1, MICROSECONDS), self, RaiseStart)
 
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
