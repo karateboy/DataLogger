@@ -2,16 +2,15 @@ package models
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
-
 import org.mongodb.scala._
-
 import com.github.nscala_time.time.Imports._
-
 import ModelHelper._
 import play.api._
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.libs.json.Reads._
+
+import scala.util.{Failure, Success}
 
 //alarm src format: 'T':"MonitorType"
 //                  'I':"Instrument"
@@ -116,19 +115,16 @@ object Alarm {
     val start: BsonDateTime = ar.time - coldPeriod.minutes
     val end: BsonDateTime = ar.time
 
-    val countObserver = collection.count(and(gte("time", start), lt("time", end),
+    val countObserver = collection.countDocuments(and(gte("time", start), lt("time", end),
       equal("src", ar.src), equal("level", ar.level), equal("desc", ar.desc)))
 
-    countObserver.subscribe(
-      (count: Long) => {
-        if (count == 0){
-          val f = collection.insertOne(toDocument(ar)).toFuture()
-        }
-      }, // onNext
-      (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
-      () => {} // onComplete
-      )
-
+    countObserver.toFuture().andThen({
+      case Success(count) =>
+        if (count == 0)
+          collection.insertOne(toDocument(ar)).toFuture()
+      case Failure(exception)=>
+        Logger.error("Alarm failed:", exception)
+    })
   }
 
   def log(src: String, level: Int, desc: String, coldPeriod:Int = 30) {

@@ -3,8 +3,10 @@ import play.api._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala._
+import org.mongodb.scala.model.ReplaceOptions
 
 case class ManualAuditLog(dataTime: DateTime, mt: MonitorType.Value, modifiedTime: DateTime,
                           operator: String, changedStatus: String, reason: String)
@@ -51,7 +53,7 @@ object ManualAuditLog {
     import org.mongodb.scala.bson.BsonString
     import org.mongodb.scala.bson.BsonDateTime
     val f = collection.replaceOne(and(equal("dataTime", log.dataTime:BsonDateTime), equal("mt", MonitorType.BFName(log.mt))),
-      toDocument(log), UpdateOptions().upsert(true)).toFuture()
+      toDocument(log), ReplaceOptions().upsert(true)).toFuture()
       
     f.onFailure(errorHandler)
     f

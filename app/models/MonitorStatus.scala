@@ -190,11 +190,10 @@ object MonitorStatus {
     refreshMap
   }
 
-  private def refreshMap() = {
-    _map = Map(msList.map { s => s.info.toString() -> s }: _*)
-    _map
-  }
-  private var _map: Map[String, MonitorStatus] = refreshMap
+  private def refreshMap() =
+    defaultStatus.map { s => s._id -> s }.toMap
+
+  private val _map: Map[String, MonitorStatus] = refreshMap()
 
   def map(key: String) = {
     _map.getOrElse(key, {

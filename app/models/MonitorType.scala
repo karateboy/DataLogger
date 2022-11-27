@@ -6,6 +6,8 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import models.ModelHelper._
 import com.github.nscala_time.time.Imports._
+import org.mongodb.scala.model.ReplaceOptions
+
 import scala.concurrent.ExecutionContext.Implicits.global
 case class MonitorTypeV1(_id: String, desp: String, unit: String, std_law: Option[Double],
                          prec: Int, order: Int, std_internal: Option[Double] = None,
@@ -101,7 +103,12 @@ object MonitorType extends Enumeration {
     MonitorType("PRESS", "氣壓", "hPa", None, 1, 20),
     MonitorType("RAIN", "雨量", "mm/h", None, 1, 21),
     MonitorType("LAT", "緯度", "度", None, 4, 22),
-    MonitorType("LNG", "經度", "度", None, 4, 23))
+    MonitorType("LNG", "經度", "度", None, 4, 23),
+    MonitorType("HCL", "HCL", "ppb", None, 1, 24),
+    MonitorType("HF", "HF", "ppb", None, 1, 25),
+    MonitorType("HNO3", "HNO3", "ppb", None, 1, 26),
+    MonitorType("AcOH", "AcOH", "ppb", None, 1, 27)
+  )
 
   lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
   lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
@@ -268,7 +275,7 @@ object MonitorType extends Enumeration {
   def upsertMonitorType(mt: MonitorType) = {
     import org.mongodb.scala.model.UpdateOptions
     import org.mongodb.scala.bson.BsonString
-    val f = collection.replaceOne(equal("_id", mt._id), toDocument(mt), UpdateOptions().upsert(true)).toFuture()
+    val f = collection.replaceOne(equal("_id", mt._id), toDocument(mt), ReplaceOptions().upsert(true)).toFuture()
     waitReadyResult(f)
     true
   }
@@ -303,7 +310,7 @@ object MonitorType extends Enumeration {
 
     val ret = waitReadyResult(f)
 
-    val mtCase = toMonitorType(ret(0))
+    val mtCase = toMonitorType(ret)
     Logger.debug(mtCase.toString)
     map = map + (mt -> mtCase)
   }

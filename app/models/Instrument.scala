@@ -4,9 +4,11 @@ import com.github.nscala_time.time.Imports._
 import play.api._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.joda.time.LocalTime
 import Protocol.ProtocolParam
+import org.mongodb.scala.model.ReplaceOptions
 case class InstrumentInfo(_id: String, instType: String, state: String,
                           protocol: String, protocolParam: String, monitorTypes: String, calibrationTime: Option[String])
 
@@ -96,7 +98,7 @@ object Instrument {
   def upsertInstrument(inst: Instrument) = {    
     import org.mongodb.scala.model.UpdateOptions
     import org.mongodb.scala.bson.BsonString
-    val f = collection.replaceOne(equal("_id", inst._id), toDocument(inst), UpdateOptions().upsert(true)).toFuture()
+    val f = collection.replaceOne(equal("_id", inst._id), toDocument(inst), ReplaceOptions().upsert(true)).toFuture()
     waitReadyResult(f)
     true
   }

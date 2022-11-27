@@ -11,8 +11,8 @@ object Global extends GlobalSettings {
     Logger.info("Application has started")
     super.onStart(app)
     MongoDB.init()
-    DataCollectManager.startup
-    ForwardManager.startup
+    DataCollectManager.startup()
+    ForwardManager.startup()
   }
 
   override def onStop(app: Application) {

@@ -3,8 +3,10 @@ import play.api._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala._
+import org.mongodb.scala.model.ReplaceOptions
 
 case class Record(time: DateTime, value: Double, status: String)
 
@@ -75,7 +77,7 @@ object Record {
     import org.mongodb.scala.bson.BsonString
     val col = MongoDB.database.getCollection(colName)
 
-    val f = col.replaceOne(equal("_id", doc("_id")), doc, UpdateOptions().upsert(true)).toFuture()
+    val f = col.replaceOne(equal("_id", doc("_id")), doc, ReplaceOptions().upsert(true)).toFuture()
     f.onFailure({
       case ex: Exception => Logger.error(ex.getMessage, ex)
     })
