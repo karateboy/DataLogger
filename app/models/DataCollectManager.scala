@@ -130,7 +130,7 @@ object DataCollectManager {
                   yield 1.0
               windAvg(windSpeed.toList, windDir.toList)
             }
-          } else if (mt == MonitorType.RAIN) {
+          } else if (mt == MonitorType.RAIN || mt == MonitorType.NH3) {
             values.max
           } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
             values.last

@@ -36,7 +36,7 @@ class Nh3Collector(id: String, protocolParam: ProtocolParam) extends Actor with 
   self ! ConnectHost
   var cancelable: Cancellable = _
 
-  def decodeDiCounter(values: Seq[Int], collectorState: String): Unit = {
+  def decodeValue(values: Seq[Short], collectorState: String): Unit = {
     val mtInfo = List(
       (4, MonitorType.withName("HCL")),
       (5, MonitorType.withName("HF")),
@@ -44,19 +44,14 @@ class Nh3Collector(id: String, protocolParam: ProtocolParam) extends Actor with 
       (7, MonitorType.withName("HNO3")),
       (8, MonitorType.withName("AcOH"))
     )
-    val NH3 = MonitorType.withName("NH3")
+
     val polarity = values(3)
     val dataList =
       for {
         (offset, mt) <- mtInfo
       } yield {
         val v = 0.1 * values(offset)
-        if ((polarity == 1 && mt == NH3) ||
-          (polarity == 0 && mt != NH3)
-        )
-          MonitorTypeData(mt, v, collectorState)
-        else
-          MonitorTypeData(mt, 0, collectorState)
+        MonitorTypeData(mt, v, collectorState)
       }
     context.parent ! ReportData(dataList)
   }
@@ -112,15 +107,17 @@ class Nh3Collector(id: String, protocolParam: ProtocolParam) extends Actor with 
               val batch = new BatchRead[Integer]
 
               for (idx <- 0 to 8)
-                batch.addLocator(idx, BaseLocator.inputRegister(1, 16 + 2 * idx, DataType.FOUR_BYTE_INT_SIGNED))
+                batch.addLocator(idx, BaseLocator.inputRegister(1, 1 + idx, DataType.TWO_BYTE_INT_SIGNED))
 
               batch.setContiguousRequests(true)
 
               val rawResult = masterOpt.get.send(batch)
               val result =
-                for (idx <- 0 to 8) yield rawResult.getIntValue(idx).toInt
+                for (idx <- 0 to 8) yield
+                  rawResult.getValue(idx).asInstanceOf[Short]
 
-              decodeDiCounter(result.toSeq, collectorState)
+
+              decodeValue(result, collectorState)
             }
 
             import scala.concurrent.duration._

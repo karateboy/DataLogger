@@ -117,6 +117,7 @@ object MonitorType extends Enumeration {
   lazy val PM10 = MonitorType.withName("PM10")
   lazy val LAT = MonitorType.withName("LAT")
   lazy val LNG = MonitorType.withName("LNG")
+  lazy val NH3 = MonitorType.withName("NH3")
 
   val DOOR = Value("DOOR")
   val DOOR_MTCASE = MonitorType("DOOR", "門禁", "N/A", None, 0, 1000)
