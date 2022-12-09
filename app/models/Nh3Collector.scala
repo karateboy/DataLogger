@@ -38,14 +38,14 @@ class Nh3Collector(id: String, protocolParam: ProtocolParam) extends Actor with 
 
   def decodeValue(values: Seq[Short], collectorState: String): Unit = {
     val mtInfo = List(
-      (4, MonitorType.withName("HCL")),
-      (5, MonitorType.withName("HF")),
-      (6, MonitorType.withName("NH3")),
-      (7, MonitorType.withName("HNO3")),
-      (8, MonitorType.withName("AcOH"))
+      (3, MonitorType.withName("HCL")),
+      (4, MonitorType.withName("HF")),
+      (5, MonitorType.withName("NH3")),
+      (6, MonitorType.withName("HNO3")),
+      (7, MonitorType.withName("AcOH"))
     )
 
-    val polarity = values(3)
+    val polarity = values(2)
     val dataList =
       for {
         (offset, mt) <- mtInfo
@@ -113,7 +113,7 @@ class Nh3Collector(id: String, protocolParam: ProtocolParam) extends Actor with 
 
               val rawResult = masterOpt.get.send(batch)
               val result =
-                for (idx <- 0 to 8) yield
+                for (idx <- 0 to 7) yield
                   rawResult.getValue(idx).asInstanceOf[Short]
 
 
