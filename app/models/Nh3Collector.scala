@@ -37,22 +37,28 @@ class Nh3Collector(id: String, protocolParam: ProtocolParam) extends Actor with 
   var cancelable: Cancellable = _
 
   def decodeValue(values: Seq[Short], collectorState: String): Unit = {
+    val NH3 = MonitorType.withName("NH3")
+    val HCL = MonitorType.withName("HCL")
     val mtInfo = List(
-      (3, MonitorType.withName("HCL")),
+      (3, HCL),
       (4, MonitorType.withName("HF")),
-      (5, MonitorType.withName("NH3")),
+      (5, NH3),
       (6, MonitorType.withName("HNO3")),
       (7, MonitorType.withName("AcOH"))
     )
 
     val polarity = values(2)
-    val dataList =
-      for {
-        (offset, mt) <- mtInfo
-      } yield {
+    val dataList = mtInfo flatMap(
+      offset_mt => {
+        val (offset, mt) = offset_mt
         val v = 0.1 * values(offset)
-        MonitorTypeData(mt, v, collectorState)
+        if ((mt == NH3 || mt == HCL) && v != 0)
+          Some(MonitorTypeData(mt, v, collectorState))
+        else
+          None
       }
+    )
+
     context.parent ! ReportData(dataList)
   }
 
