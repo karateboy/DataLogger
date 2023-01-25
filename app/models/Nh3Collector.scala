@@ -52,10 +52,14 @@ class Nh3Collector(id: String, protocolParam: ProtocolParam) extends Actor with 
       offset_mt => {
         val (offset, mt) = offset_mt
         val v = 0.1 * values(offset)
-        if ((mt == NH3 || mt == HCL) && v != 0)
+        val filteredMonitorTypes = Seq(NH3, HCL)
+        if (filteredMonitorTypes.contains(mt)) {
+          if(v != 0)
+            Some(MonitorTypeData(mt, v, collectorState))
+          else
+            None
+        } else
           Some(MonitorTypeData(mt, v, collectorState))
-        else
-          None
       }
     )
 
