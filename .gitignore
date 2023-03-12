@@ -19,11 +19,10 @@ server.pid
 .cache-*
 /.settings
 /.sbtserver
-/conf/application.conf
-/conf/server.conf
 /node_modules
 .idea
 /importEPA
 .tmpBin
 /parsed.list
 /null
+/parsedFiles.txt

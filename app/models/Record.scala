@@ -232,4 +232,28 @@ object Record {
     import scala.concurrent._
     Future.sequence(seqF)
   }
+
+  def findAndUpdate(dt: DateTime, dataList: List[(MonitorType.Value, (Double, String))])(colName: String) = {
+    import org.mongodb.scala.bson._
+    import org.mongodb.scala.model._
+
+    val bdt: BsonDateTime = dt
+
+    val updates =
+      for {
+        data <- dataList
+        mt = data._1
+        (v, s) = data._2
+      } yield {
+        Updates.set(MonitorType.BFName(mt), Document("v" -> v, "s" -> s))
+      }
+    Updates.combine(updates: _*)
+
+    val col = MongoDB.database.getCollection(colName)
+    val f = col.findOneAndUpdate(Filters.equal("_id", bdt), Updates.combine(updates: _*),
+      FindOneAndUpdateOptions().upsert(true)).toFuture()
+    f.onFailure(errorHandler)
+    f
+  }
+
 }

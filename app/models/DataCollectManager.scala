@@ -248,6 +248,11 @@ object DataCollectManager {
 class DataCollectManager extends Actor {
   import DataCollectManager._
 
+  for(config<-ImsReader.getConfig){
+    if(config.enable)
+      ImsReader.startUp(config.path)
+  }
+
   val timer = {
     import scala.concurrent.duration._
     //Try to trigger at 30 sec
