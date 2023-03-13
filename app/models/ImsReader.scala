@@ -10,6 +10,7 @@ import play.api.libs.concurrent.Akka
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, StandardOpenOption}
+import java.util.Date
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -39,22 +40,26 @@ object ImsReader {
   }
 
   private val parsedFileName = "parsedFiles.txt"
-  val parsedFiles: mutable.Set[String] = mutable.Set.empty[String]
+  private val parsedInfoMap: mutable.Map[String, Long] = mutable.Map.empty[String, Long]
 
   try {
-    for (path <- Files.readAllLines(current.getFile(parsedFileName).toPath, StandardCharsets.UTF_8).asScala)
-      parsedFiles.add(path)
+    for (parsedInfo <- Files.readAllLines(current.getFile(parsedFileName).toPath, StandardCharsets.UTF_8).asScala) {
+      val token = parsedInfo.split(":")
+      val filePath = token(0)
+      val modifiedTime = token(1).toLong
+      parsedInfoMap.update(filePath, modifiedTime)
+    }
   } catch {
     case _: Throwable =>
       Logger.info("Init parsed.lst")
       mutable.Set.empty[String]
   }
 
-  def addToParsedFiles(filePath: String): Unit = {
-    parsedFiles.add(filePath)
+  private def updateParsedInfoMap(filePath: String, modifiedTime:Long): Unit = {
+    parsedInfoMap.update(filePath, modifiedTime)
 
     try {
-      Files.write(current.getFile(parsedFileName).toPath, (filePath + "\n").getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+      Files.write(current.getFile(parsedFileName).toPath, s"$filePath:$modifiedTime\n".getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     } catch {
       case ex: Throwable =>
         Logger.warn(ex.getMessage)
@@ -114,11 +119,12 @@ object ImsReader {
 
   private def listFiles(srcPath: String): List[File] = {
     Logger.info(s"listDirs $srcPath")
-    val allFileAndDirs = new java.io.File(srcPath).listFiles().toList
+    val allFileAndDirs = Option(new java.io.File(srcPath).listFiles()).getOrElse(Array.empty[File]).toList
     val files = allFileAndDirs.filter(p => p != null &&
       p.isFile &&
       p.getAbsolutePath.endsWith("csv") &&
-      !parsedFiles.contains(p.getAbsolutePath))
+      (!parsedInfoMap.contains(p.getAbsolutePath) ||
+        Files.getLastModifiedTime(p.toPath).toMillis != parsedInfoMap(p.getAbsolutePath)))
 
     val dirs = allFileAndDirs.filter(p => p != null && p.isDirectory)
     if (dirs.isEmpty) {
@@ -139,7 +145,7 @@ object ImsReader {
         case ex: Throwable =>
           Logger.error("skip buggy file", ex)
       } finally {
-        addToParsedFiles(file.getAbsolutePath)
+        updateParsedInfoMap(file.getAbsolutePath, Files.getLastModifiedTime(file.toPath).toMillis)
       }
     }
   }
