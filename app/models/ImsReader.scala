@@ -77,7 +77,7 @@ object ImsReader {
         val date =
           LocalDate.parse(map("Date"), DateTimeFormat.forPattern("YYYY/M/d"))
 
-        val time = LocalTime.parse(map("Time"), DateTimeFormat.forPattern("HH:mm:ss"))
+        val time = LocalTime.parse(map("Time"), DateTimeFormat.forPattern("HH:mm:ss")).withSecondOfMinute(0)
         val dateTime = date.toDateTime(time)
         val mtNames = List("HCL", "HF", "NH3", "HNO3", "AcOH")
         val mtDataList =
