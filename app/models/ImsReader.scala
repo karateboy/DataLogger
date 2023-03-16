@@ -55,7 +55,7 @@ object ImsReader {
       mutable.Set.empty[String]
   }
 
-  private def updateParsedInfoMap(filePath: String, modifiedTime:Long): Unit = {
+  private def updateParsedInfoMap(filePath: String, modifiedTime: Long): Unit = {
     parsedInfoMap.update(filePath, modifiedTime)
 
     try {
@@ -68,41 +68,49 @@ object ImsReader {
 
   import java.io.File
 
-  def parser(file: File): Unit = {
+  def parser(file: File): Boolean = {
     val reader = CSVReader.open(file, "UTF-8")
     val recordLists = reader.allWithHeaders()
 
-    def handleDoc(map: Map[String, String]): Unit = {
+    def handleDoc(map: Map[String, String]): Boolean = {
       try {
         val date =
           LocalDate.parse(map("Date"), DateTimeFormat.forPattern("YYYY/M/d"))
 
         val time = LocalTime.parse(map("Time"), DateTimeFormat.forPattern("HH:mm:ss")).withSecondOfMinute(0)
         val dateTime = date.toDateTime(time)
-        val mtNames = List("HCL", "HF", "NH3", "HNO3", "AcOH")
-        val mtDataList =
-          for (mt <- mtNames) yield {
-            try {
-              if (mt == "HCL")
-                Some((MonitorType.withName(mt), (map("HCl").split("\\s+")(0).toDouble, MonitorStatus.NormalStat)))
-              else
-                Some((MonitorType.withName(mt), (map(mt).split("\\s+")(0).toDouble, MonitorStatus.NormalStat)))
-            } catch {
-              case ex: Throwable =>
-                None
+        if (dateTime < DateTime.now().minusMinutes(1).minusSeconds(40)) {
+          val mtNames = List("HCL", "HF", "NH3", "HNO3", "AcOH")
+          val mtDataList =
+            for (mt <- mtNames) yield {
+              try {
+                if (mt == "HCL")
+                  Some((MonitorType.withName(mt), (map("HCl").split("\\s+")(0).toDouble, MonitorStatus.NormalStat)))
+                else
+                  Some((MonitorType.withName(mt), (map(mt).split("\\s+")(0).toDouble, MonitorStatus.NormalStat)))
+              } catch {
+                case ex: Throwable =>
+                  None
+              }
             }
-          }
-        Record.findAndUpdate(dateTime, mtDataList.flatten)(Record.MinCollection)
+          Record.findAndUpdate(dateTime, mtDataList.flatten)(Record.MinCollection)
+          true
+        } else
+          false
       } catch {
         case ex: Throwable =>
           Logger.error(s"fail to parse ${file.getName}", ex)
+          false
       }
     }
 
-    for (map <- recordLists) {
-      handleDoc(map)
-    }
+    val completeParsed =
+      for (map <- recordLists) yield
+        handleDoc(map)
+
     reader.close()
+
+    val completed = completeParsed.foldLeft(true)((a, b) => a && b)
 
     val start = try {
       LocalDate.parse(file.getName.take(6), DateTimeFormat.forPattern("YYMMDD")).toDateTimeAtStartOfDay
@@ -111,10 +119,17 @@ object ImsReader {
         Logger.error(s"file to handle ${file.getName}", ex)
         throw ex
     }
-    val end = start + 1.day
+    val end = if(completed)
+      start + 1.day
+    else {
+      val lastModified = new DateTime(Files.getLastModifiedTime(file.toPath).toMillis)
+      lastModified.withMinute(0).withSecondOfMinute(0).withMillisOfSecond(0)
+    }
+
     for (hour <- Query.getPeriods(start, end, 1.hour))
       DataCollectManager.recalculateHourData(hour)(MonitorType.mtvList)
 
+    completed
   }
 
   private def listFiles(srcPath: String): List[File] = {
@@ -140,12 +155,11 @@ object ImsReader {
     for (file <- listFiles(srcDir)) {
       try {
         Logger.info(s"parse ${file.getAbsolutePath}")
-        parser(file)
+        if(parser(file))
+          updateParsedInfoMap(file.getAbsolutePath, Files.getLastModifiedTime(file.toPath).toMillis)
       } catch {
         case ex: Throwable =>
           Logger.error("skip buggy file", ex)
-      } finally {
-        updateParsedInfoMap(file.getAbsolutePath, Files.getLastModifiedTime(file.toPath).toMillis)
       }
     }
   }
@@ -170,7 +184,7 @@ class ImsReader(dir: String) extends Actor {
     case ReadFile =>
       Logger.info("Start read files")
       parseCsv(dir)
-      timer = resetTimer(60)
+      timer = resetTimer(120)
   }
 
   override def postStop(): Unit = {
