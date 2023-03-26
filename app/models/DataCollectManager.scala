@@ -470,18 +470,18 @@ class DataCollectManager extends Actor {
         checkMinDataAlarm(minuteMtAvgList)
         
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
-        val f = Record.insertRecord(Record.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(Record.MinCollection)
+        val f = Record.findAndUpdate(currentMintues.minusMinutes(1), minuteMtAvgList.toList)(Record.MinCollection)
         f map { _ => ForwardManager.forwardMinData }
         f
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
       val f = calculateMinData(current)
-      f onFailure (errorHandler)
+      f onFailure errorHandler
 
       if (current.getMinuteOfHour == 0) {
         import scala.concurrent.ExecutionContext.Implicits.global
-        f.map { _ => recalculateHourData(current)(latestDataMap.keys.toList) }
+        f.map { _ => recalculateHourData(current)(MonitorType.mtvList) }
       }
     }
 

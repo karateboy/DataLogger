@@ -44,23 +44,23 @@ object ForwardManager {
     }
   }
 
-  def updateInstrumentStatusType = {
+  def updateInstrumentStatusType() = {
     managerOpt map { _ ! UpdateInstrumentStatusType }
   }
 
-  def forwardHourData = {
+  def forwardHourData: Option[Unit] = {
     managerOpt map { _ ! ForwardHour }
   }
 
-  def forwardHourRecord(start: DateTime, end: DateTime) = {
+  def forwardHourRecord(start: DateTime, end: DateTime): Option[Unit] = {
     managerOpt map { _ ! ForwardHourRecord(start, end) }
   }
 
-  def forwardMinData = {
+  def forwardMinData: Option[Unit] = {
     managerOpt map { _ ! ForwardMin }
   }
 
-  def forwardMinRecord(start: DateTime, end: DateTime) = {
+  def forwardMinRecord(start: DateTime, end: DateTime): Option[Unit] = {
     managerOpt map { _ ! ForwardMinRecord(start, end) }
   }
 

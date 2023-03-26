@@ -4,16 +4,18 @@ import akka.actor._
 import com.github.nscala_time.time.Imports._
 import com.github.tototoshi.csv.CSVReader
 import controllers.Query
+import models.ModelHelper.waitReadyResult
 import play.api.Play.current
 import play.api._
 import play.api.libs.concurrent.Akka
 
 import java.nio.charset.StandardCharsets
+import java.nio.file.attribute.FileTime
 import java.nio.file.{Files, StandardOpenOption}
-import java.util.Date
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, blocking}
 
 object ImsReader {
   private case object ReadFile
@@ -39,15 +41,18 @@ object ImsReader {
     }
   }
 
+  private case class ParseInfo(modifiedTime: FileTime, skip: Int)
+
   private val parsedFileName = "parsedFiles.txt"
-  private val parsedInfoMap: mutable.Map[String, Long] = mutable.Map.empty[String, Long]
+  private val parsedInfoMap: mutable.Map[String, ParseInfo] = mutable.Map.empty[String, ParseInfo]
 
   try {
     for (parsedInfo <- Files.readAllLines(current.getFile(parsedFileName).toPath, StandardCharsets.UTF_8).asScala) {
       val token = parsedInfo.split(":")
       val filePath = token(0)
-      val modifiedTime = token(1).toLong
-      parsedInfoMap.update(filePath, modifiedTime)
+      val modifiedTime = FileTime.fromMillis(token(1).toLong)
+      val skip = token(2).toInt
+      parsedInfoMap.update(filePath, ParseInfo(modifiedTime, skip))
     }
   } catch {
     case _: Throwable =>
@@ -55,11 +60,11 @@ object ImsReader {
       mutable.Set.empty[String]
   }
 
-  private def updateParsedInfoMap(filePath: String, modifiedTime: Long): Unit = {
-    parsedInfoMap.update(filePath, modifiedTime)
+  private def updateParsedInfoMap(filePath: String, modifiedTime: Long, skip: Int): Unit = {
+    parsedInfoMap.update(filePath, ParseInfo(FileTime.fromMillis(modifiedTime), skip))
 
     try {
-      Files.write(current.getFile(parsedFileName).toPath, s"$filePath:$modifiedTime\n".getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+      Files.write(current.getFile(parsedFileName).toPath, s"$filePath:$modifiedTime:$skip\n".getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     } catch {
       case ex: Throwable =>
         Logger.warn(ex.getMessage)
@@ -68,95 +73,96 @@ object ImsReader {
 
   import java.io.File
 
-  def parser(file: File): Boolean = {
+  def parser(file: File, skip: Int = 0): Future[Int] = {
     val reader = CSVReader.open(file, "UTF-8")
     val recordLists = reader.allWithHeaders()
 
-    def handleDoc(map: Map[String, String]): Boolean = {
+    def handleDoc(map: Map[String, String]): Future[Option[DateTime]] = {
       try {
         val date =
           LocalDate.parse(map("Date"), DateTimeFormat.forPattern("YYYY/M/d"))
 
         val time = LocalTime.parse(map("Time"), DateTimeFormat.forPattern("HH:mm:ss")).withSecondOfMinute(0)
         val dateTime = date.toDateTime(time)
-        if (dateTime < DateTime.now().minusMinutes(1).minusSeconds(40)) {
-          val mtNames = List("HCL", "HF", "NH3", "HNO3", "AcOH")
-          val mtDataList =
-            for (mt <- mtNames) yield {
-              try {
-                if (mt == "HCL")
-                  Some((MonitorType.withName(mt), (map("HCl").split("\\s+")(0).toDouble, MonitorStatus.NormalStat)))
-                else
-                  Some((MonitorType.withName(mt), (map(mt).split("\\s+")(0).toDouble, MonitorStatus.NormalStat)))
-              } catch {
-                case ex: Throwable =>
-                  None
-              }
+
+        val mtNames = List("HCL", "HF", "NH3", "HNO3", "AcOH")
+        val mtDataList =
+          for (mt <- mtNames) yield {
+            try {
+              if (mt == "HCL")
+                Some((MonitorType.withName(mt), (map("HCl").split("\\s+")(0).toDouble, MonitorStatus.NormalStat)))
+              else
+                Some((MonitorType.withName(mt), (map(mt).split("\\s+")(0).toDouble, MonitorStatus.NormalStat)))
+            } catch {
+              case ex: Throwable =>
+                None
             }
-          Record.findAndUpdate(dateTime, mtDataList.flatten)(Record.MinCollection)
-          true
-        } else
-          false
+          }
+        for (_ <- Record.findAndUpdate(dateTime, mtDataList.flatten)(Record.MinCollection)) yield
+          Some(dateTime)
       } catch {
         case ex: Throwable =>
           Logger.error(s"fail to parse ${file.getName}", ex)
-          false
+          Future.successful(None)
       }
     }
 
-    val completeParsed =
-      for (map <- recordLists) yield
+    val dateTimeListFuture =
+      for (map <- recordLists.drop(skip)) yield
         handleDoc(map)
 
     reader.close()
 
-    val completed = completeParsed.foldLeft(true)((a, b) => a && b)
+    for (dateTimeList <- Future.sequence(dateTimeListFuture)) yield {
+      val orderedTimeList = dateTimeList.flatten.sorted
+      if (orderedTimeList.nonEmpty) {
+        val start = orderedTimeList.head
+        val end = orderedTimeList.last
+        ForwardManager.forwardMinRecord(start, end.plusMinutes(1))
+        val startHour = start.withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
+        val endHour = end.withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0).plusHours(1)
+        for (hour <- Query.getPeriods(startHour, endHour, 1.hour) if hour <= DateTime.now().minusHours(1))
+          DataCollectManager.recalculateHourData(hour)(MonitorType.mtvList)
 
-    val start = try {
-      LocalDate.parse(file.getName.take(6), DateTimeFormat.forPattern("YYMMDD")).toDateTimeAtStartOfDay
-    } catch {
-      case ex: Throwable =>
-        Logger.error(s"file to handle ${file.getName}", ex)
-        throw ex
+        orderedTimeList.size
+      } else
+        0
     }
-    val end = if(completed)
-      start + 1.day
-    else {
-      val lastModified = new DateTime(Files.getLastModifiedTime(file.toPath).toMillis)
-      lastModified.withMinute(0).withSecondOfMinute(0).withMillisOfSecond(0)
-    }
-
-    for (hour <- Query.getPeriods(start, end, 1.hour))
-      DataCollectManager.recalculateHourData(hour)(MonitorType.mtvList)
-
-    completed
   }
 
-  private def listFiles(srcPath: String): List[File] = {
+  private def listFiles(srcPath: String): List[(File, Long)] = {
     Logger.info(s"listDirs $srcPath")
-    val allFileAndDirs = Option(new java.io.File(srcPath).listFiles()).getOrElse(Array.empty[File]).toList
-    val files = allFileAndDirs.filter(p => p != null &&
-      p.isFile &&
-      p.getAbsolutePath.endsWith("csv") &&
-      (!parsedInfoMap.contains(p.getAbsolutePath) ||
-        Files.getLastModifiedTime(p.toPath).toMillis != parsedInfoMap(p.getAbsolutePath)))
+    val allFileAndDirs = Option(new java.io.File(srcPath).listFiles()).getOrElse(Array.empty[File])
+      .map(f => (f, Files.getLastModifiedTime(f.toPath).toMillis))
+    val files = allFileAndDirs.filter(p => {
+      val (file, modifiedTime) = p
+      file != null &&
+        file.isFile &&
+        file.getAbsolutePath.endsWith("csv") &&
+        (!parsedInfoMap.contains(file.getAbsolutePath) ||
+          parsedInfoMap(file.getAbsolutePath).modifiedTime.toMillis != modifiedTime)
+    }).toList
 
-    val dirs = allFileAndDirs.filter(p => p != null && p.isDirectory)
+    val dirs = allFileAndDirs.filter(pair => pair._1 != null && pair._1.isDirectory)
     if (dirs.isEmpty) {
       files
     } else {
-      val deepDir = dirs flatMap (dir => listFiles(dir.getAbsolutePath))
+      val deepDir = dirs flatMap (dir => listFiles(dir._1.getAbsolutePath))
       files ++ deepDir
     }
-
   }
 
   private def parseCsv(srcDir: String): Unit = {
-    for (file <- listFiles(srcDir)) {
+    for ((file, modifiedTime) <- listFiles(srcDir)) {
       try {
         Logger.info(s"parse ${file.getAbsolutePath}")
-        if(parser(file))
-          updateParsedInfoMap(file.getAbsolutePath, Files.getLastModifiedTime(file.toPath).toMillis)
+        val parsedNum = waitReadyResult(parser(file))
+        if (parsedNum != 0) {
+          if (parsedInfoMap.contains(file.getAbsolutePath)) {
+            val parseInfo = parsedInfoMap(file.getAbsolutePath)
+            updateParsedInfoMap(file.getAbsolutePath, modifiedTime, parseInfo.skip + parsedNum)
+          }
+        }
       } catch {
         case ex: Throwable =>
           Logger.error("skip buggy file", ex)
@@ -183,8 +189,12 @@ class ImsReader(dir: String) extends Actor {
   def handler: Receive = {
     case ReadFile =>
       Logger.info("Start read files")
-      parseCsv(dir)
-      timer = resetTimer(120)
+      Future {
+        blocking {
+          parseCsv(dir)
+          timer = resetTimer(600)
+        }
+      }
   }
 
   override def postStop(): Unit = {
