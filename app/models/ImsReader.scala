@@ -158,10 +158,8 @@ object ImsReader {
         Logger.info(s"parse ${file.getAbsolutePath}")
         val parsedNum = waitReadyResult(parser(file))
         if (parsedNum != 0) {
-          if (parsedInfoMap.contains(file.getAbsolutePath)) {
-            val parseInfo = parsedInfoMap(file.getAbsolutePath)
+            val parseInfo = parsedInfoMap.getOrElseUpdate(file.getAbsolutePath, ParseInfo(FileTime.fromMillis(0), 0))
             updateParsedInfoMap(file.getAbsolutePath, modifiedTime, parseInfo.skip + parsedNum)
-          }
         }
       } catch {
         case ex: Throwable =>
