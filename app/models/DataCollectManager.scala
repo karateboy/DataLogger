@@ -132,7 +132,7 @@ object DataCollectManager {
             }
           } else if (mt == MonitorType.RAIN || mt == MonitorType.NH3) {
             values.max
-          } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
+          } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25 || mt == MonitorType.PRESSURE) {
             values.last
           } else {
             values.sum / values.length
@@ -178,7 +178,7 @@ object DataCollectManager {
             }
           } else if (mt == MonitorType.RAIN) {
             values.max
-          } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
+          } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25 || mt == MonitorType.PRESSURE){
             values.last
           } else {
             values.sum / values.length
