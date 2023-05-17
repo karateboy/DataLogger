@@ -7,6 +7,9 @@ import models._
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala._
 import org.mongodb.scala.model.ReplaceOptions
+import org.mongodb.scala.result.UpdateResult
+
+import scala.concurrent.Future
 
 case class Record(time: DateTime, value: Double, status: String)
 
@@ -110,7 +113,7 @@ object Record {
 
     val col = MongoDB.database.getCollection(colName)
     val proj = include(mtList.map { MonitorType.BFName(_) }: _*)
-    val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).projection(proj).sort(ascending("_id")).toFuture()
+    val f = col.find(and(gte("_id", startTime.toDate), lt("_id", endTime.toDate))).projection(proj).sort(ascending("_id")).toFuture()
     val docs = waitReadyResult(f)
 
     val pairs =
@@ -124,8 +127,8 @@ object Record {
             time = doc("_id").asDateTime()
             mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
             mtDoc = mtDocOpt.get.asDocument()
-            v = mtDoc.get("v") if v.isDouble()
-            s = mtDoc.get("s") if s.isString()
+            v = mtDoc.get("v") if v.isDouble && v.asDouble().doubleValue() != Double.NaN
+            s = mtDoc.get("s") if s.isString
           } yield {
             Record(time, v.asDouble().doubleValue(), s.asString().getValue)
           }
@@ -136,7 +139,11 @@ object Record {
   }
 
   case class MtRecord(mtName: String, value: Double, status: String)
-  case class RecordList(time: Long, mtDataList: Seq[MtRecord])
+  case class RecordList(time: Long, var mtDataList: Seq[MtRecord]){
+    def excludeNaN(): Unit = {
+      mtDataList = mtDataList.filter { _.value.isNaN == false}
+    }
+  }
 
   implicit val mtRecordWrite = Json.writes[MtRecord]
   implicit val recordListWrite = Json.writes[RecordList]
@@ -169,8 +176,8 @@ object Record {
 
             mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
             mtDoc = mtDocOpt.get.asDocument()
-            v = mtDoc.get("v") if v.isDouble()
-            s = mtDoc.get("s") if s.isString()
+            v = mtDoc.get("v") if v.isDouble && v.asDouble().doubleValue() != Double.NaN
+            s = mtDoc.get("s") if s.isString
           } yield {
             MtRecord(mtBFName, v.asDouble().doubleValue(), s.asString().getValue)
           }
@@ -179,7 +186,7 @@ object Record {
     }
   }
   
-  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit:Int) = {
+  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit:Int): Future[Seq[RecordList]] = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
@@ -189,8 +196,9 @@ object Record {
 
     val mtList = MonitorType.activeMtvList
     val col = MongoDB.database.getCollection(colName)
-    val proj = include(mtList.map { MonitorType.BFName(_) }: _*)
-    val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).limit(limit).projection(proj).sort(ascending("_id")).toFuture()
+    val proj = include(mtList.map { MonitorType.BFName }: _*)
+    val f = col.find(and(gte("_id", startTime.toDate), lt("_id", endTime.toDate)))
+      .limit(limit).projection(proj).sort(ascending("_id")).toFuture()
 
     for {
       docs <- f
@@ -205,10 +213,10 @@ object Record {
             mt <- mtList
             mtBFName = MonitorType.BFName(mt)
 
-            mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
+            mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument
             mtDoc = mtDocOpt.get.asDocument()
-            v = mtDoc.get("v") if v.isDouble()
-            s = mtDoc.get("s") if s.isString()
+            v = mtDoc.get("v") if v.isDouble && v.asDouble().doubleValue() != Double.NaN
+            s = mtDoc.get("s") if s.isString
           } yield {
             MtRecord(mtBFName, v.asDouble().doubleValue(), s.asString().getValue)
           }
@@ -217,7 +225,7 @@ object Record {
     }
   }
   
-  def updateMtRecord(colName: String)(mt:MonitorType.Value, updateList:Seq[(DateTime, Double)])={
+  def updateMtRecord(colName: String)(mt:MonitorType.Value, updateList:Seq[(DateTime, Double)]): Future[Seq[UpdateResult]] ={
     import org.mongodb.scala.model._
     import org.mongodb.scala.bson._
     val col = MongoDB.database.getCollection(colName)

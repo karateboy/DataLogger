@@ -46,29 +46,37 @@ class HourRecordForwarder(server: String, monitor: String) extends Actor {
     val recordFuture = 
       Record.getRecordWithLimitFuture(Record.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 60)
       
-    for (record <- recordFuture) {
-      if (!record.isEmpty) {
-        val url = s"http://$server/HourRecord/$monitor"
-        val f = WS.url(url).put(Json.toJson(record))
-        f onSuccess {
-          case response =>
-            if (response.status == 200){
-              context become handler(Some(record.last.time))
-              
-              // This shall stop when there is no more records...
-              self ! ForwardHour 
-            }else {
-              Logger.error(s"${response.status}:${response.statusText}")
+    for (recordLists <- recordFuture) {
+      if (recordLists.nonEmpty) {
+        recordLists.foreach {_.excludeNaN()}
+        
+        try{
+          val url = s"http://$server/HourRecord/$monitor"
+          val f = WS.url(url).put(Json.toJson(recordLists))
+          f onSuccess {
+            case response =>
+              if (response.status == 200) {
+                context become handler(Some(recordLists.last.time))
+
+                // This shall stop when there is no more records...
+                self ! ForwardHour
+              } else {
+                Logger.error(s"${response.status}:${response.statusText}")
+                context become handler(None)
+                delayForward
+              }
+          }
+          f onFailure {
+            case ex: Throwable =>
               context become handler(None)
+              ModelHelper.logException(ex)
               delayForward
-            }
+          }
+        }catch {
+          case ex:Throwable =>
+            Logger.error("failed", ex)
         }
-        f onFailure {
-          case ex: Throwable =>
-            context become handler(None)
-            ModelHelper.logException(ex)
-            delayForward
-        }
+
       }
     }
   }

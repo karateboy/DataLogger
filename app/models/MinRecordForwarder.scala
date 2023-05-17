@@ -45,27 +45,37 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
     val recordFuture =
         Record.getRecordWithLimitFuture(Record.MinCollection)(serverRecordStart, DateTime.now, 60)
 
-    for (record <- recordFuture) {
-      if (!record.isEmpty) {
-        val url = s"http://$server/MinRecord/$monitor"
-        val f = WS.url(url).put(Json.toJson(record))
+    for (recordLists <- recordFuture) {
+      if (recordLists.nonEmpty) {
+        try{
+          recordLists.foreach {
+            _.excludeNaN()
+          }
 
-        f onSuccess {
-          case response =>
-            if (response.status == 200) {
-              if (record.last.time > latestRecordTime) {
-                context become handler(Some(record.last.time))
+          val url = s"http://$server/MinRecord/$monitor"
+          val f = WS.url(url).put(Json.toJson(recordLists))
+
+          f onSuccess {
+            case response =>
+              if (response.status == 200) {
+                if (recordLists.last.time > latestRecordTime) {
+                  context become handler(Some(recordLists.last.time))
+                }
+              } else {
+                Logger.error(s"${response.status}:${response.statusText}")
+                context become handler(None)
               }
-            } else {
-              Logger.error(s"${response.status}:${response.statusText}")
+          }
+          f onFailure {
+            case ex: Throwable =>
               context become handler(None)
-            }
+              ModelHelper.logException(ex)
+          }
+        }catch{
+          case ex:Throwable=>
+            Logger.error("failed", ex)
         }
-        f onFailure {
-          case ex: Throwable =>
-            context become handler(None)
-            ModelHelper.logException(ex)
-        }
+
       }
     }
   }
