@@ -127,7 +127,7 @@ object Record {
             time = doc("_id").asDateTime()
             mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
             mtDoc = mtDocOpt.get.asDocument()
-            v = mtDoc.get("v") if v.isDouble && v.asDouble().doubleValue() != Double.NaN
+            v = mtDoc.get("v") if v.isDouble && !v.asDouble().doubleValue().isNaN
             s = mtDoc.get("s") if s.isString
           } yield {
             Record(time, v.asDouble().doubleValue(), s.asString().getValue)
@@ -141,7 +141,7 @@ object Record {
   case class MtRecord(mtName: String, value: Double, status: String)
   case class RecordList(time: Long, var mtDataList: Seq[MtRecord]){
     def excludeNaN(): Unit = {
-      mtDataList = mtDataList.filter { _.value.isNaN == false}
+      mtDataList = mtDataList.filter { v=> v.value != null && v.value.isNaN == false}
     }
   }
 
@@ -176,7 +176,7 @@ object Record {
 
             mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
             mtDoc = mtDocOpt.get.asDocument()
-            v = mtDoc.get("v") if v.isDouble && v.asDouble().doubleValue() != Double.NaN
+            v = mtDoc.get("v") if v.isDouble && !v.asDouble().doubleValue().isNaN
             s = mtDoc.get("s") if s.isString
           } yield {
             MtRecord(mtBFName, v.asDouble().doubleValue(), s.asString().getValue)
@@ -215,7 +215,7 @@ object Record {
 
             mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument
             mtDoc = mtDocOpt.get.asDocument()
-            v = mtDoc.get("v") if v.isDouble && v.asDouble().doubleValue() != Double.NaN
+            v = mtDoc.get("v") if v.isDouble && !v.asDouble().doubleValue().isNaN
             s = mtDoc.get("s") if s.isString
           } yield {
             MtRecord(mtBFName, v.asDouble().doubleValue(), s.asString().getValue)
