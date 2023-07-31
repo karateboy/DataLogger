@@ -16,6 +16,8 @@ libraryDependencies ++= Seq(
 // https://mvnrepository.com/artifact/org.mongodb.scala/mongo-scala-driver
 libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "2.9.0"
 
+// https://mvnrepository.com/artifact/io.github.java-native/jssc
+libraryDependencies += "io.github.java-native" % "jssc" % "2.9.4"
 
 mappings in Universal ++=
 (baseDirectory.value / "report_template" * "*" get) map
